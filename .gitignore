@@ -1,0 +1,17 @@
+# Python cache and bytecode
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+
+# Session and credentials
+session.json
+.env
+
+# Logs and temp files
+*.log
+*.tmp
+
+# IDEs (optional)
+.vscode/
+.idea/
