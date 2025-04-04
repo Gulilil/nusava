@@ -51,3 +51,10 @@ class Parser():
         f.close()
 
       print(f"[STORE] Store result in {store_filename}")
+
+  # Get parsed based on filename
+  def get_result(self, filename):
+    for data_dict in self.results:
+      if (data_dict['filename'] == filename):
+        return data_dict['text']
+    return None
