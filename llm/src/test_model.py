@@ -1,4 +1,4 @@
-from llm.src.model.model import Model
+from model.model import Model
 import os
 from utils.constant import DATA_DIR_PATHS
 
