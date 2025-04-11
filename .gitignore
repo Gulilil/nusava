@@ -1,0 +1,44 @@
+# === PYTHON / DJANGO ===
+*.pyc
+__pycache__/
+*.pyo
+*.pyd
+*.env
+.env
+.env.*
+db.sqlite3
+media/
+*.sqlite3
+*.log
+
+# Django secret files
+*.secret
+*.pem
+*.key
+*.crt
+
+# VSCode + PyCharm
+.vscode/
+.idea/
+
+# Django migrations
+**/migrations/
+!**/migrations/__init__.py
+
+# === NODE / REACT ===
+frontend/node_modules/
+frontend/dist/
+frontend/.vite/
+frontend/.env
+frontend/.env.*
+
+# === OS / Editor Stuff ===
+.DS_Store
+Thumbs.db
+session.json
+
+# === Python Virtual Environment ===
+venv/
+env/
+ENV/
+.venv/
