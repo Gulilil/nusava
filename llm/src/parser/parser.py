@@ -9,7 +9,6 @@ load_dotenv()
 from utils.constant import DATA_DIR_PATHS
 
 class Parser():
-
   # Initialization
   def __init__(self, result_type: str = "markdown"): 
     # result_type = ["markdown", "text"]
@@ -27,7 +26,7 @@ class Parser():
 
 
   # Parse documents
-  def parse_documents(self, filename: str):
+  def parse_documents(self, filename: str) -> None:
     # Read all documents 
     filename = f"{filename}.pdf" if ".pdf" not in filename else filename
     filename = os.path.join(DATA_DIR_PATHS['pdf'], filename)
@@ -48,7 +47,7 @@ class Parser():
 
 
   # Parse json
-  def parse_json(self, filename: str, level: int = 1):
+  def parse_json(self, filename: str, level: int = 1) -> None:
     filename = f"{filename}.json" if ".json" not in filename else filename
     filename = os.path.join(DATA_DIR_PATHS['json'], filename)
     print(f"[PARSER] Parsing pdf {filename}")
@@ -82,7 +81,7 @@ class Parser():
 
 
   # Store document
-  def store_results(self):
+  def store_results(self) -> None:
     # Will be stored inside ./data/json
     for data_dict in self.results:
       store_filename = os.path.join(DATA_DIR_PATHS['md'], f"{data_dict['type']}_{data_dict['filename'].split('.')[0]}.md")

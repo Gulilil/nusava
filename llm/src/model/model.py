@@ -15,7 +15,7 @@ class Model():
   # Declare constants
   llm_model_name: str = "llama3.1"
   embed_model_name: str = "BAAI/bge-m3"
-  temperature: float = 0.3
+  temperature: float = 0.1
 
   # Initialization
   def __init__(self):
@@ -28,7 +28,7 @@ class Model():
     print(f"[MODEL INITIALIZED] Model is initialized with llm_model: {self.llm_model_name} and embed_model: {self.embed_model_name}")
 
   # Learn by making vector store Index from documents
-  def learn(self, document_text: str, document_name: str, document_description: str, k: int = 5):
+  def learn(self, document_text: str, document_name: str, document_description: str, k: int = 5) -> None:
     # Make document to vector_index
     document_doc = [Document(text=document_text)]
     self.document_name = document_name
@@ -46,11 +46,11 @@ class Model():
     print(f"[LEARN] Finish model learning for the documents {document_name}")
   
   # Config agent
-  def config(self, context: str):
+  def config(self, context: str) -> None:
     self.agent = ReActAgent.from_tools([self.tools], llm = self.llm_model, verbose= True, context= context)
   
   # Run the system
-  def answer(self, prompt: str):
+  def answer(self, prompt: str) -> str:
     result = self.agent.query(prompt)
     return result
 
