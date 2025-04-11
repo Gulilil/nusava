@@ -3,9 +3,10 @@ from llama_index.core import SimpleDirectoryReader
 
 import os
 from dotenv import load_dotenv
+import json
 load_dotenv()
 
-from constant.constant import PDF_DATA_DIR_PATH, MD_DATA_DIR_PATH
+from utils.constant import DATA_DIR_PATHS
 
 class Parser():
 
@@ -20,37 +21,77 @@ class Parser():
         max_timeout=5000
     )
     # Setup all the .pdf files as the files to be extracted
-    self.file_extractor = {".pdf": self.parser}
+    self.pdf_file_extractor = {".pdf": self.parser}
+    # Results container
+    self.results = []
+
 
   # Parse documents
-  def parse_documents(self, keyword: str = ""):
-    # List documents
-    files_path = [os.path.join(PDF_DATA_DIR_PATH, filename) for filename in os.listdir(PDF_DATA_DIR_PATH) if keyword in filename]
+  def parse_documents(self, filename: str):
     # Read all documents 
-    self.results = []
-    for file in (files_path):
-      print(f"[PARSER] Parsing {file}")
-      documents = SimpleDirectoryReader(input_files=[file], file_extractor= self.file_extractor).load_data()
-      document_text_list = []
-      # Make document text into a long string
-      for document in documents:
-        document_text_list.append(document.text)
-      # Store in a list of dictionary
-      self.results.append({
-        "filename" : os.path.basename(file),
-        "text": "\n\n".join(document_text_list)
-      })
+    filename = f"{filename}.pdf" if ".pdf" not in filename else filename
+    filename = os.path.join(DATA_DIR_PATHS['pdf'], filename)
+    print(f"[PARSER] Parsing pdf {filename}")
+
+    documents = SimpleDirectoryReader(input_files=[filename], file_extractor= self.pdf_file_extractor).load_data()
+    document_text_list = []
+    # Make document text into a long string
+    for document in documents:
+      document_text_list.append(document.text)
+
+    # Store in a list of dictionary
+    self.results.append({
+      "filename" : os.path.basename(filename),
+      "type": "pdf",
+      "text": "\n\n".join(document_text_list)
+    })
+
+
+  # Parse json
+  def parse_json(self, filename: str, level: int = 1):
+    filename = f"{filename}.json" if ".json" not in filename else filename
+    filename = os.path.join(DATA_DIR_PATHS['json'], filename)
+    print(f"[PARSER] Parsing pdf {filename}")
+
+    with open(filename, "r", encoding="utf-8") as f:
+      data = f.read()
+      json_data = json.loads(data)
+
+    # Make recursive function
+    def json_to_markdown(json_data, level=1):
+      markdown = ""
+      if isinstance(json_data, dict):
+          for key, value in json_data.items():
+              markdown += f"\n{'#' * level} {key}\n"
+              markdown += json_to_markdown(value, level + 1)
+      elif isinstance(json_data, list):
+          for item in json_data:
+              markdown += json_to_markdown(item, level)
+      else:
+          markdown += f"{json_data}\n\n"
+      return markdown
+    # Function call
+    markdown = json_to_markdown(json_data)
+
+    # Store in a list of dictionary
+    self.results.append({
+      "filename" : os.path.basename(filename),
+      "type": "json",
+      "text": markdown
+    })
+
 
   # Store document
   def store_results(self):
     # Will be stored inside ./data/json
     for data_dict in self.results:
-      store_filename = os.path.join(MD_DATA_DIR_PATH, data_dict['filename'].replace(".pdf", ".md"))
+      store_filename = os.path.join(DATA_DIR_PATHS['md'], f"{data_dict['type']}_{data_dict['filename'].split('.')[0]}.md")
       with open(store_filename, "w", encoding="utf-8") as f:
         f.write(data_dict['text'])
         f.close()
 
       print(f"[STORE] Store result in {store_filename}")
+
 
   # Get parsed based on filename
   def get_result(self, filename):

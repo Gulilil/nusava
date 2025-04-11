@@ -11,7 +11,6 @@ from llama_index.llms.ollama import Ollama
 from llama_index.core.agent import ReActAgent
 
 
-
 class Model():
   # Declare constants
   llm_model_name: str = "llama3.1"
