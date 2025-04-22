@@ -13,3 +13,9 @@ class Agent():
     self.prompt_generator_component = PromptGenerator()
     self.gateway_component = Gateway()
     self.evaluator_component = Evaluator()
+
+  
+  def decide_action(self, last_action: str = None, last_action_details: str = None):
+    prompt = self.prompt_generator_component.generate_prompt_decide_action(last_action, last_action_details)
+    answer = self.model_component.direct_answer(prompt)
+    return answer

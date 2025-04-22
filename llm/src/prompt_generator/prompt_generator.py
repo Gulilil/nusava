@@ -1,14 +1,20 @@
 from llama_index.core.prompts import PromptTemplate
+from utils.constant import ACTIONS_LIST
+import json
 
-PROMPT_TEMPLATE = """You are an influencer in social media, expertised in Tourism aspect. We have provided context information below.
+PROMPT_TEMPLATE = """Definition:
+You are an influencer in Instagram, expertised in Tourism aspect.
 ---------------------
-{context_str}
-{example_str}
+{context_subprompt}
+{example_subprompt}
+{answer_format_subprompt}
 ---------------------
+Instruction:
 Given this information, answer the query.
 Please write the answer in the style of {tone_str}
 Query: {query_str}
 """
+
 
 class PromptGenerator():
   def __init__(self):
@@ -16,10 +22,87 @@ class PromptGenerator():
     self.prompt_template = PromptTemplate(PROMPT_TEMPLATE)
 
     # Config for tone
-    self.tone_str = "Tourism Influencer in Social Media"
+    self.tone_str = "a Tourism Influencer in Social Media"
 
+  # CONFIGURE
   def config_tone(self, tone_str: str) -> None:
     self.tone_str = tone_str
+  
+  
+  # GENERATE SUBPROMPT
+  ##############################
+  def generate_subprompt_example(self, examples: list[dict]) -> str:
+    """
+    Format of examples:
+    [
+      {"question": "...", "answer": "..."}, 
+      ..., 
+      {"question": "...", "answer": "..."}
+    ]
+    """
+    example_subprompt = "Examples:\n"
+    if (examples is not None and len(examples) > 0):
+      example_subprompt += "Here is some provided examples to guide you answer the question."
+
+      for i, example in enumerate(examples):
+        example_subprompt += "\n"
+        example_subprompt += f"Query {i+1}. {example['question']}"
+        example_subprompt += "\n"
+        example_subprompt += f"Answer {i+1}. {example['answer']}"
+    else:
+      example_subprompt += "I have no provided examples for this query."
+    return example_subprompt
+  
+  def generate_subprompt_context(self, context: str) -> str:
+    context_subprompt = "Context:\n"
+    if (context is not None):
+      context_subprompt += "Here I provide context regarding this query.\n"
+      context_subprompt += context
+    else:
+      context_subprompt += "I have no provided context for this query."
+    return context_subprompt
+  
+  def generate_subprompt_answer_format(self, answer_format: str, answer_format_type: str):
+    answer_format_subprompt = "Answer Format:\n"
+    if (answer_format is not None and answer_format_type is not None):
+      answer_format_subprompt += f"You are expected to return the answer in the type of {answer_format_type} with this format:\n"
+      answer_format_subprompt += answer_format
+      answer_format_subprompt += "\nPlease do not add any other text beside the answer in the desired format."
+    else:
+      answer_format_subprompt += "There is no specific format for this query. You may answer however you like."
+    return answer_format_subprompt
+
+
+  # GENERATE PROMPT
+  ##############################
+  def generate_prompt_decide_action(self, last_action: str = None, last_action_details: str = None):
+    # Handle context
+    action_list_str = json.dumps(ACTIONS_LIST, indent=2)
+    context = f"Here is the list of the actions you can choose along with the descriptions:\n{action_list_str}\n"
+    if (last_action is None and last_action_details is None):
+      context += f"Your last action is {last_action} with the details: {last_action_details}\n"
+      context += "Choose \"none\" when you think you should not do any action. You do not have to take the same action as your last action."
+    
+    # Handle example
+    examples = []
+
+    # Handle answer format
+    answer_format = """{
+  "action" : "",
+  "reason" : ""
+}"""
+    answer_format_type = "json"
+    
+    context_subprompt = self.generate_subprompt_context(context)
+    example_subprompt = self.generate_subprompt_example(examples)
+    answer_format_subprompt = self.generate_subprompt_answer_format(answer_format, answer_format_type)
+
+    return self.prompt_template.format(context_subprompt=context_subprompt,
+                                      example_subprompt=example_subprompt, 
+                                      answer_format_subprompt=answer_format_subprompt,
+                                      tone_str=self.tone_str, 
+                                      query_str="What action do you to choose to do?")
+
 
   def generate_prompt_reply_chat(self, new_message: str, previous_messages: list[str] = None) -> str:
     # new_message as query_str
@@ -64,7 +147,11 @@ class PromptGenerator():
     # else:
       # TODO
       
-    return self.prompt_template.format(context_str=context_str, example_str=example_str, tone_str=self.tone_str, query_str=query_str)
+    return self.prompt_template.format(context_subprompt=context_subprompt,
+                                  example_str=example_subprompt, 
+                                  answer_format_subprompt=answer_format_subprompt,
+                                  tone_str=self.tone_str, 
+                                  query_str="What action do you  to choose to do?")
   
 
 
