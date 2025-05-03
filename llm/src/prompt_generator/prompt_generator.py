@@ -15,7 +15,6 @@ Please write the answer in the style of {tone_str}
 Query: {query_str}
 """
 
-
 class PromptGenerator():
   def __init__(self):
     # Initiate template
@@ -41,16 +40,16 @@ class PromptGenerator():
     ]
     """
     example_subprompt = "Examples:\n"
-    if (examples is not None and len(examples) > 0):
+    if (examples is None or len(examples) == 0):
+      example_subprompt += "I have no provided examples for this query."
+    else:
       example_subprompt += "Here is some provided examples to guide you answer the question."
-
       for i, example in enumerate(examples):
         example_subprompt += "\n"
         example_subprompt += f"Query {i+1}. {example['question']}"
         example_subprompt += "\n"
         example_subprompt += f"Answer {i+1}. {example['answer']}"
-    else:
-      example_subprompt += "I have no provided examples for this query."
+
     return example_subprompt
   
   def generate_subprompt_context(self, context: str) -> str:
@@ -75,16 +74,13 @@ class PromptGenerator():
 
   # GENERATE PROMPT
   ##############################
-  def generate_prompt_decide_action(self, last_action: str = None, last_action_details: str = None):
+  def generate_prompt_decide_action(self, last_action: str = None, last_action_details: str = None, examples: list[dict] = None) -> str:
     # Handle context
     action_list_str = json.dumps(ACTIONS_LIST, indent=2)
     context = f"Here is the list of the actions you can choose along with the descriptions:\n{action_list_str}\n"
     if (last_action is None and last_action_details is None):
       context += f"Your last action is {last_action} with the details: {last_action_details}\n"
       context += "Choose \"none\" when you think you should not do any action. You do not have to take the same action as your last action."
-    
-    # Handle example
-    examples = []
 
     # Handle answer format
     answer_format = """{
@@ -122,36 +118,40 @@ class PromptGenerator():
     # TODO
     return 
 
-  def generate_prompt_comment(self, caption: str, additional_context: str = None) -> str:
-    # caption as context_str
-    # additional_context will be appended in context_str
-    # predefined query_str
-    # TODO
-    return 
+  def generate_prompt_comment(self, caption: str, additional_context: str = None, examples: list[dict] = None) -> str:
+    context_str = f"You are expected to make a comment on a post in Instagram with this caption: \"{caption}\""
+    if (additional_context is not None):
+      context_str += "\n"
+      context_str += f"Here are some additional context: {additional_context}"
 
-  def generate_prompt_post_caption(self, keywords: list[str], additional_context: str = None, examples: list[str] = None) -> str:
-    # keywords as context_str
-    # additional_context will be appended in context_str
-    # predefined query_str
+    context_subprompt = self.generate_subprompt_context(context_str)
+    example_subprompt = self.generate_subprompt_example(examples)
+    answer_format_subprompt = self.generate_subprompt_answer_format(None, None)
+    query_str = "Make a comment for Instagram post based on the context"
 
+    return self.prompt_template.format(context_subprompt=context_subprompt,
+                                  example_subprompt=example_subprompt, 
+                                  answer_format_subprompt=answer_format_subprompt,
+                                  tone_str=self.tone_str, 
+                                  query_str=query_str)
+
+  def generate_prompt_post_caption(self, keywords: list[str], additional_context: str = None, examples: list[dict] = None) -> str:
     keywords_str = ", ".join(keywords)
-    query_str = "Make a caption for Instagram post based on the context"
-
     context_str = f"You are expected to make a caption based on these keywords: {keywords_str}"
     if (additional_context is not None):
       context_str += "\n"
       context_str += f"Here are some additional context of the captions: {additional_context}"
     
-    if examples is None:
-      example_str = ""
-    # else:
-      # TODO
-      
+    context_subprompt = self.generate_subprompt_context(context_str)
+    example_subprompt = self.generate_subprompt_example(examples)
+    answer_format_subprompt = self.generate_subprompt_answer_format(None, None)
+    query_str = "Make a caption for Instagram post based on the context"
+
     return self.prompt_template.format(context_subprompt=context_subprompt,
-                                  example_str=example_subprompt, 
+                                  example_subprompt=example_subprompt, 
                                   answer_format_subprompt=answer_format_subprompt,
                                   tone_str=self.tone_str, 
-                                  query_str="What action do you  to choose to do?")
+                                  query_str=query_str)
   
 
 
