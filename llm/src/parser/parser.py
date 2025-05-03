@@ -1,5 +1,7 @@
 from llama_parse import LlamaParse
 from llama_index.core import SimpleDirectoryReader
+from llama_index.readers.json import JSONReader
+from llama_index.core import Document
 
 import os
 from dotenv import load_dotenv
@@ -26,23 +28,18 @@ class Parser():
 
 
   # Parse documents
-  def parse_documents(self, filename: str) -> None:
+  def parse_document(self, filename: str) -> None:
     # Read all documents 
     filename = f"{filename}.pdf" if ".pdf" not in filename else filename
     filename = os.path.join(DATA_DIR_PATHS['pdf'], filename)
     print(f"[PARSER] Parsing pdf {filename}")
-
-    documents = SimpleDirectoryReader(input_files=[filename], file_extractor= self.pdf_file_extractor).load_data()
-    document_text_list = []
-    # Make document text into a long string
-    for document in documents:
-      document_text_list.append(document.text)
+    document = SimpleDirectoryReader(input_files=[filename], file_extractor= self.pdf_file_extractor).load_data()
 
     # Store in a list of dictionary
     self.results.append({
       "filename" : os.path.basename(filename),
       "type": "pdf",
-      "text": "\n\n".join(document_text_list)
+      "document": document
     })
 
 
@@ -50,36 +47,17 @@ class Parser():
   def parse_json(self, filename: str, level: int = 1) -> None:
     filename = f"{filename}.json" if ".json" not in filename else filename
     filename = os.path.join(DATA_DIR_PATHS['json'], filename)
-    print(f"[PARSER] Parsing pdf {filename}")
-
-    with open(filename, "r", encoding="utf-8") as f:
-      data = f.read()
-      json_data = json.loads(data)
-
-    if (isinstance(json_data, list)):
-      print(f"[PARSER PROGRESS] Found {len(json_data)} data!")
-
-    # Make recursive function
-    def json_to_markdown(json_data, level=1):
-      markdown = ""
-      if isinstance(json_data, dict):
-          for key, value in json_data.items():
-              markdown += f"\n{'#' * level} {key}\n"
-              markdown += json_to_markdown(value, level + 1)
-      elif isinstance(json_data, list):
-          for item in json_data:
-              markdown += json_to_markdown(item, level)
-      else:
-          markdown += f"{json_data}\n"
-      return markdown
-    # Function call
-    markdown = json_to_markdown(json_data)
+    print(f"[PARSER] Parsing json {filename}")
+    
+    # Load JSONReader
+    reader = JSONReader()
+    document = reader.load_data(input_file=filename)
 
     # Store in a list of dictionary
     self.results.append({
       "filename" : os.path.basename(filename),
       "type": "json",
-      "text": markdown
+      "document": document
     })
 
 
