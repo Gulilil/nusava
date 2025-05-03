@@ -56,6 +56,9 @@ class Parser():
       data = f.read()
       json_data = json.loads(data)
 
+    if (isinstance(json_data, list)):
+      print(f"[PARSER PROGRESS] Found {len(json_data)} data!")
+
     # Make recursive function
     def json_to_markdown(json_data, level=1):
       markdown = ""
@@ -67,7 +70,7 @@ class Parser():
           for item in json_data:
               markdown += json_to_markdown(item, level)
       else:
-          markdown += f"{json_data}\n\n"
+          markdown += f"{json_data}\n"
       return markdown
     # Function call
     markdown = json_to_markdown(json_data)
