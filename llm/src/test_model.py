@@ -1,40 +1,21 @@
 from model.model import Model
-import os
-from utils.constant import DATA_DIR_PATHS
+from parser.parser import Parser
 
 if __name__ == "__main__":
-  document_text_list = []
-  document_name_list = []
-  document_description_list = []
-  
-  # document_name = "transstudio_json"
-  # document_description = "Ticket details of Trans Studio Mini Kupang"
-  # with open(os.path.join(DATA_DIR_PATHS['md'], document_name), "r", encoding="utf-8") as f:
-  #   document_text = f.read()
-  # document_text_list.append(document_text)
-  # document_name_list.append(document_name)
-  # document_description_list.append(document_description)
+  # hotel_tiket_json = "scraping-tiket-hotel-details.json"
+  # hote_traveloka_json = "scraping-traveloka-hotel-details.json"
+  transstudio_json = "transstudio.json"
+  sempro_pdf = "Laporan-TA-Capstone-13521116.pdf"
 
-  document_name = "json_scraping-tiket-hotel-details.md"
-  document_description = "Ticket details for hotel bookings from Tiket source"
-  with open(os.path.join(DATA_DIR_PATHS['md'], document_name), "r", encoding="utf-8") as f:
-    document_text = f.read()
-  document_text_list.append(document_text)
-  document_name_list.append(document_name)
-  document_description_list.append(document_description)
+  parser = Parser()
+  parser.parse_json(transstudio_json)
+  parser.parse_document(sempro_pdf)
+  documents, metadata = parser.get_results()
 
-  document_name = "json_scraping-traveloka-hotel-details.md"
-  document_description = "Ticket details for hotel bookings from Traveloka source"
-  with open(os.path.join(DATA_DIR_PATHS['md'], document_name), "r", encoding="utf-8") as f:
-    document_text = f.read()
-  document_text_list.append(document_text)
-  document_name_list.append(document_name)
-  document_description_list.append(document_description)
 
   context = "The primary role of this agent is to answer prompt from user with relevant answer regarding the documents. The answer can be in english."
-
   model = Model()
-  model.learn(document_text_list, document_name_list, document_description_list)
+  model.learn(documents, metadata)
   model.config(context)
 
   while True:

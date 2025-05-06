@@ -17,5 +17,5 @@ class Agent():
   
   def decide_action(self, last_action: str = None, last_action_details: str = None):
     prompt = self.prompt_generator_component.generate_prompt_decide_action(last_action, last_action_details)
-    answer = self.model_component.direct_answer(prompt)
+    answer = self.model_component.answer(prompt, True)
     return answer

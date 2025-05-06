@@ -13,8 +13,11 @@ class Model():
   # Declare constants
   llm_model_name: str = "llama3.1"
   embed_model_name: str = "BAAI/bge-m3"
-  temperature: float = 0.1
-  top_k = 5
+
+  # Mutable
+  temperature: float = 0.3
+  top_k : int = 5
+  max_token : int = 512
 
   # Initialization
   def __init__(self):
@@ -28,22 +31,28 @@ class Model():
 
   # Learn by making vector store Index from documents
   def learn(self, list_documents: list, list_metadata: list[dict]) -> None:
-
       # Ensure that the lengths of the input lists are the same
-      if not (len(list_documents)  == len(list_metadata)):
+      if not (len(list_documents) == len(list_metadata)):
           raise ValueError("The lengths of documents, document_names, and document_descriptions must be equal.")
 
-      # Create vector index from all documents
-      self.vector_index = VectorStoreIndex.from_documents(list_documents, embed_model=self.embed_model)
-
-      # Create a list to hold the tools for each document
       self.tools = []
-      for i in range(len(list_documents)):
+      for document, metadata in zip(list_documents, list_metadata):
+          # Create a vector index for the document
+          vector_index = VectorStoreIndex.from_documents(document, embed_model=self.embed_model)
+
+          # Create query engine for the index
+          query_engine = vector_index.as_query_engine(
+              llm=self.llm_model,
+              similarity_top_k=self.top_k,
+              llm_kwargs={"max_tokens": self.max_token}
+          )
+
+          # Create and store the tool
           tool = QueryEngineTool(
-              self.vector_index.as_query_engine(llm=self.llm_model, similarity_top_k=self.top_k),
+              query_engine=query_engine,
               metadata=ToolMetadata(
-                  filename=list_metadata[i]['filename'],
-                  filetype=list_metadata[i]['type']
+                  name=metadata.get("filename", "Unnamed"),
+                  description=metadata.get("type", "No description")
               )
           )
           self.tools.append(tool)
@@ -52,18 +61,24 @@ class Model():
   
   # Config agent
   def config(self, context: str) -> None:
-    self.agent = ReActAgent.from_tools([self.tools], llm = self.llm_model, verbose= True, context= context)
+    self.agent = ReActAgent.from_tools(self.tools, 
+                                       llm = self.llm_model, 
+                                       verbose= True, 
+                                       context= context,
+                                       max_iterations=20)
   
   # Run the system
-  def answer(self, prompt: str) -> str:
-    result = self.agent.query(prompt).response
-    return result
+  def answer(self, prompt: str, is_direct: bool = False) -> str:
+    try:
+      if (not is_direct):
+        result = self.agent.query(prompt).response
+      else:
+        result = self.llm_model.complete(prompt).text
+      return result
+    
+    except ValueError as e:
+       return "I'm sorry, I was unable to answer your question after several attempts. Could you please rephrase or try a simpler version?"
   
-  # Run the system without reading a document
-  def direct_answer(self, prompt: str) -> str:
-     result = self.llm_model.complete(prompt).text
-     return result
-
 
   
 

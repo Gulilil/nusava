@@ -45,7 +45,7 @@ class Parser():
 
 
   # Parse json
-  def parse_json(self, filename: str, level: int = 1) -> None:
+  def parse_json(self, filename: str) -> None:
     filename = f"{filename}.json" if ".json" not in filename else filename
     filename = os.path.join(DATA_DIR_PATHS['json'], filename)
     print(f"[PARSER] Parsing json {filename}")
@@ -61,22 +61,12 @@ class Parser():
     })
     self.result_documents.append(document)
 
-
-  # Store document
-  def store_results(self) -> None:
-    # Will be stored inside ./data/json
-    for data_dict in self.results:
-      store_filename = os.path.join(DATA_DIR_PATHS['md'], f"{data_dict['type']}_{data_dict['filename'].split('.')[0]}.md")
-      with open(store_filename, "w", encoding="utf-8") as f:
-        f.write(data_dict['text'])
-        f.close()
-
-      print(f"[STORE] Store result in {store_filename}")
-
-
   # Get parsed based on filename
   def get_result(self, filename):
     for data_dict in self.results:
       if (data_dict['filename'] == filename):
         return data_dict['text']
     return None
+
+  def get_results(self):
+    return self.result_documents, self.result_metadata
