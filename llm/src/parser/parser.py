@@ -24,7 +24,8 @@ class Parser():
     # Setup all the .pdf files as the files to be extracted
     self.pdf_file_extractor = {".pdf": self.parser}
     # Results container
-    self.results = []
+    self.result_documents = []
+    self.result_metadata = []
 
 
   # Parse documents
@@ -36,11 +37,11 @@ class Parser():
     document = SimpleDirectoryReader(input_files=[filename], file_extractor= self.pdf_file_extractor).load_data()
 
     # Store in a list of dictionary
-    self.results.append({
+    self.result_metadata.append({
       "filename" : os.path.basename(filename),
-      "type": "pdf",
-      "document": document
+      "type": "pdf"
     })
+    self.result_documents.append(document)
 
 
   # Parse json
@@ -54,11 +55,11 @@ class Parser():
     document = reader.load_data(input_file=filename)
 
     # Store in a list of dictionary
-    self.results.append({
+    self.result_metadata.append({
       "filename" : os.path.basename(filename),
-      "type": "json",
-      "document": document
+      "type": "json"
     })
+    self.result_documents.append(document)
 
 
   # Store document

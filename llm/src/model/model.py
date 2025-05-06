@@ -14,6 +14,7 @@ class Model():
   llm_model_name: str = "llama3.1"
   embed_model_name: str = "BAAI/bge-m3"
   temperature: float = 0.1
+  top_k = 5
 
   # Initialization
   def __init__(self):
@@ -26,39 +27,28 @@ class Model():
     print(f"[MODEL INITIALIZED] Model is initialized with llm_model: {self.llm_model_name} and embed_model: {self.embed_model_name}")
 
   # Learn by making vector store Index from documents
-  def learn(self, documents: list, document_names: list, document_descriptions: list, k: int = 5) -> None:
-      """
-      Learn from a list of documents, building a vector store index for each document.
-      
-      Parameters:
-          documents (list): List of document texts to learn from.
-          document_names (list): List of document names for metadata.
-          document_descriptions (list): List of document descriptions for metadata.
-          k (int): Top-k results to return when searching.
-      """
+  def learn(self, list_documents: list, list_metadata: list[dict]) -> None:
+
       # Ensure that the lengths of the input lists are the same
-      if not (len(documents) == len(document_names) == len(document_descriptions)):
+      if not (len(list_documents)  == len(list_metadata)):
           raise ValueError("The lengths of documents, document_names, and document_descriptions must be equal.")
 
-      # Create a list to hold all the documents
-      document_objs = [Document(text=document) for document in documents]
-
       # Create vector index from all documents
-      self.vector_index = VectorStoreIndex.from_documents(document_objs, embed_model=self.embed_model)
+      self.vector_index = VectorStoreIndex.from_documents(list_documents, embed_model=self.embed_model)
 
       # Create a list to hold the tools for each document
       self.tools = []
-      for i in range(len(documents)):
+      for i in range(len(list_documents)):
           tool = QueryEngineTool(
-              self.vector_index.as_query_engine(llm=self.llm_model, similarity_top_k=k),
+              self.vector_index.as_query_engine(llm=self.llm_model, similarity_top_k=self.top_k),
               metadata=ToolMetadata(
-                  name=document_names[i],
-                  description=document_descriptions[i]
+                  filename=list_metadata[i]['filename'],
+                  filetype=list_metadata[i]['type']
               )
           )
           self.tools.append(tool)
 
-      print(f"[LEARN] Finish model learning for {len(documents)} documents.")
+      print(f"[LEARN] Finish model learning for {len(list_documents)} documents.")
   
   # Config agent
   def config(self, context: str) -> None:
