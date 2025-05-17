@@ -2,7 +2,9 @@ from llama_parse import LlamaParse
 from llama_index.core import SimpleDirectoryReader
 from llama_index.readers.json import JSONReader
 from llama_index.core import Document
+from llama_index.vector_stores.mongodb import MongoDBAtlasVectorSearch
 
+import pymongo
 import os
 from dotenv import load_dotenv
 import json
@@ -10,7 +12,7 @@ load_dotenv()
 
 from utils.constant import DATA_DIR_PATHS
 
-class Parser():
+class Searcher():
   # Initialization
   def __init__(self, result_type: str = "markdown"): 
     # result_type = ["markdown", "text"]
@@ -23,10 +25,13 @@ class Parser():
     )
     # Setup all the .pdf files as the files to be extracted
     self.pdf_file_extractor = {".pdf": self.parser}
+
     # Results container
     self.result_documents = []
     self.result_metadata = []
-
+    
+    # Instantiate mongo client
+    self.mongo_client = pymongo.MongoClient(os.getenv("MONGO_CONNECTION_STRING"))
 
   # Parse documents
   def parse_document(self, filename: str) -> None:

@@ -1,5 +1,5 @@
 
-from parser.parser import Parser
+from llm.src.searcher.searcher import Searcher
 from model.model import Model
 from prompt_generator.prompt_generator import PromptGenerator
 from gateway.gateway import Gateway
@@ -8,7 +8,7 @@ from evaluator.evaluator import Evaluator
 class Agent():
   
   def __init__(self):
-    self.parser_component = Parser()
+    self.Searcher_component = Searcher()
     self.model_component = Model()
     self.prompt_generator_component = PromptGenerator()
     self.gateway_component = Gateway()
