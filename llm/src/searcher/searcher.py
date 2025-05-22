@@ -1,77 +1,42 @@
-from llama_parse import LlamaParse
-from llama_index.core import SimpleDirectoryReader
-from llama_index.readers.json import JSONReader
 from llama_index.core import Document
-from llama_index.vector_stores.mongodb import MongoDBAtlasVectorSearch
 
 import pymongo
 import os
+import jsonpickle
+from datetime import datetime
+
 from dotenv import load_dotenv
-import json
 load_dotenv()
 
-from utils.constant import DATA_DIR_PATHS
 
 class Searcher():
   # Initialization
-  def __init__(self, result_type: str = "markdown"): 
-    # result_type = ["markdown", "text"]
-
-    # Setup parser
-    self.parser = LlamaParse(
-        result_type=result_type,
-        num_workers=4,
-        max_timeout=5000
-    )
-    # Setup all the .pdf files as the files to be extracted
-    self.pdf_file_extractor = {".pdf": self.parser}
-
-    # Results container
-    self.result_documents = []
-    self.result_metadata = []
-    
+  def __init__(self): 
     # Instantiate mongo client
     self.mongo_client = pymongo.MongoClient(os.getenv("MONGO_CONNECTION_STRING"))
+    self.mongo_database = self.mongo_client[os.getenv("MONGO_DB_NAME")]
 
-  # Parse documents
-  def parse_document(self, filename: str) -> None:
-    # Read all documents 
-    filename = f"{filename}.pdf" if ".pdf" not in filename else filename
-    filename = os.path.join(DATA_DIR_PATHS['pdf'], filename)
-    print(f"[PARSER] Parsing pdf {filename}")
-    document = SimpleDirectoryReader(input_files=[filename], file_extractor= self.pdf_file_extractor).load_data()
 
-    # Store in a list of dictionary
-    self.result_metadata.append({
-      "filename" : os.path.basename(filename),
-      "type": "pdf"
-    })
-    self.result_documents.append(document)
+  # Get parsed based on filename
+  def get_data(self, collection_name: str, filters: dict) -> list:
+    collection = self.mongo_database[collection_name]
+    json_documents = collection.find(filters)
+    return list(json_documents)
 
 
   # Parse json
-  def parse_json(self, filename: str) -> None:
-    filename = f"{filename}.json" if ".json" not in filename else filename
-    filename = os.path.join(DATA_DIR_PATHS['json'], filename)
-    print(f"[PARSER] Parsing json {filename}")
-    
-    # Load JSONReader
-    reader = JSONReader()
-    document = reader.load_data(input_file=filename)
+  def parse(self, collection_name: str, title: str) -> str:
+    documents = self.get_data(collection_name, {"title": title})
 
-    # Store in a list of dictionary
-    self.result_metadata.append({
-      "filename" : os.path.basename(filename),
-      "type": "json"
-    })
-    self.result_documents.append(document)
+    assert len(documents) > 0, "[ERROR] No data found"
+    # assert len(documents) == 1, "[ERROR] Multiple title, not unique"
 
-  # Get parsed based on filename
-  def get_result(self, filename):
-    for data_dict in self.results:
-      if (data_dict['filename'] == filename):
-        return data_dict['text']
-    return None
+    document = documents[0]
+    # Delete id since it is not necessary
+    del document['_id']
+    # Delete reviews
+    del document['reviews']
+    json_document = jsonpickle.encode(document, unpicklable=False, indent= 2)
+    return json_document
 
-  def get_results(self):
-    return self.result_documents, self.result_metadata
+

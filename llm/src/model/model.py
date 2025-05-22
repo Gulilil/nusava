@@ -8,10 +8,12 @@ from llama_index.embeddings.huggingface import HuggingFaceEmbedding
 from llama_index.llms.ollama import Ollama
 from llama_index.core.agent import ReActAgent
 
+import time
+
 class Model():
   # Declare constants
   llm_model_name: str = "llama3.1"
-  embed_model_name: str = "BAAI/bge-m3"
+  embed_model_name: str = "BAAI/bge-base-en-v1.5"
 
   # Mutable
   temperature: float = 0.3
@@ -27,6 +29,30 @@ class Model():
     # Declare Embedding Model
     self.embed_model  = HuggingFaceEmbedding(model_name=self.embed_model_name)
     print(f"[MODEL INITIALIZED] Model is initialized with llm_model: {self.llm_model_name} and embed_model: {self.embed_model_name}")
+
+  # Auto timer function
+  def __getattribute__(self, name):
+    attr = object.__getattribute__(self, name)
+    if callable(attr) and not name.startswith("__"):
+        # If attr belongs to a different object than self, don't wrap it
+        if hasattr(attr, "__self__") and attr.__self__ is not self:
+            return attr
+        # If attr is a function but not a bound method (no __self__), return as is
+        if not hasattr(attr, "__self__"):
+            return attr
+        def timed(*args, **kwargs):
+            start = time.perf_counter()
+            result = attr(*args, **kwargs)
+            end = time.perf_counter()
+            print(f"[{name}] Execution time: {end - start:.6f} seconds")
+            return result
+        return timed
+    return attr
+
+  # Embed/ encode text to make it into vectors/matrices
+  def embed(self, text: str) -> list:
+    return self.embed_model.get_text_embedding_batch(text)
+
 
   # Learn by making vector store Index from documents
   def learn(self, list_documents: list, list_metadata: list[dict]) -> None:
@@ -50,8 +76,7 @@ class Model():
           tool = QueryEngineTool(
               query_engine=query_engine,
               metadata=ToolMetadata(
-                  name=metadata.get("filename", "Unnamed"),
-                  description=metadata.get("type", "No description")
+                  name=metadata.get("filename", "Unnamed")
               )
           )
           self.tools.append(tool)
