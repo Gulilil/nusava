@@ -1,8 +1,8 @@
-from searcher.searcher import Searcher
+from llm.src.database_connector.database_connector import DatabaseConnector
 from model.model import Model
 
 if __name__ == "__main__":
-  searcher = Searcher()
+  db_connector = DatabaseConnector()
 
   hotels = ["Kalton Hotel", # 7 reviews
             "WelaBajo Hotel", # 40 reviews
@@ -12,10 +12,19 @@ if __name__ == "__main__":
 
   model = Model()
 
+
   for hotel in hotels:
     print(hotel)
-    doc = searcher.parse("hotel", hotel)
-    embeddings = model.embed(doc)
-    print(f"Number of embeddings: {len(embeddings)}")
-    print(f"Length of each embedding: {len(embeddings[0])}")
+    text = db_connector.mongo_parse("hotel-cleaned", hotel)
+
+    embeddings = model.embed(text)
+
+    for i, chunk in enumerate(embeddings):
+      vector_data = {
+        "id" : f"Hotel-{hotel}-{i}",
+        "values" : embeddings,
+        "metadata" : {"category": "hotel"}
+      }
+
+      db_connector.pinecone_upsert(vector_data)
 

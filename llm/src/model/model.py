@@ -20,6 +20,7 @@ class Model():
   top_k : int = 5
   max_token : int = 512
 
+
   # Initialization
   def __init__(self):
     # Declare LLM Model
@@ -29,6 +30,7 @@ class Model():
     # Declare Embedding Model
     self.embed_model  = HuggingFaceEmbedding(model_name=self.embed_model_name)
     print(f"[MODEL INITIALIZED] Model is initialized with llm_model: {self.llm_model_name} and embed_model: {self.embed_model_name}")
+
 
   # Auto timer function
   def __getattribute__(self, name):
@@ -48,6 +50,7 @@ class Model():
             return result
         return timed
     return attr
+
 
   # Embed/ encode text to make it into vectors/matrices
   def embed(self, text: str) -> list:
@@ -83,6 +86,7 @@ class Model():
 
       print(f"[LEARN] Finish model learning for {len(list_documents)} documents.")
   
+
   # Config agent
   def config(self, context: str) -> None:
     self.agent = ReActAgent.from_tools(self.tools, 
@@ -91,6 +95,7 @@ class Model():
                                        context= context,
                                        max_iterations=20)
   
+
   # Run the system
   def answer(self, prompt: str, is_direct: bool = False) -> str:
     try:
