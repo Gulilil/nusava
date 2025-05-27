@@ -1,5 +1,3 @@
-from llama_index.core import Settings
-
 from database_connector.database_connector import DatabaseConnector
 from model.model import Model
 from prompt_generator.prompt_generator import PromptGenerator
@@ -11,13 +9,13 @@ class Agent():
   
   def __init__(self):
     self.database_connector_component = DatabaseConnector()
+    self.evaluator_component = Evaluator()
+    self.gateway_component = Gateway()
     self.model_component = Model()
     self.prompt_generator_component = PromptGenerator()
-    self.gateway_component = Gateway()
-    self.evaluator_component = Evaluator()
 
 
-  # Agent decide action to do
+  # TODO Agent decide action to do 
   def decide_action(self, last_action: str = None, last_action_details: str = None):
     prompt = self.prompt_generator_component.generate_prompt_decide_action(last_action, last_action_details)
     answer = self.model_component.answer(prompt, True)
@@ -65,6 +63,26 @@ class Agent():
       print(f'[BATCH PROGRESS] Successfully inserted data idx {idx} to {upper_idx}')
       idx += length_per_batch
 
-  # Answer query
-  def answer_input(self, user_input: str):
+  # TODO
+  def process_data_xxxx(self):
     return
+
+
+  ##### ACTION #####
+
+  # Answer query
+  def action_chat(self, user_query: str):
+
+    #TODO How to determine that it is about hotel and construct metadata
+    # Load the data from pinecone
+    namespace_name = 'hotels'
+    vector_store, storage_context = self.database_connector_component.pinecone_get_vector_store(namespace_name)
+    self.model_component.load_data(
+      vector_store, 
+      storage_context, 
+      namespace_name,
+      user_query)
+
+    # Generate prompt
+    prompt = self.prompt_generator_component.generate_prompt_reply_chat(user_query)
+    return self.model_component.answer(prompt)

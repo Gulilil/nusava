@@ -38,6 +38,7 @@ class DatabaseConnector():
   def pinecone_store_data(self, nodes, storage_context, embed_model):
     VectorStoreIndex(nodes, storage_context=storage_context, embed_model=embed_model)
 
+
   # Get index stats
   def pinecone_get_index_stats(self):
     print(self.pinecone_index.describe_index_stats())

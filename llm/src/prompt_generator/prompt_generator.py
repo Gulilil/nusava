@@ -88,7 +88,8 @@ class PromptGenerator():
   "reason" : ""
 }"""
     answer_format_type = "json"
-    
+
+    # Handle subprompt
     context_subprompt = self.generate_subprompt_context(context)
     example_subprompt = self.generate_subprompt_example(examples)
     answer_format_subprompt = self.generate_subprompt_answer_format(answer_format, answer_format_type)
@@ -101,22 +102,34 @@ class PromptGenerator():
 
 
   def generate_prompt_reply_chat(self, new_message: str, previous_messages: list[str] = None) -> str:
-    # new_message as query_str
+    # Prepare the context
+    context = "You have to be informative and clear in giving information to users. You also have to assure the correctness of the facts that you provide.\n"
 
-    if (previous_messages is None):
-      context_str = ""
-    # else
+    if (previous_messages is not None):
       # TODO
+      context += ""
     
-    example_str = ""
+    context = None
+    examples = []
 
-    return self.prompt_template.format(context_str=context_str, example_str=example_str, tone_str=self.tone_str, query_str=new_message)
+    # Handle subprompt
+    context_subprompt = self.generate_subprompt_context(context)
+    example_subprompt = self.generate_subprompt_example(examples)
+    answer_format_subprompt = self.generate_subprompt_answer_format(None, None)
+
+    return self.prompt_template.format(context_subprompt=context_subprompt,
+                                  example_subprompt=example_subprompt, 
+                                  answer_format_subprompt=answer_format_subprompt,
+                                  tone_str=self.tone_str, 
+                                  query_str=new_message)
+
 
   def generate_prompt_reply_comment(self, new_comment: str, previous_comments: list[str] = None) -> str:
     # new_comment as context_str
     # predefined query_str
     # TODO
     return 
+
 
   def generate_prompt_comment(self, caption: str, additional_context: str = None, examples: list[dict] = None) -> str:
     context_str = f"You are expected to make a comment on a post in Instagram with this caption: \"{caption}\""
@@ -134,6 +147,7 @@ class PromptGenerator():
                                   answer_format_subprompt=answer_format_subprompt,
                                   tone_str=self.tone_str, 
                                   query_str=query_str)
+
 
   def generate_prompt_post_caption(self, keywords: list[str], additional_context: str = None, examples: list[dict] = None) -> str:
     keywords_str = ", ".join(keywords)
