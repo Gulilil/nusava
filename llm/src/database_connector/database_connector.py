@@ -1,10 +1,11 @@
-from llama_index.core import Document
+from llama_index.core import Document, StorageContext, VectorStoreIndex
+from llama_index.vector_stores.pinecone import PineconeVectorStore
+from llama_index.ingestion import IngestionPipeline
+from llama_index.node_parser import SemanticSplitterNodeParser
 
 from pinecone import Pinecone
 import pymongo
 import os
-import jsonpickle
-from datetime import datetime
 
 from dotenv import load_dotenv
 load_dotenv()
@@ -42,6 +43,37 @@ class DatabaseConnector():
     del document['reviews']
     return document
 
-  # Upsert vector index
-  def pinecone_upsert(self, vector_data: dict) -> None:
-    self.pinecone_index.upsert_records(vector_data)
+
+  # Get pinecone vector store and storage context
+  def pinecone_get_vector_store(self, namespace: str):
+    vector_store = PineconeVectorStore(pinecone_index=self.pinecone_index, namespace=namespace)
+    storage_context = StorageContext.from_defaults(vector_store=vector_store)
+    return vector_store, storage_context
+
+
+  # Store data to pinecone
+  def pinecone_store_data(self, document_list: list, vector_store, embed_model):
+    # VectorStoreIndex.from_documents(document_list, 
+    #                                 vector_store=vector_store, 
+    #                                 embed_model=embed_model)
+
+    # Our pipeline with the addition of our PineconeVectorStore
+    pipeline = IngestionPipeline(
+        transformations=[
+            SemanticSplitterNodeParser(
+                buffer_size=1,
+                breakpoint_percentile_threshold=95, 
+                embed_model=embed_model,
+                ),
+            embed_model,
+            ],
+            vector_store=vector_store  # Our new addition
+        )
+
+    # Now we run our pipeline!
+    pipeline.run(documents=document_list)
+  
+
+  # Get index stats
+  def pinecone_get_index_stats(self):
+    print(self.pinecone_index.describe_index_stats())

@@ -1,8 +1,3 @@
-from llama_index.core import (
-    VectorStoreIndex,
-    Document
-)
-
 from llama_index.core.tools import QueryEngineTool, ToolMetadata
 from llama_index.embeddings.huggingface import HuggingFaceEmbedding
 from llama_index.llms.ollama import Ollama
@@ -13,12 +8,13 @@ import time
 class Model():
   # Declare constants
   llm_model_name: str = "llama3.1"
-  embed_model_name: str = "BAAI/bge-base-en-v1.5"
+  embed_model_name: str = "intfloat/multilingual-e5-base"
 
   # Mutable
   temperature: float = 0.3
   top_k : int = 5
   max_token : int = 512
+  max_iteration: int = 20
 
 
   # Initialization
@@ -52,48 +48,30 @@ class Model():
     return attr
 
 
-  # Embed/ encode text to make it into vectors/matrices
-  def embed(self, text: str) -> list:
-    return self.embed_model.get_text_embedding_batch(text)
+  # # Embed/ encode text to make it into vectors/matrices
+  # def embed(self, text: str) -> list:
+  #   return self.embed_model.get_text_embedding_batch(text)
 
 
   # Learn by making vector store Index from documents
-  def learn(self, list_documents: list, list_metadata: list[dict]) -> None:
-      # Ensure that the lengths of the input lists are the same
-      if not (len(list_documents) == len(list_metadata)):
-          raise ValueError("The lengths of documents, document_names, and document_descriptions must be equal.")
+  def learn(self, vector_index) -> None:
+      # Create query engine for the index
+      query_engine = vector_index.as_query_engine(
+          llm=self.llm_model,
+          embed_model=self.embed_model,
+          similarity_top_k=self.top_k,
+          llm_kwargs={"max_tokens": self.max_token}
+      )
 
-      self.tools = []
-      for document, metadata in zip(list_documents, list_metadata):
-          # Create a vector index for the document
-          vector_index = VectorStoreIndex.from_documents(document, embed_model=self.embed_model)
+      # Create and store the tool
+      tool = QueryEngineTool(query_engine=query_engine)
+      self.tools.append(tool)
 
-          # Create query engine for the index
-          query_engine = vector_index.as_query_engine(
-              llm=self.llm_model,
-              similarity_top_k=self.top_k,
-              llm_kwargs={"max_tokens": self.max_token}
-          )
-
-          # Create and store the tool
-          tool = QueryEngineTool(
-              query_engine=query_engine,
-              metadata=ToolMetadata(
-                  name=metadata.get("filename", "Unnamed")
-              )
-          )
-          self.tools.append(tool)
-
-      print(f"[LEARN] Finish model learning for {len(list_documents)} documents.")
-  
-
-  # Config agent
-  def config(self, context: str) -> None:
-    self.agent = ReActAgent.from_tools(self.tools, 
-                                       llm = self.llm_model, 
-                                       verbose= True, 
-                                       context= context,
-                                       max_iterations=20)
+      # Use agent tools
+      self.agent = ReActAgent.from_tools(self.tools, 
+                                    llm = self.llm_model, 
+                                    verbose= True, 
+                                    max_iterations=self.max_iteration)
   
 
   # Run the system

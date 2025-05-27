@@ -1,10 +1,11 @@
+from llama_index.core import Settings
 
 from database_connector.database_connector import DatabaseConnector
 from model.model import Model
 from prompt_generator.prompt_generator import PromptGenerator
 from gateway.gateway import Gateway
 from evaluator.evaluator import Evaluator
-from utils.utils import json_to_string_list
+from utils.function import json_to_string_list, text_to_document
 
 class Agent():
   
@@ -25,16 +26,31 @@ class Agent():
 
   # Process data hotel, "migrate" it from mongodb document to pinecone vector
   def process_data_hotel(self):
+    mongo_collection_name = "hotel"
+    pinecone_namespace_name = "hotels"
+
     # Get hotel data from mongo
-    hotels = self.database_connector_component.mongo_get_data("hotel", {})
+    hotels = self.database_connector_component.mongo_get_data(mongo_collection_name, {})
     print(f"[FETCHED] Fetched {len(hotels)} hotels")
 
-    for hotel in hotels[:1]:
+    hotel_docs = []
+    for hotel in hotels[:3]:
       # Delete unnecessary columns
       del hotel['_id']
-      if 'reviews' in hotel: 
-        del hotel['reviews']
-
       id = hotel['title']
-      result_arr = []
-      json_to_string_list(hotel, id, result_arr)
+      # Get text list from json_data
+      text_list = []
+      json_to_string_list(hotel, id, text_list)
+      # Process to be document list
+      documents_list = text_to_document(text_list)
+      hotel_docs.extend(documents_list)
+
+    # Insert to pinecone
+    vector_store, _ = self.database_connector_component.pinecone_get_vector_store(pinecone_namespace_name)
+    self.database_connector_component.pinecone_store_data(hotel_docs, vector_store, self.model_component.embed_model)
+
+    self.database_connector_component.pinecone_get_index_stats()
+
+  # Answer query
+  def answer_input(self, user_input: str):
+    return
