@@ -5,7 +5,7 @@ from model.model import Model
 from prompt_generator.prompt_generator import PromptGenerator
 from gateway.gateway import Gateway
 from evaluator.evaluator import Evaluator
-from utils.function import json_to_string_list, text_to_document
+from utils.function import json_to_string_list, text_to_document, parse_documents
 
 class Agent():
   
@@ -34,22 +34,36 @@ class Agent():
     print(f"[FETCHED] Fetched {len(hotels)} hotels")
 
     hotel_docs = []
-    for hotel in hotels[:3]:
-      # Delete unnecessary columns
-      del hotel['_id']
-      id = hotel['title']
-      # Get text list from json_data
-      text_list = []
-      json_to_string_list(hotel, id, text_list)
-      # Process to be document list
-      documents_list = text_to_document(text_list)
-      hotel_docs.extend(documents_list)
+    idx = 0
+    n_batch = 20
+    length_per_batch = (len(hotels)//n_batch)+1
+    while (idx < len(hotels)):
+      # Set batch indices
+      upper_idx = min(idx+length_per_batch, len(hotels))
+      curr_batch_hotels = hotels[idx : upper_idx]
 
-    # Insert to pinecone
-    vector_store, _ = self.database_connector_component.pinecone_get_vector_store(pinecone_namespace_name)
-    self.database_connector_component.pinecone_store_data(hotel_docs, vector_store, self.model_component.embed_model)
+      # Iterate data in the current batch list
+      for hotel in curr_batch_hotels:
+        # Delete unnecessary columns
+        del hotel['_id']
+        # Use title as id, assuming it is unique for all data
+        id = hotel['title']
+        # Get text list from json_data
+        text_list = []
+        json_to_string_list(hotel, id, text_list)
+        # Process to be document list
+        documents_list = text_to_document(text_list)
+        hotel_docs.extend(documents_list)
 
-    self.database_connector_component.pinecone_get_index_stats()
+      # Parse hotel data
+      hotel_data_parsed = parse_documents(hotel_docs)
+      # Insert to pinecone
+      _, storage_context = self.database_connector_component.pinecone_get_vector_store(pinecone_namespace_name)
+      self.database_connector_component.pinecone_store_data(hotel_data_parsed, storage_context, self.model_component.embed_model)
+      
+      # Increment idx
+      print(f'[BATCH PROGRESS] Successfully inserted data idx {idx} to {upper_idx}')
+      idx += length_per_batch
 
   # Answer query
   def answer_input(self, user_input: str):
