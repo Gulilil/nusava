@@ -14,16 +14,21 @@ class Agent():
     self.model_component = Model()
     self.prompt_generator_component = PromptGenerator()
 
+  ######## PUBLIC ########
 
-  # TODO Agent decide action to do 
   def decide_action(self, last_action: str = None, last_action_details: str = None):
+    """
+    Decision making function of the system
+    """
     prompt = self.prompt_generator_component.generate_prompt_decide_action(last_action, last_action_details)
     answer = self.model_component.answer(prompt, True)
     return answer
   
 
-  # Process data hotel, "migrate" it from mongodb document to pinecone vector
   def process_data_hotel(self):
+    """
+    Process data hotel, "migrate" it from mongodb document to pinecone vector
+    """
     mongo_collection_name = "hotel"
     pinecone_namespace_name = "hotels"
 
@@ -49,7 +54,6 @@ class Agent():
         # Get text list from json_data
         text_list = []
         json_to_string_list(hotel, id, text_list)
-        # Process to be document list
         documents_list = text_to_document(text_list)
         hotel_docs.extend(documents_list)
 
@@ -57,22 +61,26 @@ class Agent():
       hotel_data_parsed = parse_documents(hotel_docs)
       # Insert to pinecone
       _, storage_context = self.database_connector_component.pinecone_get_vector_store(pinecone_namespace_name)
-      self.database_connector_component.pinecone_store_data(hotel_data_parsed, storage_context, self.model_component.embed_model)
+      self.database_connector_component.pinecone_store_data(hotel_data_parsed, storage_context, self.model_component.embed_model)      
+      print(f'[BATCH PROGRESS] Successfully inserted data idx {idx} to {upper_idx}')
       
       # Increment idx
-      print(f'[BATCH PROGRESS] Successfully inserted data idx {idx} to {upper_idx}')
       idx += length_per_batch
 
   # TODO
   def process_data_xxxx(self):
+    """
+    Process data xxxx, "migrate" it from mongodb document to pinecone vector
+    """
     return
 
 
   ##### ACTION #####
 
-  # Answer query
   def action_chat(self, user_query: str):
-
+    """
+    Operate the action chat
+    """
     #TODO How to determine that it is about hotel and construct metadata
     # Load the data from pinecone
     namespace_name = 'hotels'
