@@ -6,6 +6,9 @@ from evaluator.evaluator import Evaluator
 from utils.function import json_to_string_list, text_to_document, parse_documents
 
 class Agent():
+  """
+  General class that encapsulate all the components
+  """
   
   def __init__(self):
     self.database_connector_component = DatabaseConnector()

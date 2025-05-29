@@ -1,8 +1,10 @@
 from llama_index.core import Document
 from llama_index.core.node_parser import SimpleNodeParser
 
-# Convert json data, convert it to list of string iteratively
 def json_to_string_list(data: dict, prefix: str, result_arr: list, max_limit_arr: int = 20):
+  """
+  Convert json data, convert it to list of string iteratively
+  """
   for key, val in data.items():
     adjusted_prefix = f"{prefix}-{key}"
 
@@ -30,12 +32,16 @@ def json_to_string_list(data: dict, prefix: str, result_arr: list, max_limit_arr
       result_arr.append(data_str)
 
 
-# Make string text to Document type of LlamaIndex
 def text_to_document(text_list: list[str]) -> list[Document]:
+  """
+  Make string text to Document type of LlamaIndex
+  """
   return [Document(text=text) for text in text_list]
 
 
-# Parse documents
 def parse_documents(document_list: list[Document]) :
+  """
+  Parse documents using LlamaIndex parser
+  """
   parser = SimpleNodeParser()
   return parser.get_nodes_from_documents(document_list)

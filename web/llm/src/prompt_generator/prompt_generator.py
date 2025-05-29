@@ -16,15 +16,20 @@ Query: {query_str}
 """
 
 class PromptGenerator():
+
   def __init__(self):
-    # Initiate template
+    """
+    Instantiate the template
+    """
     self.prompt_template = PromptTemplate(PROMPT_TEMPLATE)
 
     # Config for tone
     self.tone_str = "a Tourism Influencer in Social Media"
 
-  # CONFIGURE
   def config_tone(self, tone_str: str) -> None:
+    """
+    A change for tone
+    """
     self.tone_str = tone_str
   
   
@@ -32,6 +37,8 @@ class PromptGenerator():
   ##############################
   def generate_subprompt_example(self, examples: list[dict]) -> str:
     """
+    Prepare the example part of the prompt
+
     Format of examples:
     [
       {"question": "...", "answer": "..."}, 
@@ -52,7 +59,11 @@ class PromptGenerator():
 
     return example_subprompt
   
+
   def generate_subprompt_context(self, context: str) -> str:
+    """
+    Prepare the context part of the prompt
+    """
     context_subprompt = "Context:\n"
     if (context is not None):
       context_subprompt += "Here I provide context regarding this query.\n"
@@ -61,7 +72,11 @@ class PromptGenerator():
       context_subprompt += "I have no provided context for this query."
     return context_subprompt
   
+
   def generate_subprompt_answer_format(self, answer_format: str, answer_format_type: str):
+    """
+    Prepare the answer format part of the prompt
+    """
     answer_format_subprompt = "Answer Format:\n"
     if (answer_format is not None and answer_format_type is not None):
       answer_format_subprompt += f"You are expected to return the answer in the type of {answer_format_type} with this format:\n"
@@ -102,7 +117,6 @@ class PromptGenerator():
 
 
   def generate_prompt_reply_chat(self, new_message: str, previous_messages: list[str] = None) -> str:
-    # Prepare the context
     context = "You have to be informative and clear in giving information to users. You also have to assure the correctness of the facts that you provide.\n"
 
     if (previous_messages is not None):

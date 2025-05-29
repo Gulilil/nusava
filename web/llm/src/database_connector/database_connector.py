@@ -10,8 +10,16 @@ load_dotenv()
 
 
 class DatabaseConnector():
-  # Initialization
+  """
+  Connecting component to all the databases:
+  1. MongoDB : DocumentDB from Data Mining
+  2. Pinecone : VectorDB for LLM and RAG
+  3. PostgreSQL: RDBMS for bot data
+  """
   def __init__(self): 
+    """
+    Instantiate all the database client
+    """
     # Instantiate mongo client
     self.mongo_client = pymongo.MongoClient(os.getenv("MONGO_CONNECTION_STRING"))
     self.mongo_database = self.mongo_client[os.getenv("MONGO_DB_NAME")]
@@ -20,25 +28,33 @@ class DatabaseConnector():
     self.pinecone_index = self.pinecone_client.Index(os.getenv("PINECONE_INDEX"))
 
 
-  # Get parsed based on filename
   def mongo_get_data(self, collection_name: str, filters: dict = {}) -> list:
+    """
+    Get data from mongo db with filters as parameters
+    """
     collection = self.mongo_database[collection_name]
     json_documents = collection.find(filters)
     return list(json_documents)
   
 
-  # Get pinecone vector store and storage context
   def pinecone_get_vector_store(self, namespace: str):
+    """
+    Get vector store and storage context from pinecone for certain namespace
+    """
     vector_store = PineconeVectorStore(pinecone_index=self.pinecone_index, namespace=namespace)
     storage_context = StorageContext.from_defaults(vector_store=vector_store)
     return vector_store, storage_context
 
 
-  # Store data to pinecone
   def pinecone_store_data(self, nodes, storage_context, embed_model):
+    """
+    Store processed data to certain storage_context
+    """
     VectorStoreIndex(nodes, storage_context=storage_context, embed_model=embed_model)
 
 
-  # Get index stats
   def pinecone_get_index_stats(self):
+    """
+    Display status of the pinecone index
+    """
     print(self.pinecone_index.describe_index_stats())
