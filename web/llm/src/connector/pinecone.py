@@ -1,0 +1,43 @@
+from llama_index.core import StorageContext, VectorStoreIndex
+from llama_index.vector_stores.pinecone import PineconeVectorStore
+
+from pinecone import Pinecone
+import os
+
+from dotenv import load_dotenv
+load_dotenv()
+
+
+class PineconeConnector():
+  """
+  Connecting component to Pinecone : VectorDB for LLM and RAG
+  """
+  def __init__(self): 
+    """
+    Instantiate the database client
+    """
+    self.pinecone_client = Pinecone(api_key=(os.getenv("PINECONE_API_KEY")))
+    self.pinecone_index = self.pinecone_client.Index(os.getenv("PINECONE_INDEX"))
+
+
+  def get_vector_store(self, namespace: str):
+    """
+    Get vector store and storage context from pinecone for certain namespace
+    """
+    vector_store = PineconeVectorStore(pinecone_index=self.pinecone_index, namespace=namespace)
+    storage_context = StorageContext.from_defaults(vector_store=vector_store)
+    return vector_store, storage_context
+
+
+  def store_data(self, nodes, storage_context, embed_model):
+    """
+    Store processed data to certain storage_context
+    """
+    VectorStoreIndex(nodes, storage_context=storage_context, embed_model=embed_model)
+
+
+  def get_index_stats(self):
+    """
+    Display status of the pinecone index
+    """
+    print(self.pinecone_index.describe_index_stats())

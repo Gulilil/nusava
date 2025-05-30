@@ -3,7 +3,6 @@ from llama_index.embeddings.huggingface import HuggingFaceEmbedding
 from llama_index.llms.ollama import Ollama
 from llama_index.core.agent import ReActAgent
 from llama_index.core import  VectorStoreIndex
-import time
 
 class Model():
   """

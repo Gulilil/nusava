@@ -1,8 +1,13 @@
-from database_connector.database_connector import DatabaseConnector
-from model.model import Model
-from prompt_generator.prompt_generator import PromptGenerator
-from gateway.gateway import Gateway
+from agent.model import Model
+from agent.persona import Persona
+from agent.configurator import Configurator
+from connector.pinecone import PineconeConnector
+from connector.mongo import MongoConnector
+from connector.postgres import PostgresConnector
 from evaluator.evaluator import Evaluator
+from gateway.input import InputGateway
+from gateway.output import OutputGateway
+from generator.prompt import PromptGenerator
 from utils.function import json_to_string_list, text_to_document, parse_documents
 
 class Agent():
@@ -11,11 +16,21 @@ class Agent():
   """
   
   def __init__(self):
-    self.database_connector_component = DatabaseConnector()
+    # Instantiate Connector
+    self.pinecone_connector_component = PineconeConnector()
+    self.mongo_connector_component = MongoConnector()
+    self.postgres_connector_component = PostgresConnector()
+    # Instantiate Evaluator
     self.evaluator_component = Evaluator()
-    self.gateway_component = Gateway()
-    self.model_component = Model()
+    # Instantiate Gateway
+    self.input_gateway_component = InputGateway(self)
+    self.output_gateway_component = OutputGateway()
+    # Instantiate Generator
     self.prompt_generator_component = PromptGenerator()
+    # Instantiate Agent Component
+    self.model_component = Model()
+    self.persona_component = Persona()
+    self.configurator_component = Configurator(self.model_component, self.prompt_generator_component)
 
   ######## PUBLIC ########
 
@@ -80,10 +95,11 @@ class Agent():
 
   ##### ACTION #####
 
-  def action_chat(self, user_query: str):
+  def action_reply_chat(self, user_id: str, user_query: str):
     """
-    Operate the action chat
+    Operate the action reply chat
     """
+    #TODO What to do with user_id
     #TODO How to determine that it is about hotel and construct metadata
     # Load the data from pinecone
     namespace_name = 'hotels'
@@ -97,3 +113,19 @@ class Agent():
     # Generate prompt
     prompt = self.prompt_generator_component.generate_prompt_reply_chat(user_query)
     return self.model_component.answer(prompt)
+
+
+  def action_reply_comment(self, comment_message: str, post_caption: str, previous_comments: list[str]):
+    """
+    Operate the action reply comment
+    """
+    # TODO
+    return
+  
+
+  def action_post(self, img_url: str, caption_text: str, caption_keywords: list[str]):
+    """
+    Operate the action post
+    """
+    # TODO
+    return
