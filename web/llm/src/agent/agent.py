@@ -1,6 +1,5 @@
 from agent.model import Model
 from agent.persona import Persona
-from agent.configurator import Configurator
 from connector.pinecone import PineconeConnector
 from connector.mongo import MongoConnector
 from connector.postgres import PostgresConnector
@@ -15,7 +14,8 @@ class Agent():
   General class that encapsulate all the components
   """
   
-  def __init__(self):
+  def __init__(self, user_id):
+    self.user_id = user_id
     # Instantiate Connector
     self.pinecone_connector_component = PineconeConnector()
     self.mongo_connector_component = MongoConnector()
@@ -31,11 +31,10 @@ class Agent():
     # Instantiate Agent Component
     self.model_component = Model()
     self.persona_component = Persona()
-    self.configurator_component = Configurator(self.model_component, self.prompt_generator_component)
 
     # TODO Retrieve it from current config
-    persona_data = self.mongo_connector_component.get_persona_data_by_name("Luca Bennett")
-    self.persona_component.load_persona(persona_data)
+    self.config_persona("Luca Bennett")
+
 
 
   ######## PUBLIC ########
@@ -57,7 +56,7 @@ class Agent():
     pinecone_namespace_name = "hotels"
 
     # Get hotel data from mongo
-    hotels = self.database_connector_component.mongo_get_data(mongo_collection_name, {})
+    hotels = self.mongo_connector_component.get_data(mongo_collection_name, {})
     print(f"[FETCHED] Fetched {len(hotels)} hotels")
 
     hotel_docs = []
@@ -84,8 +83,8 @@ class Agent():
       # Parse hotel data
       hotel_data_parsed = parse_documents(hotel_docs)
       # Insert to pinecone
-      _, storage_context = self.database_connector_component.pinecone_get_vector_store(pinecone_namespace_name)
-      self.database_connector_component.pinecone_store_data(hotel_data_parsed, storage_context, self.model_component.embed_model)      
+      _, storage_context = self.pinecone_connector_component.get_vector_store(pinecone_namespace_name)
+      self.pinecone_connector_component.store_data(hotel_data_parsed, storage_context, self.model_component.embed_model)      
       print(f'[BATCH PROGRESS] Successfully inserted data idx {idx} to {upper_idx}')
       
       # Increment idx
@@ -98,6 +97,22 @@ class Agent():
     """
     return
 
+  ##### CONFIGURATION #####
+
+  def config_model(self, config_data: dict):
+    """
+    Adjust the performance of the model
+    """
+    self.model_component.config(config_data)
+  
+
+  def config_persona(self, persona_name: str):
+    """
+    Change the agent persona
+    """
+    persona_data = self.mongo_connector_component.get_persona_data_by_name(persona_name)
+    self.persona_component.load_persona(persona_data)
+
 
   ##### ACTION #####
 
@@ -109,7 +124,7 @@ class Agent():
     #TODO How to determine that it is about hotel and construct metadata
     # Load the data from pinecone
     namespace_name = 'hotels'
-    vector_store, storage_context = self.database_connector_component.pinecone_get_vector_store(namespace_name)
+    vector_store, storage_context = self.pinecone_connector_component.get_vector_store(namespace_name)
     self.model_component.load_data(
       vector_store, 
       storage_context, 

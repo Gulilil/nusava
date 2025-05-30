@@ -5,8 +5,7 @@ class Persona():
   This class contains the data on how the model represent itself to the user (persona)
   """
 
-  IMPORTANT_FIELDS = ["name", "age", "style", "occupation"]
-
+  IMPORTANT_FIELDS = ["age", "style", "occupation"]
 
   def __init__(self):
     """

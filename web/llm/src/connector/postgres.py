@@ -12,5 +12,11 @@ class PostgresConnector():
     """
     Instantiate the database client
     """
+    # self.postgres_client = 
+    # self.postgres_index = 
+    return
+  
+
+  def get_persona_data(self):
     # TODO
     return

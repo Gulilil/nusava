@@ -27,6 +27,7 @@ class InputGateway():
     """
     Setup routing for the API
     Is used for input from other module (External-trigger Action)
+    
     Returning format:
     {
       answer : str

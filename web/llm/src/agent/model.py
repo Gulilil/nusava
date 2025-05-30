@@ -16,8 +16,8 @@ class Model():
   """
   temperature: float = 0.3
   top_k : int = 10
-  max_token : int = 2048
-  max_iteration: int = 20
+  max_token : int = 4096
+  max_iteration: int = 10
 
   """
   Constant variable in the model. Should not be changed when the model is operating
@@ -85,15 +85,12 @@ class Model():
       self._setup_agent(query_engine, topic, query)
 
 
-  def answer(self, prompt: str, is_direct: bool = False) -> str:
+  def answer(self, prompt: str) -> str:
     """
     Answer the prompt using the agentic system
     """
     try:
-      if (not is_direct):
-        result = self.agent.query(prompt).response
-      else:
-        result = self.llm_model.complete(prompt).text
+      result = self.agent.query(prompt).response
       return result
     
     except ValueError as e:
@@ -105,4 +102,20 @@ class Model():
     Reset tools that has been constructed before
     """
     self.tools = []
+
+
+  def config(self, config_dict : dict):
+    """
+    Config the performance of the model
+    """
+    if ("temperature" in config_dict):
+      self.temperature = config_dict['temperature']
+    if ("top_k" in config_dict):
+      self.top_k = config_dict['top_k']
+    if ("max_token" in config_dict):
+      self.max_token = config_dict['max_token']
+    if ("max_iteration" in config_dict):
+      self.max_iteration = config_dict['max_iteration']
+
+    
 
