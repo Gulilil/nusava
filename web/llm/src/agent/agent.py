@@ -27,10 +27,16 @@ class Agent():
     self.output_gateway_component = OutputGateway()
     # Instantiate Generator
     self.prompt_generator_component = PromptGenerator()
+
     # Instantiate Agent Component
     self.model_component = Model()
     self.persona_component = Persona()
     self.configurator_component = Configurator(self.model_component, self.prompt_generator_component)
+
+    # TODO Retrieve it from current config
+    persona_data = self.mongo_connector_component.get_persona_data_by_name("Luca Bennett")
+    self.persona_component.load_persona(persona_data)
+
 
   ######## PUBLIC ########
 
