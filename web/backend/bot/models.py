@@ -65,11 +65,10 @@ class ActionLog(models.Model):
 class Configuration(models.Model):
     id = models.BigAutoField(primary_key=True)
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='configurations')
-    system_prompt = models.TextField(blank=True)
-    style = models.CharField(max_length=100, blank=True)
-    temperature = models.FloatField(default=1.0)
-    top_k = models.IntegerField(default=0)
-    max_token = models.IntegerField(default=0)
+    temperature = models.FloatField(default=0.3)
+    top_k = models.IntegerField(default=10)
+    max_token = models.IntegerField(default=4096)
+    max_iteration = models.IntegerField(default=10)
 
     def __str__(self):
         return f"Configuration for {self.user.username}"
