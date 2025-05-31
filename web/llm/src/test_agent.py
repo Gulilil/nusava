@@ -2,6 +2,8 @@ from agent.agent import Agent
 
 if __name__ == "__main__":
   nusava = Agent()
+  nusava.construct("luca_bennett")
+
   # nusava.process_data_hotel()
 
   # answer = nusava.action_chat("Give me general informations and facilities of Tanto hotel.")

@@ -1,4 +1,5 @@
 import os
+import psycopg2
 
 from dotenv import load_dotenv
 load_dotenv()
@@ -12,11 +13,21 @@ class PostgresConnector():
     """
     Instantiate the database client
     """
-    # self.postgres_client = 
-    # self.postgres_index = 
-    return
+    self.connection = psycopg2.connect(
+          host=os.getenv("POSTGRES_HOST"),      
+          port=os.getenv("POSTGRES_PORT"),           
+          database=os.getenv("POSTGRES_DB_NAME"),    
+          user=os.getenv("POSTGRES_USER"),     
+          password=os.getenv("POSTGRES_PASSWORD")  
+      )
+    self.cursor = self.connection.cursor()
   
 
-  def get_persona_data(self):
-    # TODO
-    return
+  def get_persona_data(self, user_id: str):
+    """
+    Get persona data based on the user_id
+    """
+    table_name = "persona"
+    self.cursor.execute(f"SELECT persona_data FROM {table_name} WHERE user_id=\'{user_id}\'")
+    data = self.cursor.fetchone()[0]
+    return data

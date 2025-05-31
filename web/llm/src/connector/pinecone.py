@@ -16,15 +16,15 @@ class PineconeConnector():
     """
     Instantiate the database client
     """
-    self.pinecone_client = Pinecone(api_key=(os.getenv("PINECONE_API_KEY")))
-    self.pinecone_index = self.pinecone_client.Index(os.getenv("PINECONE_INDEX"))
+    self.client = Pinecone(api_key=(os.getenv("PINECONE_API_KEY")))
+    self.index = self.client.Index(os.getenv("PINECONE_INDEX"))
 
 
   def get_vector_store(self, namespace: str):
     """
     Get vector store and storage context from pinecone for certain namespace
     """
-    vector_store = PineconeVectorStore(pinecone_index=self.pinecone_index, namespace=namespace)
+    vector_store = PineconeVectorStore(pinecone_index=self.index, namespace=namespace)
     storage_context = StorageContext.from_defaults(vector_store=vector_store)
     return vector_store, storage_context
 
@@ -40,4 +40,4 @@ class PineconeConnector():
     """
     Display status of the pinecone index
     """
-    print(self.pinecone_index.describe_index_stats())
+    print(self.index.describe_index_stats())

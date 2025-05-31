@@ -18,10 +18,13 @@ class Persona():
     """
     Check if all important fields exist in the data
     """
-    for field in self.IMPORTANT_FIELDS:
-      if (field not in persona_data or persona_data[field] is None or persona_data[field] == ""):
-        return False
-    return True
+    try:
+      for field in self.IMPORTANT_FIELDS:
+        if (field not in persona_data or persona_data[field] is None or persona_data[field] == ""):
+          return False
+      return True
+    except:
+      return False
 
 
   def load_persona(self, persona_data: dict):

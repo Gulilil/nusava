@@ -14,8 +14,8 @@ class Agent():
   General class that encapsulate all the components
   """
   
-  def __init__(self, user_id):
-    self.user_id = user_id
+  def __init__(self):
+    self.user_id = None
     # Instantiate Connector
     self.pinecone_connector_component = PineconeConnector()
     self.mongo_connector_component = MongoConnector()
@@ -32,9 +32,12 @@ class Agent():
     self.model_component = Model()
     self.persona_component = Persona()
 
-    # TODO Retrieve it from current config
-    self.config_persona("Luca Bennett")
 
+  def construct(self, user_id:str):
+    self.user_id = user_id
+
+    # TODO Retrieve it from current config
+    self.config_persona()
 
 
   ######## PUBLIC ########
@@ -106,11 +109,11 @@ class Agent():
     self.model_component.config(config_data)
   
 
-  def config_persona(self, persona_name: str):
+  def config_persona(self):
     """
     Change the agent persona
     """
-    persona_data = self.mongo_connector_component.get_persona_data_by_name(persona_name)
+    persona_data = self.postgres_connector_component.get_persona_data(self.user_id)
     self.persona_component.load_persona(persona_data)
 
 
