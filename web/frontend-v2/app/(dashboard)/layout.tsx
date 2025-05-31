@@ -15,7 +15,7 @@ export default function DashboardLayout({
         richColors
         duration={3000}
       />
-      <div className="flex-1 flex flex-col">{children}</div>
+      <div className="pl-8 flex-1 flex flex-col">{children}</div>
     </div>
   )
 }
