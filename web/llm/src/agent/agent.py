@@ -32,24 +32,39 @@ class Agent():
     self.model_component = Model()
     self.persona_component = Persona()
 
+  ######## SETUP PERSONA/ CONFIG ########
 
-  def construct(self, user_id:str):
+  def set_user(self, user_id:str):
+    print(f"[CONSTRUCT] Constructing agent for user_id: {user_id}")
     self.user_id = user_id
 
-    print(f"[CONSTRUCT] Constructing agent for user_id: {user_id}")
-
     # TODO To be adjusted
-    # Adjust the performance of the model
-    config_data = self.postgres_connector_component.get_config_data(self.user_id)
-    self.model_component.config(config_data)
+    self.set_config()
+    self.set_persona()
 
-    # Change the agent persona
+  def set_persona(self):
+    """
+    Change the agent persona
+    """
     persona_data = self.postgres_connector_component.get_persona_data(self.user_id)
     self.persona_component.load_persona(persona_data)
+    self.persona_component.display_persona()
 
+  
+  def set_config(self):
+    """
+    Adjust the performance of the model
+    """
+    config_data = self.postgres_connector_component.get_config_data(self.user_id)
+    self.model_component.config(config_data)
+    self.model_component.display_config()
 
 
   ######## PUBLIC ########
+
+  def run(self):
+    self.input_gateway_component.run()
+
 
   def decide_action(self, last_action: str = None, last_action_details: str = None):
     """
@@ -145,4 +160,9 @@ class Agent():
     Operate the action post
     """
     # TODO
+
+    # # Generate prompt
+    # prompt = self.prompt_generator_component.generate_prompt_reply_chat(user_query)
+    # return self.model_component.answer(prompt)
+
     return
