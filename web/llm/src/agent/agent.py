@@ -20,17 +20,22 @@ class Agent():
     self.pinecone_connector_component = PineconeConnector()
     self.mongo_connector_component = MongoConnector()
     self.postgres_connector_component = PostgresConnector()
+    print("[INITIALIZED] Connector component(s) initialized")
     # Instantiate Evaluator
     self.evaluator_component = Evaluator()
+    print("[INITIALIZED] Evaluator component(s) initialized")
     # Instantiate Gateway
     self.input_gateway_component = InputGateway(self)
     self.output_gateway_component = OutputGateway()
+    print("[INITIALIZED] Gateway component(s) initialized")
     # Instantiate Generator
     self.prompt_generator_component = PromptGenerator()
+    print("[INITIALIZED] Generator component(s) initialized")
 
     # Instantiate Agent Component
     self.model_component = Model()
     self.persona_component = Persona()
+    print("[INITIALIZED] Agent component(s) initialized")
 
   ######## SETUP PERSONA/ CONFIG ########
 
@@ -127,7 +132,7 @@ class Agent():
 
   ##### ACTION #####
 
-  def action_reply_chat(self, user_id: str, user_query: str):
+  def action_reply_chat(self, user_query: str):
     """
     Operate the action reply chat
     """
@@ -143,7 +148,9 @@ class Agent():
       user_query)
 
     # Generate prompt
-    prompt = self.prompt_generator_component.generate_prompt_reply_chat(user_query)
+    prompt = self.prompt_generator_component.generate_prompt_reply_chat(
+      new_message=user_query,
+      previous_messages=None)
     return self.model_component.answer(prompt)
 
 
@@ -155,14 +162,16 @@ class Agent():
     return
   
 
-  def action_post(self, img_url: str, caption_text: str, caption_keywords: list[str]):
+  def action_post(self, img_description: str, caption_keywords: list[str]):
     """
     Operate the action post
     """
     # TODO
 
     # # Generate prompt
-    # prompt = self.prompt_generator_component.generate_prompt_reply_chat(user_query)
-    # return self.model_component.answer(prompt)
-
-    return
+    prompt = self.prompt_generator_component.generate_prompt_post_caption(
+      keywords=caption_keywords,
+      additional_context=None,
+      examples= None
+      )
+    return self.model_component.answer(prompt, True)

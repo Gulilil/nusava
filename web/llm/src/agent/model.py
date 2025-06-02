@@ -97,12 +97,15 @@ class Model():
       self._setup_agent(query_engine, topic, query)
 
 
-  def answer(self, prompt: str) -> str:
+  def answer(self, prompt: str, is_direct: bool = False) -> str:
     """
     Answer the prompt using the agentic system
     """
     try:
-      result = self._agent.query(prompt).response
+      if (is_direct):
+         result = self.llm_model.complete(prompt).text
+      else:
+        result = self._agent.query(prompt).response
       return result
     
     except ValueError as e:

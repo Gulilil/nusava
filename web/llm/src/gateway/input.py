@@ -8,6 +8,8 @@ class InputGateway():
     """
     self.app = Flask(__name__)
     self.agent = agent
+    self.host = "0.0.0.0"
+    self.port = 7000
     self.setup_routes()
     
 
@@ -52,10 +54,10 @@ class InputGateway():
         
         # Proceed to process
         user_id = data['user_id']
-        self.agent.construct(user_id)
-        return jsonify({"response": True})
+        self.agent.set_user(user_id)
+        return jsonify({"response": True}), 200
       except Exception as error: 
-        return jsonify({"error": error}), 400
+        return jsonify({"error": str(error)}), 400
 
     @self.app.route("/persona", methods=['POST'])
     def set_persona():
@@ -64,9 +66,9 @@ class InputGateway():
       """
       try:
         self.agent.set_persona()
-        return jsonify({"response": True})
+        return jsonify({"response": True}), 200
       except Exception as error: 
-        return jsonify({"error": error}), 400
+        return jsonify({"error": str(error)}), 400
 
     @self.app.route("/config", methods=['POST'])
     def set_config():
@@ -75,9 +77,9 @@ class InputGateway():
       """
       try:
         self.agent.set_config()
-        return jsonify({"response": True})
+        return jsonify({"response": True}), 200
       except Exception as error: 
-        return jsonify({"error": error}), 400
+        return jsonify({"error": str(error)}), 400
       
     ######## ACTIONS INPUT ########
 
@@ -99,9 +101,9 @@ class InputGateway():
         # Proceed to process
         chat_message = data['chat_message']
         response = self.agent.action_reply_chat(chat_message)
-        return jsonify({"response": response})
+        return jsonify({"response": response}), 200
       except Exception as error: 
-        return jsonify({"error": error}), 400
+        return jsonify({"error": str(error)}), 400
 
     @self.app.route("/comment", methods=['POST'])
     def respond_comment():
@@ -125,9 +127,9 @@ class InputGateway():
         post_caption = data['post_caption']
         previous_comments = data['previous_comments']
         response = self.agent.action_reply_comment(comment_message, post_caption, previous_comments)
-        return jsonify({"response": response})
+        return jsonify({"response": response}), 200
       except Exception as error: 
-        return jsonify({"error": error}), 400
+        return jsonify({"error": str(error)}), 400
 
     @self.app.route("/post", methods=['POST'])
     def respond_post():
@@ -150,15 +152,17 @@ class InputGateway():
         caption_text = data['caption_text']
         caption_keywords = data['caption_keywords']
         response = self.agent.action_post(img_url, caption_text, caption_keywords)
-        return jsonify({"response": response})
+        return jsonify({"response": response}), 200
       except Exception as error: 
-        return jsonify({"error": error}), 400
+        return jsonify({"error": str(error)}), 400
     
 
-  def run(self, host : str = "0.0.0.0", port: int = 7000):
+  def run(self, host : str = None, port: int = None):
     """
     Run the system in specific ip and port 
     """
-    self.app.run(host=host, port=port)
+    used_host = self.host if host is None else host
+    used_port = self.port if port is None else port
+    self.app.run(host=used_host, port=used_port)
 
   
