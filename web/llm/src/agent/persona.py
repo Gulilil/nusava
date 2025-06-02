@@ -12,7 +12,8 @@ class Persona():
     Instantiate persona
     """
     self._persona = None
-  
+
+  ######## PRIVATE ########
 
   def _check_persona_data_validity(self, persona_data: dict):
     """
@@ -26,6 +27,14 @@ class Persona():
     except:
       return False
 
+  ######## PUBLIC ########
+
+  def display_persona(self):
+    """
+    Display persona data
+    """
+    for key, val in self._persona.items():
+      print(f"{key} : {val}")
 
   def load_persona(self, persona_data: dict):
     """

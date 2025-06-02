@@ -36,8 +36,17 @@ class Agent():
   def construct(self, user_id:str):
     self.user_id = user_id
 
-    # TODO Retrieve it from current config
-    self.config_persona()
+    print(f"[CONSTRUCT] Constructing agent for user_id: {user_id}")
+
+    # TODO To be adjusted
+    # Adjust the performance of the model
+    config_data = self.postgres_connector_component.get_config_data(self.user_id)
+    self.model_component.config(config_data)
+
+    # Change the agent persona
+    persona_data = self.postgres_connector_component.get_persona_data(self.user_id)
+    self.persona_component.load_persona(persona_data)
+
 
 
   ######## PUBLIC ########
@@ -99,22 +108,6 @@ class Agent():
     Process data xxxx, "migrate" it from mongodb document to pinecone vector
     """
     return
-
-  ##### CONFIGURATION #####
-
-  def config_model(self, config_data: dict):
-    """
-    Adjust the performance of the model
-    """
-    self.model_component.config(config_data)
-  
-
-  def config_persona(self):
-    """
-    Change the agent persona
-    """
-    persona_data = self.postgres_connector_component.get_persona_data(self.user_id)
-    self.persona_component.load_persona(persona_data)
 
 
   ##### ACTION #####

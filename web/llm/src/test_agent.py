@@ -3,6 +3,8 @@ from agent.agent import Agent
 if __name__ == "__main__":
   nusava = Agent()
   nusava.construct("luca_bennett")
+  nusava.construct("isabella_rivera")
+
 
   # nusava.process_data_hotel()
 

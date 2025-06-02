@@ -8,33 +8,33 @@ class Model():
   """
   Model name. Is adjustable to another model to be used
   """
-  llm_model_name: str = "llama3.1"
-  embed_model_name: str = "intfloat/multilingual-e5-base"
+  _llm_model_name: str = "llama3.1"
+  _embed_model_name: str = "intfloat/multilingual-e5-base"
 
   """
   Mutable variable in the model. Can be changed through Configurator component
   """
-  temperature: float = 0.3
-  top_k : int = 10
-  max_token : int = 4096
-  max_iteration: int = 10
+  _temperature: float = 0.3
+  _top_k : int = 10
+  _max_token : int = 4096
+  _max_iteration: int = 10
 
   """
   Constant variable in the model. Should not be changed when the model is operating
   """
-  request_timeout: float = 60.0
-  tools: list = []
+  _request_timeout: float = 60.0
+  _tools: list = []
 
 
   def __init__(self):
     """
     Initialization of the LLM and the embedding model
     """
-    self.llm_model = Ollama(model = self.llm_model_name,
-                            temperature = self.temperature,
-                            request_timeout = self.request_timeout)
-    self.embed_model  = HuggingFaceEmbedding(model_name=self.embed_model_name)
-    print(f"[MODEL INITIALIZED] Model is initialized with llm_model: {self.llm_model_name} and embed_model: {self.embed_model_name}")
+    self.llm_model = Ollama(model = self._llm_model_name,
+                            temperature = self._temperature,
+                            request_timeout = self._request_timeout)
+    self.embed_model  = HuggingFaceEmbedding(model_name=self._embed_model_name)
+    print(f"[MODEL INITIALIZED] Model is initialized with llm_model: {self._llm_model_name} and embed_model: {self._embed_model_name}")
 
   ######## PRIVATE ########
 
@@ -57,15 +57,27 @@ class Model():
       query_engine=query_engine,
       metadata=metadata
     )
-    self.tools.append(tool)
-    self.agent = ReActAgent.from_tools(
-      self.tools, 
+    self._tools.append(tool)
+    self._agent = ReActAgent.from_tools(
+      self._tools, 
       llm = self.llm_model, 
       verbose= True, 
-      max_iterations=self.max_iteration
+      max_iterations=self._max_iteration
     )
 
   ######## PUBLIC ########
+
+  def display_config(self):
+    """
+    Display current config
+    """
+    print(f"LLM name: {self._llm_model_name}")
+    print(f"Embedding Model name: {self._embed_model_name}")
+    print(f"Temperature: {self._temperature}")
+    print(f"Top K: {self._top_k}")
+    print(f"Max Token: {self._max_token}")
+    print(f"Max Iteration: {self._max_iteration}")
+    
 
   def load_data(self,  vector_store, storage_context, topic, query) -> None:
       """
@@ -79,8 +91,8 @@ class Model():
       query_engine = vector_index.as_query_engine(
         llm=self.llm_model,
         embed_model=self.embed_model,
-        similarity_top_k=self.top_k,
-        llm_kwargs={"max_tokens": self.max_token}
+        similarity_top_k=self._top_k,
+        llm_kwargs={"max_tokens": self._max_token}
       )
       self._setup_agent(query_engine, topic, query)
 
@@ -90,7 +102,7 @@ class Model():
     Answer the prompt using the agentic system
     """
     try:
-      result = self.agent.query(prompt).response
+      result = self._agent.query(prompt).response
       return result
     
     except ValueError as e:
@@ -101,21 +113,17 @@ class Model():
     """
     Reset tools that has been constructed before
     """
-    self.tools = []
+    self._tools = []
 
 
-  def config(self, config_dict : dict):
+  def config(self, config_data : tuple):
     """
     Config the performance of the model
     """
-    if ("temperature" in config_dict):
-      self.temperature = config_dict['temperature']
-    if ("top_k" in config_dict):
-      self.top_k = config_dict['top_k']
-    if ("max_token" in config_dict):
-      self.max_token = config_dict['max_token']
-    if ("max_iteration" in config_dict):
-      self.max_iteration = config_dict['max_iteration']
+    self._temperature = config_data[0]
+    self._top_k = config_data[1]
+    self._max_token = config_data[2]
+    self._max_iteration = config_data[3]
 
     
 
