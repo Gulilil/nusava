@@ -148,10 +148,9 @@ class InputGateway():
           return jsonify({"error": error_message}), 400
         
         # Proceed to process
-        img_url = data['img_url']
-        caption_text = data['caption_text']
+        img_description = data['image_description']
         caption_keywords = data['caption_keywords']
-        response = self.agent.action_post(img_url, caption_text, caption_keywords)
+        response = self.agent.action_post(img_description, caption_keywords)
         return jsonify({"response": response}), 200
       except Exception as error: 
         return jsonify({"error": str(error)}), 400

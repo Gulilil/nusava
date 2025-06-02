@@ -16,6 +16,10 @@ class Agent():
   
   def __init__(self):
     self.user_id = None
+        # Instantiate Agent Component
+    self.model_component = Model()
+    self.persona_component = Persona()
+    print("[INITIALIZED] Agent component(s) initialized")
     # Instantiate Connector
     self.pinecone_connector_component = PineconeConnector()
     self.mongo_connector_component = MongoConnector()
@@ -29,13 +33,9 @@ class Agent():
     self.output_gateway_component = OutputGateway()
     print("[INITIALIZED] Gateway component(s) initialized")
     # Instantiate Generator
-    self.prompt_generator_component = PromptGenerator()
+    self.prompt_generator_component = PromptGenerator(self.persona_component)
     print("[INITIALIZED] Generator component(s) initialized")
 
-    # Instantiate Agent Component
-    self.model_component = Model()
-    self.persona_component = Persona()
-    print("[INITIALIZED] Agent component(s) initialized")
 
   ######## SETUP PERSONA/ CONFIG ########
 
@@ -166,12 +166,14 @@ class Agent():
     """
     Operate the action post
     """
-    # TODO
+    # TODO To be improved
 
     # # Generate prompt
     prompt = self.prompt_generator_component.generate_prompt_post_caption(
+      img_description=img_description,
       keywords=caption_keywords,
       additional_context=None,
       examples= None
       )
+    print(prompt)
     return self.model_component.answer(prompt, True)
