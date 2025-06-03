@@ -1,3 +1,6 @@
+import json
+import os
+import tempfile
 from rest_framework.decorators import api_view, permission_classes, authentication_classes
 from rest_framework.response import Response
 from rest_framework_simplejwt.authentication import JWTAuthentication
@@ -11,6 +14,10 @@ from instagrapi import Client
 from rest_framework_simplejwt.tokens import RefreshToken
 import logging
 from instagrapi.exceptions import LoginRequired
+
+from .serializers import ConfigurationSerializer, ActionLogSerializer
+from .models import Configuration, ActionLog
+from django.core.paginator import Paginator
 
 logger = logging.getLogger(__name__)
 user_bots = {}
@@ -46,7 +53,41 @@ def login_bot(request):
             
             # Load existing session
             bot_client = Client()
-            bot_client.load_settings(user.session_info)
+            if user.session_info:
+                try:
+                    # Extract sessionid from session_info
+                    session_data = user.session_info
+                    if isinstance(session_data, str):
+                        session_data = json.loads(session_data)
+                    
+                    sessionid = None
+                    if 'authorization_data' in session_data:
+                        sessionid = session_data['authorization_data'].get('sessionid')
+                    else:
+                        sessionid = session_data.get('sessionid')
+                        
+                    if sessionid:
+                        # Try to login using sessionid
+                        success = bot_client.login_by_sessionid(sessionid)
+                        if success:
+                            # Session is valid, create bot and return success
+                            bot = InstagramBot(user_obj=user, password=password, session_settings=user.session_info)
+                            user_bots[user.id] = bot
+                            refresh = RefreshToken.for_user(user)
+                            return Response({
+                                "status": "success",
+                                "message": "Logged in with saved session",
+                                "access": str(refresh.access_token),
+                                "refresh": str(refresh),
+                            })
+                        else:
+                            # Session invalid, will create new one below
+                            logger.warning(f"Session invalid for user {username}, creating new session")
+                    else:
+                        logger.warning(f"No sessionid found for user {username}")
+                        
+                except (json.JSONDecodeError, KeyError, Exception) as e:
+                    logger.warning(f"Error loading session for user {username}: {e}")
             
             try:
                 # Test the session by getting user info
@@ -235,3 +276,85 @@ def share_post(request):
     except Exception as e:
         logger.error(f"Share post error: {e}")
         return Response({'error': 'Failed to share post'}, status=500)
+    
+@api_view(['GET', 'POST'])
+@authentication_classes([JWTAuthentication])
+@permission_classes([IsAuthenticated])
+def bot_configuration(request):
+    """Get or update bot configuration"""
+    user = request.user
+    
+    # Get or create configuration for user
+    config, created = Configuration.objects.get_or_create(
+        user=user,
+        defaults={
+            'system_prompt': '',
+            'style': '',
+            'temperature': 0.3,
+            'top_k': 5,
+            'max_token': 512
+        }
+    )
+    
+    if request.method == 'GET':
+        serializer = ConfigurationSerializer(config)
+        return Response({
+            'status': 'success',
+            'data': serializer.data
+        })
+    
+    elif request.method == 'POST':
+        serializer = ConfigurationSerializer(config, data=request.data, partial=True)
+        if serializer.is_valid():
+            serializer.save()
+            return Response({
+                'status': 'success',
+                'message': 'Configuration updated successfully',
+                'data': serializer.data
+            })
+        else:
+            return Response({
+                'status': 'error',
+                'message': 'Invalid data',
+                'errors': serializer.errors
+            }, status=400)
+        
+
+@api_view(['GET'])
+@authentication_classes([JWTAuthentication])
+@permission_classes([IsAuthenticated])
+def action_logs(request):
+    """Get action logs for the authenticated user"""
+    user = request.user
+    
+    # Get query parameters
+    page = request.GET.get('page', 1)
+    page_size = request.GET.get('page_size', 20)
+    action_type = request.GET.get('action_type', '')
+    status = request.GET.get('status', '')
+    
+    # Filter logs
+    logs = ActionLog.objects.filter(user=user).order_by('-timestamp')
+    
+    if action_type:
+        logs = logs.filter(action_type__icontains=action_type)
+    if status:
+        logs = logs.filter(status__icontains=status)
+    
+    # Paginate
+    paginator = Paginator(logs, page_size)
+    page_obj = paginator.get_page(page)
+    
+    serializer = ActionLogSerializer(page_obj, many=True)
+    
+    return Response({
+        'status': 'success',
+        'data': serializer.data,
+        'pagination': {
+            'current_page': page_obj.number,
+            'total_pages': paginator.num_pages,
+            'total_count': paginator.count,
+            'has_next': page_obj.has_next(),
+            'has_previous': page_obj.has_previous(),
+        }
+    })

@@ -1,26 +1,115 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
-import { Textarea } from "@/components/ui/textarea"
 import { Button } from "@/components/ui/button"
 import { Slider } from "@/components/ui/slider"
 import { toast } from "sonner"
 
-export default function ConfigPage() {
-  const [systemPrompt, setSystemPrompt] = useState<string>(
-    "This is like a text message for the initialization model. This text message can be a bit large, maybe a few sentences like that",
-  )
-  const [style, setStyle] = useState<string>("a Tourism Influencer in Social Media")
-  const [temperature, setTemperature] = useState<number>(0.3)
-  const [topK, setTopK] = useState<number>(5)
-  const [maxToken, setMaxToken] = useState<number>(512)
+interface ConfigData {
+  temperature: number
+  top_k: number
+  max_token: number
+  max_iterations: number 
+}
+const API = process.env.NEXT_PUBLIC_API_BASE_URL;
 
-  const handleSave = () => {
-    // Here you would typically save the configuration to your backend
-    // For now, we'll just show a success toast
-    toast.success("Configuration saved successfully")
+export default function ConfigPage() {
+  const [temperature, setTemperature] = useState<number>(0.3)
+  const [topK, setTopK] = useState<number>(10)
+  const [maxToken, setMaxToken] = useState<number>(4096)
+  const [maxIterations, setMaxIterations] = useState<number>(10)
+  const [loading, setLoading] = useState<boolean>(true)
+  const [saving, setSaving] = useState<boolean>(false)
+
+  useEffect(() => {
+    loadConfiguration()
+  }, [])
+
+  const loadConfiguration = async () => {
+    try {
+      const token = localStorage.getItem('jwtToken')
+      if (!token) {
+        toast.error("Please login first")
+        return
+      }
+
+      const response = await fetch(`${API}/config/`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+      })
+      console.log('Response status:', response)
+
+      if (response.ok) {
+        const result = await response.json()
+        const data: ConfigData = result.data
+
+        setTemperature(data.temperature)
+        setTopK(data.top_k)
+        setMaxToken(data.max_token)
+        setMaxIterations(data.max_iterations)
+      } else {
+        toast.error("Failed to load configuration")
+      }
+    } catch (error) {
+      console.error('Error loading configuration:', error)
+      toast.error("Error loading configuration")
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleSave = async () => {
+    setSaving(true)
+    try {
+      const token = localStorage.getItem('jwtToken')
+      if (!token) {
+        toast.error("Please login first")
+        return
+      }
+
+      const configData: ConfigData = {
+        temperature: temperature,
+        top_k: topK,
+        max_token: maxToken,
+        max_iterations: maxIterations,
+      }
+
+      const response = await fetch(`${API}/config/`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(configData),
+      })
+
+      const result = await response.json()
+
+      if (response.ok) {
+        toast.success("Configuration saved successfully")
+      } else {
+        toast.error(result.message || "Failed to save configuration")
+      }
+    } catch (error) {
+      console.error('Error saving configuration:', error)
+      toast.error("Error saving configuration")
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  if (loading) {
+    return (
+      <div className="container mx-auto py-6">
+        <div className="flex items-center justify-center h-64">
+          <div className="text-lg">Loading configuration...</div>
+        </div>
+      </div>
+    )
   }
 
   return (
@@ -31,37 +120,6 @@ export default function ConfigPage() {
       </div>
 
       <div className="grid gap-6">
-        <Card>
-          <CardHeader>
-            <CardTitle>System Prompt</CardTitle>
-            <CardDescription>
-              This is like a text message for the initialization model. This text message can be a bit large.
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <Textarea
-              value={systemPrompt}
-              onChange={(e) => setSystemPrompt(e.target.value)}
-              placeholder="Enter system prompt"
-              className="min-h-[120px]"
-            />
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle>Style</CardTitle>
-            <CardDescription>Set the style for the model responses</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <Input
-              value={style}
-              onChange={(e) => setStyle(e.target.value)}
-              placeholder="e.g., a Tourism Influencer in Social Media"
-            />
-          </CardContent>
-        </Card>
-
         <Card>
           <CardHeader>
             <CardTitle>Temperature</CardTitle>
@@ -102,7 +160,7 @@ export default function ConfigPage() {
                 max={100}
                 className="w-24"
               />
-              <span className="text-sm text-muted-foreground">Default: 5</span>
+              <span className="text-sm text-muted-foreground">Default: 10</span>
             </div>
           </CardContent>
         </Card>
@@ -127,8 +185,32 @@ export default function ConfigPage() {
           </CardContent>
         </Card>
 
+        <Card>
+          <CardHeader>
+            <CardTitle>Max Iterations</CardTitle>
+            <CardDescription>
+              The maximum number of iterations for the model to generate a response
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="flex items-center space-x-4">
+              <Input
+                type="number"
+                value={maxIterations}
+                onChange={(e) => setMaxToken(Number(e.target.value))}
+                min={1}
+                max={10}
+                className="w-24"
+              />
+              <span className="text-sm text-muted-foreground">Default: 10</span>
+            </div>
+          </CardContent>
+        </Card>
+
         <div className="flex justify-end">
-          <Button onClick={handleSave}>Save Configuration</Button>
+          <Button onClick={handleSave} disabled={saving}>
+            {saving ? "Saving..." : "Save Configuration"}
+          </Button>
         </div>
       </div>
     </div>

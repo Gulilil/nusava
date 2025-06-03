@@ -5,7 +5,8 @@ from rest_framework_simplejwt.views import (
 )
 from .views import (
     login_bot, get_posts, proxy_image,
-    like_post, follow_user, comment_post, post_photo, share_post
+    like_post, follow_user, comment_post, post_photo, share_post,
+    bot_configuration, action_logs
 )
 
 urlpatterns = [
@@ -21,4 +22,7 @@ urlpatterns = [
 
     path('token/', TokenObtainPairView.as_view(), name='token_obtain_pair'),
     path('token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
+
+    path('config/', bot_configuration, name='bot_configuration'),
+    path('logs/', action_logs, name='action_logs'),
 ]

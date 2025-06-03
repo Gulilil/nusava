@@ -15,6 +15,7 @@ import { InstagramEmbed } from "@/components/instagram-embed";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Plus, Search, Trash2 } from "lucide-react";
 import { getBotPosts } from "@/app/api/bot";
+import { useRouter } from 'next/navigation';
 
 type Post = {
   id: string;
@@ -27,6 +28,11 @@ export default function PostsPage() {
   const [posts, setPosts] = useState<Post[] | null>(null); // Allow null initial state
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const router = useRouter();
+
+  const handleAddPost = () => {
+    router.push('/posts/add');
+  };
 
   useEffect(() => {
     const fetchPosts = async () => {
@@ -35,7 +41,7 @@ export default function PostsPage() {
       setPosts(null); // Reset posts to null before fetching
       try {
         const data = await getBotPosts();
-        setPosts(data ?? []); // Ensure fallback to empty array if null
+        setPosts(data ?? []);
       } catch (err: any) {
         setError(err.message || "Failed to fetch posts");
       }
@@ -50,21 +56,6 @@ export default function PostsPage() {
 
   const [newPostUrl, setNewPostUrl] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
-
-  const handleAddPost = () => {
-    const match = newPostUrl.match(/instagram\.com\/p\/([^/]+)/);
-    if (match && match[1]) {
-      const shortcode = match[1];
-      const newPost: Post = {
-        id: Date.now().toString(),
-        shortcode,
-        username: "@user",
-        description: "New post",
-      };
-      setPosts(posts ? [newPost, ...posts] : [newPost]);
-      setNewPostUrl("");
-    }
-  };
 
   const handleDeletePost = (id: string) => {
     if (!posts) return;
@@ -95,19 +86,7 @@ export default function PostsPage() {
             {error && (
               <p className="text-red-600 font-semibold mb-2">{error}</p>
             )}
-            <div className="flex gap-2">
-              <Input
-                placeholder="Paste Instagram post URL"
-                value={newPostUrl}
-                onChange={(e) => setNewPostUrl(e.target.value)}
-              />
-              <Button onClick={handleAddPost} disabled={!newPostUrl}>
-                <Plus className="mr-2 h-4 w-4" />
-                Add Post
-              </Button>
-            </div>
-
-            <div className="relative">
+            <div className="relative flex gap-2">
               <Search className="absolute left-2 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
               <Input
                 placeholder="Search posts..."
@@ -115,6 +94,10 @@ export default function PostsPage() {
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
               />
+              <Button onClick={handleAddPost}>
+                <Plus className="mr-2 h-4 w-4" />
+                Add Post
+              </Button>
             </div>
 
             {loading && <p>Loading posts...</p>}
@@ -126,39 +109,44 @@ export default function PostsPage() {
                 </TabsList>
 
                 <TabsContent value="grid">
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
                     {filteredPosts.map((post) => (
-                      <div key={post.id} className="relative border rounded shadow-sm hover:shadow-md transition overflow-hidden flex flex-col">
+                      <div key={post.id} className="relative border rounded shadow-sm hover:shadow-md transition overflow-hidden flex flex-col bg-white dark:bg-gray-800">
                         {/* Top bar: username and delete button */}
-                        <div className="flex justify-between items-center p-2 bg-white dark:bg-gray-800 border-b">
-                          <div className="font-medium truncate max-w-[80%]">{post.username}</div>
+                        <div className="flex justify-between items-center p-3 border-b bg-gray-50 dark:bg-gray-700">
+                          <div className="font-medium truncate flex-1 mr-2" title={post.username}>
+                            {post.username}
+                          </div>
                           <Button
                             variant="destructive"
-                            size="icon"
-                            className="ml-2"
+                            size="sm"
                             onClick={() => handleDeletePost(post.id)}
                             aria-label="Delete post"
+                            className="flex-shrink-0"
                           >
                             <Trash2 className="h-4 w-4" />
                           </Button>
                         </div>
 
-                        {/* Instagram embed */}
-                        <div className="flex-grow overflow-visible p-2">
-                          <InstagramEmbed
-                            permalink={`https://www.instagram.com/p/${post.shortcode}/`}
-                          />
+                        {/* Instagram embed - let it size naturally */}
+                        <div className="flex justify-center items-center p-4 min-h-[400px]">
+                          <div className="w-full max-w-[328px]">
+                            <InstagramEmbed
+                              permalink={`https://www.instagram.com/p/${post.shortcode}/`}
+                            />
+                          </div>
                         </div>
 
                         {/* Description */}
-                        <div className="p-2 text-sm text-muted-foreground truncate" title={post.description}>
-                          {post.description || "No description"}
+                        <div className="p-3 text-sm text-muted-foreground border-t bg-gray-50 dark:bg-gray-700">
+                          <p className="line-clamp-2" title={post.description}>
+                            {post.description || "No description"}
+                          </p>
                         </div>
                       </div>
                     ))}
                   </div>
                 </TabsContent>
-
 
                 <TabsContent value="list">
                   <div className="space-y-4">

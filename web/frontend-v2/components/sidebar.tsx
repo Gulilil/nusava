@@ -13,6 +13,7 @@ import {
   ChevronLeft,
   ChevronRight,
   ImageIcon,
+  User
 } from "lucide-react"
 import Cookies from "js-cookie"
 
@@ -49,6 +50,12 @@ const routes = [
     icon: ImageIcon,
     href: "/posts",
     color: "text-green-500",
+  },
+  {
+    title: "Persona",
+    href: "/persona",
+    icon: User,
+    color: "text-yellow-500",
   },
 ]
 
