@@ -10,10 +10,10 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Alert, AlertDescription } from "@/components/ui/alert"
-import Cookies from "js-cookie";
+import Cookies from "@/node_modules/@types/js-cookie";
 import axios from "axios";
 
-const API = process.env.NEXT_PUBLIC_API_BASE_URL; 
+const API = process.env.NEXT_PUBLIC_API_BASE_URL;
 
 export default function LoginPage() {
   const router = useRouter()
