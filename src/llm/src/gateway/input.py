@@ -1,19 +1,30 @@
 from flask import Flask, request, jsonify
+import os
+from dotenv import load_dotenv
+load_dotenv()
+
 
 class InputGateway():
-
-  def __init__(self, agent):
+  """
+  Input gateway for other module
+  """
+  def __init__(self, 
+               agent, 
+               host : str = os.getenv("LLM_MODULE_HOST"), 
+               port : str = os.getenv("LLM_MODULE_PORT")):
     """
     Instantiate Flask as the framework for the API and the gateway
     """
     self.app = Flask(__name__)
     self.agent = agent
-    self.host = "0.0.0.0"
-    self.port = 7000
+    self.host = host
+    self.port = port
     self.setup_routes()
     
 
-  def _check_data_validity(self, data: dict, fields_to_check : list) -> bool:
+  def _check_data_validity(self, 
+                           data: dict, 
+                           fields_to_check : list) -> bool:
     """
     Check validity of the data, making sure that the data and the fields inside the data are not empty
     """
@@ -137,31 +148,33 @@ class InputGateway():
       Respond to post input from dashboard, will be scheduled
       Field format : 
       {
+        image_url: str, 
         image_description: str, 
         caption_keywords : list[str]
       }
       """
       try:
         data = request.get_json()
-        is_valid, error_message = self._check_data_validity(data, ["image_description", "caption_keywords"])
+        is_valid, error_message = self._check_data_validity(data, ["image_url", "image_description", "caption_keywords"])
         if (not is_valid):
           return jsonify({"error": error_message}), 400
         
         # Proceed to process
+        img_url = data['image_url']
         img_description = data['image_description']
         caption_keywords = data['caption_keywords']
-        response = self.agent.action_post(img_description, caption_keywords)
-        return jsonify({"response": response}), 200
+        # Process and schedule the action post
+        self.agent.action_post(img_url, img_description, caption_keywords)
+
+        return jsonify({"response": True}), 200
       except Exception as error: 
         return jsonify({"error": str(error)}), 400
     
 
-  def run(self, host : str = None, port: int = None):
+  def run(self):
     """
     Run the system in specific ip and port 
     """
-    used_host = self.host if host is None else host
-    used_port = self.port if port is None else port
-    self.app.run(host=used_host, port=used_port)
+    self.app.run(host=self.host, port=self.port)
 
   
