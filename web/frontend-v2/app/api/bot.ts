@@ -20,54 +20,6 @@ export interface BotStatus {
   currentTask: string | null
 }
 
-// Mock API functions
-export async function getBotStatus(): Promise<BotStatus> {
-  return {
-    isActive: true,
-    lastActive: new Date().toISOString(),
-    currentTask: "Liking posts from @travel_lover",
-  }
-}
-
-export async function getBotConfig(): Promise<BotConfig> {
-  return {
-    likesPerDay: 50,
-    followsPerDay: 20,
-    commentsPerDay: 10,
-    targetAccounts: ["@fashion", "@travel", "@food"],
-    activeHours: "9:00 AM - 6:00 PM",
-  }
-}
-
-export async function updateBotConfig(config: Partial<BotConfig>): Promise<BotConfig> {
-  // In a real app, this would update the config in a database
-  console.log("Updating bot config:", config)
-  return {
-    ...(await getBotConfig()),
-    ...config,
-  }
-}
-
-export async function startBot(): Promise<BotStatus> {
-  // In a real app, this would start the bot
-  console.log("Starting bot")
-  return {
-    isActive: true,
-    lastActive: new Date().toISOString(),
-    currentTask: "Starting up...",
-  }
-}
-
-export async function stopBot(): Promise<BotStatus> {
-  // In a real app, this would stop the bot
-  console.log("Stopping bot")
-  return {
-    isActive: false,
-    lastActive: new Date().toISOString(),
-    currentTask: null,
-  }
-}
-
 const token = localStorage.getItem("jwtToken");
 
 export const getBotPosts = async () => {

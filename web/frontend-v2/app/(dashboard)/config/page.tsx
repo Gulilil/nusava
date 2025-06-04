@@ -6,20 +6,15 @@ import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { Slider } from "@/components/ui/slider"
 import { toast } from "sonner"
+import { ConfigData } from "@/types/types"
 
-interface ConfigData {
-  temperature: number
-  top_k: number
-  max_token: number
-  max_iterations: number 
-}
 const API = process.env.NEXT_PUBLIC_API_BASE_URL;
 
 export default function ConfigPage() {
   const [temperature, setTemperature] = useState<number>(0.3)
   const [topK, setTopK] = useState<number>(10)
   const [maxToken, setMaxToken] = useState<number>(4096)
-  const [maxIterations, setMaxIterations] = useState<number>(10)
+  const [maxIteration, setMaxIteration] = useState<number>(10)
   const [loading, setLoading] = useState<boolean>(true)
   const [saving, setSaving] = useState<boolean>(false)
 
@@ -50,7 +45,7 @@ export default function ConfigPage() {
         setTemperature(data.temperature)
         setTopK(data.top_k)
         setMaxToken(data.max_token)
-        setMaxIterations(data.max_iterations)
+        setMaxIteration(data.max_iteration)
       } else {
         toast.error("Failed to load configuration")
       }
@@ -75,7 +70,7 @@ export default function ConfigPage() {
         temperature: temperature,
         top_k: topK,
         max_token: maxToken,
-        max_iterations: maxIterations,
+        max_iteration: maxIteration,
       }
 
       const response = await fetch(`${API}/config/`, {
@@ -180,7 +175,7 @@ export default function ConfigPage() {
                 max={4096}
                 className="w-24"
               />
-              <span className="text-sm text-muted-foreground">Default: 512</span>
+              <span className="text-sm text-muted-foreground">Default: 4096</span>
             </div>
           </CardContent>
         </Card>
@@ -196,7 +191,7 @@ export default function ConfigPage() {
             <div className="flex items-center space-x-4">
               <Input
                 type="number"
-                value={maxIterations}
+                value={maxIteration}
                 onChange={(e) => setMaxToken(Number(e.target.value))}
                 min={1}
                 max={10}

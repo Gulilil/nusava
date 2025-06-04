@@ -5,7 +5,6 @@ __pycache__/
 *.pyd
 *.env
 .env
-.env.*
 db.sqlite3
 media/
 *.sqlite3
@@ -30,7 +29,6 @@ frontend/node_modules/
 frontend/dist/
 frontend/.vite/
 frontend/.env
-frontend/.env.*
 
 # === OS / Editor Stuff ===
 .DS_Store
