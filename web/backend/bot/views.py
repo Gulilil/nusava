@@ -288,11 +288,10 @@ def bot_configuration(request):
     config, created = Configuration.objects.get_or_create(
         user=user,
         defaults={
-            'system_prompt': '',
-            'style': '',
+            'max_iteration': 10,
             'temperature': 0.3,
-            'top_k': 5,
-            'max_token': 512
+            'top_k': 10,
+            'max_token': 4096
         }
     )
     

@@ -16,13 +16,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Plus, Search, Trash2 } from "lucide-react";
 import { getBotPosts } from "@/app/api/bot";
 import { useRouter } from 'next/navigation';
-
-type Post = {
-  id: string;
-  shortcode: string;
-  username: string;
-  description: string;
-};
+import { Post } from "@/types/types";
 
 export default function PostsPage() {
   const [posts, setPosts] = useState<Post[] | null>(null); // Allow null initial state
@@ -54,7 +48,6 @@ export default function PostsPage() {
     return () => clearInterval(intervalId);
   }, []);
 
-  const [newPostUrl, setNewPostUrl] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
 
   const handleDeletePost = (id: string) => {

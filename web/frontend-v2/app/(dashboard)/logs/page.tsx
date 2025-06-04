@@ -9,24 +9,7 @@ import { Button } from "@/components/ui/button"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Heart, MessageCircle, UserPlus, Clock, CheckCircle2, XCircle, Settings, RefreshCw } from "lucide-react"
 import { useState, useEffect } from "react"
-
-interface ActionLog {
-  id: number
-  username: string
-  action_type: string
-  target: string
-  status: string
-  message: string
-  timestamp: string
-}
-
-interface PaginationInfo {
-  current_page: number
-  total_pages: number
-  total_count: number
-  has_next: boolean
-  has_previous: boolean
-}
+import { ActionLog, PaginationInfo } from "@/types/types"
 
 export default function LogsPage() {
   const [logs, setLogs] = useState<ActionLog[]>([])
@@ -149,8 +132,8 @@ export default function LogsPage() {
                   className="max-w-sm"
                 />
               </div>
-              <Select 
-                value={filters.status} 
+              <Select
+                value={filters.status}
                 onValueChange={(value) => setFilters(prev => ({ ...prev, status: value, page: 1 }))}
               >
                 <SelectTrigger className="max-w-sm">
@@ -175,7 +158,7 @@ export default function LogsPage() {
             <TabsTrigger value="table">Table View</TabsTrigger>
             <TabsTrigger value="detailed">Detailed View</TabsTrigger>
           </TabsList>
-          
+
           <TabsContent value="table" className="space-y-4">
             <Card>
               <CardHeader>

@@ -4,7 +4,7 @@ from .models import Configuration, ActionLog
 class ConfigurationSerializer(serializers.ModelSerializer):
     class Meta:
         model = Configuration
-        fields = ['system_prompt', 'style', 'temperature', 'top_k', 'max_token']
+        fields = ['temperature', 'top_k', 'max_token', 'max_iteration']
         
     def validate_temperature(self, value):
         if not 0 <= value <= 1:
@@ -19,6 +19,11 @@ class ConfigurationSerializer(serializers.ModelSerializer):
     def validate_max_token(self, value):
         if not 1 <= value <= 4096:
             raise serializers.ValidationError("Max tokens must be between 1 and 4096.")
+        return value
+    
+    def validate_max_iteration(self, value):
+        if not 1 <= value <= 100:
+            raise serializers.ValidationError("Max iterations must be between 1 and 100.")
         return value
 
 class ActionLogSerializer(serializers.ModelSerializer):

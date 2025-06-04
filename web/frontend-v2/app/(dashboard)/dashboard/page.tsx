@@ -8,23 +8,7 @@ import { ArrowUpRight, Heart, MessageCircle, UserPlus, Clock, CheckCircle2, XCir
 import { useEffect, useState } from "react"
 import { Button } from "@/components/ui/button"
 import Link from "next/link"
-interface ActionLog {
-  id: number
-  username: string
-  action_type: string
-  target: string
-  status: string
-  message: string
-  timestamp: string
-}
-
-interface ConfigData {
-  system_prompt: string
-  style: string
-  temperature: number
-  top_k: number
-  max_token: number
-}
+import { ActionLog, ConfigData } from "@/types/types"
 
 const API = process.env.NEXT_PUBLIC_API_BASE_URL
 
@@ -240,12 +224,6 @@ export default function Dashboard() {
                 ) : botConfig ? (
                   <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
                     <div>
-                      <h3 className="font-medium">Style</h3>
-                      <p className="text-sm text-muted-foreground">
-                        {botConfig.style || 'Not configured'}
-                      </p>
-                    </div>
-                    <div>
                       <h3 className="font-medium">Temperature</h3>
                       <p className="text-sm text-muted-foreground">
                         {botConfig.temperature} (Creativity level)
@@ -262,11 +240,11 @@ export default function Dashboard() {
                       <p className="text-sm text-muted-foreground">
                         {botConfig.max_token} (Response length limit)
                       </p>
-                    </div>
-                    <div className="md:col-span-2">
-                      <h3 className="font-medium">System Prompt</h3>
-                      <p className="text-sm text-muted-foreground truncate">
-                        {botConfig.system_prompt || 'No system prompt configured'}
+                      </div>
+                      <div>
+                      <h3 className="font-medium">Max Iterations</h3>
+                      <p className="text-sm text-muted-foreground">
+                        {botConfig.max_iteration} (Iteration limit)
                       </p>
                     </div>
                   </div>

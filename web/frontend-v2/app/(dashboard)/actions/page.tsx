@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
 import React, { useState } from "react";
@@ -13,6 +14,7 @@ import { toast } from 'sonner';
 import { Heart, UserPlus, MessageCircle, ImageIcon, Share2, Search, Send } from "lucide-react";
 
 import { likePost, followUser, commentPost, postPhoto, sharePost } from "@/app/api/bot";
+import Image from "next/image";
 
 export default function ActionsPage() {
   // Like
@@ -190,7 +192,7 @@ export default function ActionsPage() {
               <CardContent>
                 <Label htmlFor="post-image">Upload Image</Label>
                 <Input id="post-image" type="file" accept="image/*" onChange={handleImageChange} />
-                {previewUrl && <img src={previewUrl} alt="Preview" className="my-2 h-32 rounded-lg" />}
+                {previewUrl && <Image src={previewUrl} alt="Preview" className="my-2 h-32 rounded-lg" />}
                 <Label htmlFor="post-caption" className="mt-2">Caption</Label>
                 <Textarea id="post-caption" value={postCaption} onChange={e => setPostCaption(e.target.value)} placeholder="Write your caption here..." />
               </CardContent>
