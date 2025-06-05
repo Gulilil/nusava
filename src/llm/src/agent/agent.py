@@ -1,5 +1,6 @@
 from agent.model import Model
 from agent.persona import Persona
+from agent.memory import Memory
 from connector.pinecone import PineconeConnector
 from connector.mongo import MongoConnector
 from connector.postgres import PostgresConnector
@@ -7,6 +8,8 @@ from evaluator.evaluator import Evaluator
 from gateway.input import InputGateway
 from gateway.output import OutputGateway
 from generator.prompt import PromptGenerator
+from generator.action import ActionGenerator
+from generator.schedule import ScheduleGenerator
 from utils.function import json_to_string_list, text_to_document, parse_documents
 
 class Agent():
@@ -130,9 +133,12 @@ class Agent():
     return
 
 
-  ##### ACTION #####
+  ######## ACTION ########
 
-  def action_reply_chat(self, user_query: str):
+  ######## EXTERNAL TRIGGER ACTION ########
+
+  def action_reply_chat(self, 
+                        chat_message: str):
     """
     Operate the action reply chat
     """
@@ -145,29 +151,60 @@ class Agent():
       vector_store, 
       storage_context, 
       namespace_name,
-      user_query)
+      chat_message)
 
     # Generate prompt
     prompt = self.prompt_generator_component.generate_prompt_reply_chat(
-      new_message=user_query,
+      new_message=chat_message,
       previous_messages=None)
     return self.model_component.answer(prompt)
 
 
-  def action_reply_comment(self, comment_message: str, post_caption: str, previous_comments: list[str]):
+  def action_reply_comment(self, 
+                           comment_message: str, 
+                           post_caption: str, 
+                           previous_comments: list[str]):
     """
     Operate the action reply comment
     """
     # TODO
     return
   
+  ######## INTERNAL TRIGGER ACTION ########
 
-  def action_post(self, img_description: str, caption_keywords: list[str]):
+  def action_follow(self):
+    """
+    Operate the action follow
+    """
+    # TODO
+    return
+
+
+  def action_like(self):
+    """
+    Operate the action like
+    """
+    # TODO
+    return
+
+
+  def action_comment(self):
+    """
+    Operate the action comment
+    """
+    # TODO 
+    return
+
+
+  def action_post(self, 
+                  img_url: str, 
+                  img_description: str, 
+                  caption_keywords: list[str]):
     """
     Operate the action post
     """
     # TODO To be improved
-
+    
     # # Generate prompt
     prompt = self.prompt_generator_component.generate_prompt_post_caption(
       img_description=img_description,
@@ -175,5 +212,8 @@ class Agent():
       additional_context=None,
       examples= None
       )
-    print(prompt)
-    return self.model_component.answer(prompt, True)
+    
+    caption_message = self.model_component.answer(prompt, True)
+
+    # TODO Schedule the post
+    print(caption_message)
