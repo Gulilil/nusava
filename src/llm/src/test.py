@@ -2,9 +2,9 @@ from agent.agent import Agent
 
 if __name__ == "__main__":
   nusava = Agent()
-  nusava.run() # To run on Flask
+  # nusava.run() # To run on Flask
 
-  # nusava.set_user("luca_bennett")
+  nusava.set_user("luca_bennett")
   # nusava.set_user("isabella_rivera")
 
   # nusava.process_data_hotel()
@@ -15,3 +15,6 @@ if __name__ == "__main__":
   # answer = nusava.action_chat("Summarize me some reveiews of Tanto Hotel")
 
   # print(answer)
+
+  # Test decision maker
+  
