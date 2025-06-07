@@ -1,6 +1,5 @@
 from agent.model import Model
 from agent.persona import Persona
-from agent.memory import Memory
 from connector.pinecone import PineconeConnector
 from connector.mongo import MongoConnector
 from connector.postgres import PostgresConnector
@@ -10,6 +9,8 @@ from gateway.output import OutputGateway
 from generator.prompt import PromptGenerator
 from generator.action import ActionGenerator
 from generator.schedule import ScheduleGenerator
+from memory.episodic import EpisodicMemory
+from memory.semantic import SemanticMemory
 from utils.function import json_to_string_list, text_to_document, parse_documents
 
 class Agent():

@@ -29,12 +29,14 @@ class ActionGenerator:
         model = hmm.MultinomialHMM(n_components=len(self.hidden_states), n_iter=100, random_state=42)
         # Define starting probability
         model.startprob_ = np.array([0.25, 0.25, 0.25, 0.25])
+        # Define transition matrix
         model.transmat_ = np.array([
             [0.6, 0.2, 0.1, 0.1],
             [0.2, 0.5, 0.2, 0.1],
             [0.1, 0.2, 0.6, 0.1],
             [0.2, 0.2, 0.2, 0.4]
         ])
+        # Define emission probability
         model.emissionprob_ = np.array([
             [0.1, 0.6, 0.2, 0.1],  # growth
             [0.2, 0.1, 0.5, 0.2],  # engagement
