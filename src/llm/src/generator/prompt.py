@@ -133,6 +133,8 @@ class PromptGenerator():
     example_subprompt = self.generate_subprompt_example(examples)
     additional_subprompt =  "Only answer the text caption without any explanation text. " \
                             "Return the answer in string format without any quotation (\") symbol."
+    if (additional_context is not None):
+      additional_subprompt += f" Here are some additional context: {additional_context}"
     query_str = "Make a caption for Instagram post based on the context"
 
     return self.prompt_template.format(persona_subprompt=persona_subprompt,

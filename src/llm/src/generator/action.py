@@ -50,13 +50,14 @@ class ActionGenerator:
         return observations
 
 
-    def decide_action(self, conditions: list = []) -> str:
+    def decide_action(self, observations: list, iteration: int) -> str:
         """
         Function to decide action.
         Returns one of: 'like', 'follow', 'comment', None
+
+        The more iteration, the more likely to be in idle state
         """
         try:
-          observations = self._observe_conditions(conditions)
           # Map observations to integers
           obs_to_idx = {obs: idx for idx, obs in enumerate(self.observation_symbols)}
           obs_idx = [obs_to_idx[o] for o in observations]
@@ -68,9 +69,9 @@ class ActionGenerator:
           model.startprob_ = np.array([0.35, 0.35, 0.30])
           # Define transition matrix
           model.transmat_ = np.array([
-              [0.6, 0.3, 0.1],  # growth
-              [0.2, 0.6, 0.2],  # engagement
-              [0.3, 0.3, 0.4]   # idle
+              [0.5, 0.4, 0.1],  # growth
+              [0.3, 0.6, 0.1],  # engagement
+              [0.4, 0.4, 0.2]   # idle
           ])
           # Define emission probability
           model.emissionprob_ = np.array([
@@ -83,7 +84,6 @@ class ActionGenerator:
 
           # Predict hidden states from observation sequence
           state_sequence = model.predict(obs_sequence)
-          print(state_sequence)
           current_state = self.hidden_states[state_sequence[-1]]
 
           # Define simplified action policies
@@ -94,10 +94,6 @@ class ActionGenerator:
           }
           possible_actions = state_action_map[current_state]
           chosen_action = random.choice(possible_actions)
-
-          # Output
-          print("Current State:", current_state)
-          print("Chosen Action:", chosen_action)
           return chosen_action, current_state
         
         except Exception as e:

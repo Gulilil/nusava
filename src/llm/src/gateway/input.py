@@ -163,8 +163,9 @@ class InputGateway():
         img_url = data['image_url']
         img_description = data['image_description']
         caption_keywords = data['caption_keywords']
+        additional_context = data.get('additional_context', None)
         # Process and schedule the action post
-        self.agent.action_post(img_url, img_description, caption_keywords)
+        self.agent.action_post(img_url, img_description, caption_keywords, additional_context)
 
         return jsonify({"response": True}), 200
       except Exception as error: 

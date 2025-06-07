@@ -21,9 +21,21 @@ logging>=0.4.9.6
 # LLM
 llama_index==0.12.40
 Flask==3.1.1
+hmmlearn==0.3.3
 
 # Mongodb
 pymongo==4.13.0
 
 # Env loader
 python-dotenv==1.1.0
+environ==1.0
+
+# Numpy 
+numpy==1.23.5
+
+# JWT
+PyJWT==2.10.1
+rest_framework_simplejwt==0.0.2
+
+# Requests
+Requests==2.32.3

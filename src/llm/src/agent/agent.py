@@ -91,20 +91,19 @@ class Agent():
     """
     statistics = self.output_gateway_component.request_statistics(self.user_id)
     observations = self.action_generator_component.observe_statistics(statistics)
+    print(f"[ACTION OBSERVATION] Acquired observations: {observations}")
 
     # Max 5 times of action decision
-    for i in range(5):
-      action, state = self.action_generator_component.decide_action(observations)
-      print(f"[DECISION] Action {i+1}: {action} in state {state}")
+    for itr in range(5):
+      action, state = self.action_generator_component.decide_action(observations, itr)
+      print(f"[ACTION DECISION] {itr+1}.  action \"{action}\" in state \"{state}\"")
 
       if (action == "like"):
         self.action_like()
       elif (action == "follow"):
         self.action_follow()
       elif (action == "comment"):
-        # TODO To be improved
-        comment_message = "This is a comment"
-        self.action_comment(comment_message)
+        self.action_comment()
       else:
         return
       
@@ -226,7 +225,8 @@ class Agent():
   def action_post(self, 
                   img_url: str, 
                   img_description: str, 
-                  caption_keywords: list[str]):
+                  caption_keywords: list[str],
+                  additional_context: str = None):
     """
     Operate the action post
     """
@@ -236,7 +236,7 @@ class Agent():
     prompt = self.prompt_generator_component.generate_prompt_post_caption(
       img_description=img_description,
       keywords=caption_keywords,
-      additional_context=None,
+      additional_context=additional_context,
       examples= None
       )
     
