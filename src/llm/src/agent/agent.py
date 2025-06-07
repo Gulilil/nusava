@@ -34,7 +34,7 @@ class Agent():
     self.postgres_connector_component = PostgresConnector()
     print("[AGENT INITIALIZED] Connector component(s) initialized")
     # Instantiate Evaluator
-    self.evaluator_component = Evaluator(self.model_component.llm_model)
+    self.evaluator_component = Evaluator(self.model_component)
     print("[AGENT INITIALIZED] Evaluator component(s) initialized")
     # Instantiate Gateway
     self.input_gateway_component = InputGateway(self)
@@ -163,8 +163,7 @@ class Agent():
 
   ######## EXTERNAL TRIGGER ACTION ########
 
-  def action_reply_chat(self, 
-                        chat_message: str):
+  def action_reply_chat(self, chat_message: str):
     """
     Operate the action reply chat
     """

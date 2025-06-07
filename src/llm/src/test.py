@@ -9,14 +9,14 @@ if __name__ == "__main__":
 
   # nusava.process_data_hotel()
 
-  # answer = nusava.action_chat("Give me general informations and facilities of Tanto hotel.")
-  # answer = nusava.action_chat("Give me your 5 recommended Hotels and their locations.")
-  # answer = nusava.action_chat("Tell me the location of Tanto Hotel")
-  # answer = nusava.action_chat("Summarize me some reveiews of Tanto Hotel")
+  # # Test action chat
+  # answer = nusava.action_reply_chat("Give me general informations and facilities of Tanto hotel.")
+  # answer = nusava.action_reply_chat("Give me your 5 recommended Hotels and their locations.")
+  # answer = nusava.action_reply_chat("Tell me the location of Tanto Hotel")
+  answer = nusava.action_reply_chat("Summarize me some reveiews of Tanto Hotel")
+  print(answer)
 
-  # print(answer)
-
-  # Test decision maker
-  for i in range(3):
-    nusava.decide_action()
+  # # Test decision maker
+  # for i in range(3):
+  #   nusava.decide_action()
 
