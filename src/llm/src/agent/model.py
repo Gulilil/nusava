@@ -97,19 +97,23 @@ class Model():
       self._setup_agent(query_engine, topic, query)
 
 
-  def answer(self, prompt: str, is_direct: bool = False) -> str:
+  def answer(self, prompt: str, is_direct: bool = False):
     """
-    Answer the prompt using the agentic system
+    Answer the prompt using the llm_model or agentic system
+    If is_direct is True, it will use the llm_model directly.
     """
     try:
       if (is_direct):
          result = self.llm_model.complete(prompt).text
+         return result, None
       else:
-        result = self._agent.query(prompt).response
-      return result
+        response = self._agent.query(prompt, return_source=True).response
+        result = response.response
+        contexts = [node.node.text for node in response.source_nodes]
+      return result, contexts
     
-    except ValueError as e:
-       return "I'm sorry, I was unable to answer your question after several attempts. Could you please rephrase or try a simpler version?"
+    except Exception as e:
+       return "I'm sorry, I was unable to answer your question after several attempts. Could you please rephrase or try a simpler version?", None
   
 
   def refresh_tools(self):

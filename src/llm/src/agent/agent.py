@@ -151,7 +151,7 @@ class Agent():
       # Increment idx
       idx += length_per_batch
 
-  # TODO
+  # TODO Wait for later data mining process
   def process_data_xxxx(self):
     """
     Process data xxxx, "migrate" it from mongodb document to pinecone vector
@@ -183,7 +183,11 @@ class Agent():
     prompt = self.prompt_generator_component.generate_prompt_reply_chat(
       new_message=chat_message,
       previous_messages=None)
-    return self.model_component.answer(prompt)
+    
+    answer, contexts = self.model_component.answer(prompt)
+    evaluation_result = self.evaluator_component.evaluate(chat_message, answer, contexts)
+    print(f"[EVALUATION RESULT]\n {evaluation_result}")
+    return answer
 
 
   def action_reply_comment(self, 
@@ -240,7 +244,8 @@ class Agent():
       examples= None
       )
     
-    caption_message = self.model_component.answer(prompt, True)
+    # # Generate caption message
+    caption_message, _ = self.model_component.answer(prompt, True)
 
     # TODO Schedule the post
     print(caption_message)
