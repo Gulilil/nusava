@@ -25,7 +25,7 @@ class ActionGenerator:
         """
         observations = []
         # TODO Check for engagement observations
-        # Engagement based
+        # # Engagement based
         # if (...):
         #     observations.append("new_message")
         # if (...):
@@ -34,18 +34,19 @@ class ActionGenerator:
         #     observations.append("new_follower")
         # if (...):
         #     observations.append("post_liked")
-        engagement_observations = HMM_OBSERVATION_LIST[:4]  
-        n = random.randint(0, 3)
-        observations = random.sample(engagement_observations, n) if n > 0 else []
+        # # Time based
+        # hour = datetime.now().hour
+        # if 5 <= hour < 12:
+        #     observations.append("morning_time")
+        # elif 12 <= hour < 18:
+        #     observations.append("afternoon_time")
+        # else:
+        #     observations.append("evening_time")
 
-        # Time based
-        hour = datetime.now().hour
-        if 5 <= hour < 12:
-            observations.append("morning_time")
-        elif 12 <= hour < 18:
-            observations.append("afternoon_time")
-        else:
-            observations.append("evening_time")
+        # TODO To Be Removed if the logic is implemented
+        n = random.randint(1, 4)
+        observations = random.sample(HMM_OBSERVATION_LIST[:4], n)
+        observations.append(random.choice(HMM_OBSERVATION_LIST[4:]))  # Add one time observation
 
         return observations
 
@@ -66,12 +67,16 @@ class ActionGenerator:
           # Build and train the HMM
           model = CategoricalHMM(n_components=len(self.hidden_states), n_iter=100, random_state=42)
           # Define starting probability
-          model.startprob_ = np.array([0.35, 0.35, 0.30])
+          model.startprob_ = np.array([0.40, 0.40, 0.2])
+
+          # Increase idle probability with iterations
+          idle_addition_prob = (0.1 * iteration)  
+
           # Define transition matrix
           model.transmat_ = np.array([
-              [0.5, 0.4, 0.1],  # growth
-              [0.3, 0.6, 0.1],  # engagement
-              [0.4, 0.4, 0.2]   # idle
+              [(0.9 - idle_addition_prob) * 5/9 , (0.9 - idle_addition_prob) * 4/9  , 0.1 + idle_addition_prob],  # growth
+              [(0.9 - idle_addition_prob) * 3/9 , (0.9 - idle_addition_prob) * 6/9  , 0.1 + idle_addition_prob],  # engagement
+              [(1.0 - idle_addition_prob) / 2   , (1.0 - idle_addition_prob) / 2    , 0.0 + idle_addition_prob]   # idle
           ])
           # Define emission probability
           model.emissionprob_ = np.array([
@@ -88,7 +93,7 @@ class ActionGenerator:
 
           # Define simplified action policies
           state_action_map = {
-              'growth': ['follow', 'like'],
+              'growth': ['follow'],
               'engagement': ['comment', 'like'],
               'idle': ['like', None] 
           }

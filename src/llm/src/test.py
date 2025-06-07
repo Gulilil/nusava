@@ -17,7 +17,6 @@ if __name__ == "__main__":
   # print(answer)
 
   # Test decision maker
-  nusava.decide_action()
-  nusava.decide_action()
-  nusava.decide_action()
+  for i in range(3):
+    nusava.decide_action()
 
