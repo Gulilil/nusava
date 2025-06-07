@@ -1,64 +1,105 @@
 import numpy as np
 import random
-from hmmlearn import hmm
+from hmmlearn.hmm import CategoricalHMM
+from utils.constant import HMM_HIDDEN_STATES, HMM_OBSERVATION_LIST
+from datetime import datetime
 
 class ActionGenerator:
     """
     Component that generates which action to do for the agent.
-    Possible actions: 'like', 'follow', 'comment'
+    Possible actions: 'like', 'follow', 'comment', 'none'
     """
 
     def __init__(self):
         """
         Instantiate action generator.
         """
-        self.hidden_states = ['growth', 'engagement', 'support', 'idle']
-        self.observation_symbols = ['high_inbox', 'new_follower', 'low_engagement', 'high_activity_time']
+        self.hidden_states = HMM_HIDDEN_STATES
+        self.observation_symbols = HMM_OBSERVATION_LIST
 
-    def decide_action(self):
+    
+    def observe_statistics(self, statistics: dict) -> list:
+        """
+        Function to observe statistics.
+        Returns a list of observations based on the statistics.
+        """
+        observations = []
+        # TODO Check for engagement observations
+        # Engagement based
+        # if (...):
+        #     observations.append("new_message")
+        # if (...):
+        #     observations.append("new_comment")
+        # if (...):
+        #     observations.append("new_follower")
+        # if (...):
+        #     observations.append("post_liked")
+        engagement_observations = HMM_OBSERVATION_LIST[:4]  
+        n = random.randint(0, 3)
+        observations = random.sample(engagement_observations, n) if n > 0 else []
+
+        # Time based
+        hour = datetime.now().hour
+        if 5 <= hour < 12:
+            observations.append("morning_time")
+        elif 12 <= hour < 18:
+            observations.append("afternoon_time")
+        else:
+            observations.append("evening_time")
+
+        return observations
+
+
+    def decide_action(self, conditions: list = []) -> str:
         """
         Function to decide action.
-        Returns one of: 'like', 'follow', 'comment'
+        Returns one of: 'like', 'follow', 'comment', None
         """
-        # Map observations to integers
-        obs_to_idx = {obs: idx for idx, obs in enumerate(self.observation_symbols)}
-        observations = [obs_to_idx[o] for o in ['new_follower', 'high_inbox', 'low_engagement', 'high_activity_time']]
-        obs_sequence = np.array(observations).reshape(-1, 1)
+        try:
+          observations = self._observe_conditions(conditions)
+          # Map observations to integers
+          obs_to_idx = {obs: idx for idx, obs in enumerate(self.observation_symbols)}
+          obs_idx = [obs_to_idx[o] for o in observations]
+          obs_sequence = np.array(obs_idx).reshape(-1, 1)
 
-        # Build and train the HMM
-        model = hmm.MultinomialHMM(n_components=len(self.hidden_states), n_iter=100, random_state=42)
-        # Define starting probability
-        model.startprob_ = np.array([0.25, 0.25, 0.25, 0.25])
-        # Define transition matrix
-        model.transmat_ = np.array([
-            [0.6, 0.2, 0.1, 0.1],
-            [0.2, 0.5, 0.2, 0.1],
-            [0.1, 0.2, 0.6, 0.1],
-            [0.2, 0.2, 0.2, 0.4]
-        ])
-        # Define emission probability
-        model.emissionprob_ = np.array([
-            [0.1, 0.6, 0.2, 0.1],  # growth
-            [0.2, 0.1, 0.5, 0.2],  # engagement
-            [0.6, 0.1, 0.1, 0.2],  # support
-            [0.3, 0.2, 0.1, 0.4]   # idle
-        ])
+          # Build and train the HMM
+          model = CategoricalHMM(n_components=len(self.hidden_states), n_iter=100, random_state=42)
+          # Define starting probability
+          model.startprob_ = np.array([0.35, 0.35, 0.30])
+          # Define transition matrix
+          model.transmat_ = np.array([
+              [0.6, 0.3, 0.1],  # growth
+              [0.2, 0.6, 0.2],  # engagement
+              [0.3, 0.3, 0.4]   # idle
+          ])
+          # Define emission probability
+          model.emissionprob_ = np.array([
+                # new_msg, new_com, new_fol, liked, morning, afternoon, evening
+                [0.1,     0.2,     0.3,     0.2,    0.05,    0.1,       0.05],   # growth
+                [0.2,     0.3,     0.2,     0.1,    0.1,     0.05,      0.05],   # engagement
+                [0.1,     0.1,     0.1,     0.1,    0.2,     0.2,       0.2],    # idle
+            ])
 
-        # Predict hidden states from observation sequence
-        state_sequence = model.predict(obs_sequence)
-        current_state = self.hidden_states[state_sequence[-1]]
 
-        # Define simplified action policies
-        state_action_map = {
-            'growth': ['follow', 'like'],
-            'engagement': ['comment', 'like'],
-            'support': ['like'],         # restricted to 'like'
-            'idle': ['like']             # restricted to 'like'
-        }
-        possible_actions = state_action_map[current_state]
-        chosen_action = random.choice(possible_actions)
+          # Predict hidden states from observation sequence
+          state_sequence = model.predict(obs_sequence)
+          print(state_sequence)
+          current_state = self.hidden_states[state_sequence[-1]]
 
-        # Output
-        print("Current State:", current_state)
-        print("Chosen Action:", chosen_action)
-        return chosen_action
+          # Define simplified action policies
+          state_action_map = {
+              'growth': ['follow', 'like'],
+              'engagement': ['comment', 'like'],
+              'idle': ['like', None] 
+          }
+          possible_actions = state_action_map[current_state]
+          chosen_action = random.choice(possible_actions)
+
+          # Output
+          print("Current State:", current_state)
+          print("Chosen Action:", chosen_action)
+          return chosen_action, current_state
+        
+        except Exception as e:
+            print(f"Error in action generation: {e}")
+            return None, None

@@ -37,6 +37,7 @@ class PostgresConnector():
   def get_config_data(self, user_id: str):
     """
     Get persona data based on the user_id
+    Make sure to not change the order of the data returned
     """
     # TODO To be adjusted
     table_name = "config"

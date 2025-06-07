@@ -20,31 +20,38 @@ class Agent():
   
   def __init__(self):
     self.user_id = None
-        # Instantiate Agent Component
+    # Instantiate Agent Component
     self.model_component = Model()
     self.persona_component = Persona()
-    print("[INITIALIZED] Agent component(s) initialized")
+    print("[AGENT INITIALIZED] Agent component(s) initialized")
+    # Instantiate Memory
+    # self.episodic_memory_component = EpisodicMemory()
+    # self.semantic_memory_component = SemanticMemory() 
+    print("[AGENT INITIALIZED] Memory component(s) initialized")
     # Instantiate Connector
     self.pinecone_connector_component = PineconeConnector()
     self.mongo_connector_component = MongoConnector()
     self.postgres_connector_component = PostgresConnector()
-    print("[INITIALIZED] Connector component(s) initialized")
+    print("[AGENT INITIALIZED] Connector component(s) initialized")
     # Instantiate Evaluator
     self.evaluator_component = Evaluator()
-    print("[INITIALIZED] Evaluator component(s) initialized")
+    print("[AGENT INITIALIZED] Evaluator component(s) initialized")
     # Instantiate Gateway
     self.input_gateway_component = InputGateway(self)
     self.output_gateway_component = OutputGateway()
-    print("[INITIALIZED] Gateway component(s) initialized")
+    print("[AGENT INITIALIZED] Gateway component(s) initialized")
     # Instantiate Generator
     self.prompt_generator_component = PromptGenerator(self.persona_component)
-    print("[INITIALIZED] Generator component(s) initialized")
+    self.action_generator_component = ActionGenerator()
+    self.schedule_generator_component = ScheduleGenerator()
+    print("[AGENT INITIALIZED] Generator component(s) initialized")
+
 
 
   ######## SETUP PERSONA/ CONFIG ########
 
   def set_user(self, user_id:str):
-    print(f"[CONSTRUCT] Constructing agent for user_id: {user_id}")
+    print(f"[AGENT CONSTRUCTED] Constructing agent for user_id: {user_id}")
     self.user_id = user_id
 
     # TODO To be adjusted
@@ -57,7 +64,6 @@ class Agent():
     """
     persona_data = self.postgres_connector_component.get_persona_data(self.user_id)
     self.persona_component.load_persona(persona_data)
-    self.persona_component.display_persona()
 
   
   def set_config(self):
@@ -66,22 +72,42 @@ class Agent():
     """
     config_data = self.postgres_connector_component.get_config_data(self.user_id)
     self.model_component.config(config_data)
-    self.model_component.display_config()
 
 
   ######## PUBLIC ########
 
-  def run(self):
+  def run(self) -> None:
+    """
+    Run the agent, this is the main entry point for the agent to start working
+    """
+    print("[AGENT RUN] Agent is running...")
     self.input_gateway_component.run()
 
 
-  def decide_action(self, last_action: str = None, last_action_details: str = None):
+  def decide_action(self) -> None:
     """
-    Decision making function of the system
+    Decide action based on the current conditions and statistics
+    This is the main entry point for the agent to decide what to do next.
     """
-    prompt = self.prompt_generator_component.generate_prompt_decide_action(last_action, last_action_details)
-    answer = self.model_component.answer(prompt, True)
-    return answer
+    statistics = self.output_gateway_component.request_statistics(self.user_id)
+    observations = self.action_generator_component.observe_statistics(statistics)
+
+    # Max 5 times of action decision
+    for i in range(5):
+      action, state = self.action_generator_component.decide_action(observations)
+      print(f"[DECISION] Action {i+1}: {action} in state {state}")
+
+      if (action == "like"):
+        self.action_like()
+      elif (action == "follow"):
+        self.action_follow()
+      elif (action == "comment"):
+        # TODO To be improved
+        comment_message = "This is a comment"
+        self.action_comment(comment_message)
+      else:
+        return
+      
   
 
   def process_data_hotel(self):

@@ -18,6 +18,17 @@ class OutputGateway():
     }
 
 
+  def request_statistics(self, user_id: str):
+    """
+    Hit statistics api in automation module
+    """
+    path = "/statistics"
+    url = f"{self.base_url}{path}"
+    # TODO 
+
+    return
+
+
   def request_follow(self, user_id: str):
     """
     Hit follow api in automation module

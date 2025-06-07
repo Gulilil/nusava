@@ -1,5 +1,4 @@
 from llama_index.core.prompts import PromptTemplate
-from utils.constant import ACTIONS_LIST
 import json
 
 PROMPT_TEMPLATE = """Definition:
