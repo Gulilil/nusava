@@ -1,24 +1,24 @@
-"use client"
+"use client";
 
-import Link from "next/link"
-import { Bell, User, LogOut } from "lucide-react"
-import { ThemeToggle } from "./theme-toggle"
-import Cookies from "@/node_modules/@types/js-cookie"
-import { useRouter } from "next/navigation"
+import Link from "next/link";
+import { Bell, User, LogOut } from "lucide-react";
+import { ThemeToggle } from "./theme-toggle";
+import Cookies from "js-cookie";
+import { useRouter } from "next/navigation";
 
 interface NavbarProps {
-  title: string
+  title: string;
 }
 
 export function Navbar({ title }: NavbarProps) {
-  const router = useRouter()
+  const router = useRouter();
   const handleLogout = () => {
     Cookies.remove("auth");
     localStorage.removeItem("jwtToken");
     localStorage.removeItem("jwtRefresh");
     localStorage.removeItem("igUsername");
-    router.push("/login")
-  }
+    router.push("/login");
+  };
   return (
     <div className="border-b dark:border-gray-800">
       <div className="flex h-16 items-center px-4">
@@ -36,14 +36,23 @@ export function Navbar({ title }: NavbarProps) {
               </div>
             </button>
             <div className="absolute right-0 mt-1 w-48 bg-white dark:bg-gray-900 rounded-md shadow-lg py-1 z-10 hidden group-hover:block">
-              <Link href="/profile" className="block px-4 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-800">
+              <Link
+                href="/profile"
+                className="block px-4 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-800"
+              >
                 Profile
               </Link>
-              <Link href="/settings" className="block px-4 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-800">
+              <Link
+                href="/settings"
+                className="block px-4 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-800"
+              >
                 Settings
               </Link>
               <div className="border-t border-gray-100 dark:border-gray-800"></div>
-              <button className="flex items-center w-full px-4 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-800" onClick={handleLogout}>
+              <button
+                className="flex items-center w-full px-4 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-800"
+                onClick={handleLogout}
+              >
                 <LogOut className="h-4 w-4 mr-2" />
                 Logout
               </button>
@@ -52,5 +61,5 @@ export function Navbar({ title }: NavbarProps) {
         </div>
       </div>
     </div>
-  )
+  );
 }

@@ -1,8 +1,8 @@
-"use client"
+"use client";
 
-import Link from "next/link"
-import { usePathname, useRouter } from "next/navigation"
-import { useState } from "react"
+import Link from "next/link";
+import { usePathname, useRouter } from "next/navigation";
+import { useState } from "react";
 import {
   BarChart3,
   Settings,
@@ -13,11 +13,11 @@ import {
   ChevronLeft,
   ChevronRight,
   ImageIcon,
-  User
-} from "lucide-react"
-import Cookies from "@/node_modules/@types/js-cookie"
+  User,
+} from "lucide-react";
+import Cookies from "js-cookie";
 
-import { cn } from "@/lib/utils"
+import { cn } from "@/lib/utils";
 
 // Navigation routes
 const routes = [
@@ -57,26 +57,26 @@ const routes = [
     icon: User,
     color: "text-yellow-500",
   },
-]
+];
 
 export function Sidebar() {
-  const pathname = usePathname()
-  const router = useRouter()
-  const [collapsed, setCollapsed] = useState(false)
+  const pathname = usePathname();
+  const router = useRouter();
+  const [collapsed, setCollapsed] = useState(false);
 
   const handleLogout = () => {
     Cookies.remove("auth");
     localStorage.removeItem("jwtToken");
     localStorage.removeItem("jwtRefresh");
     localStorage.removeItem("igUsername");
-    router.push("/login")
-  }
+    router.push("/login");
+  };
 
   return (
     <div
       className={cn(
         "sticky top-0 h-screen py-4 flex flex-col bg-slate-900 text-white transition-all duration-300",
-        collapsed ? "w-20" : "w-64",
+        collapsed ? "w-20" : "w-64"
       )}
     >
       {/* Toggle button */}
@@ -89,7 +89,13 @@ export function Sidebar() {
 
       <div className="px-3 py-2 flex-1">
         {/* Logo */}
-        <Link href="/" className={cn("flex items-center pl-3 mb-10", collapsed ? "justify-center" : "")}>
+        <Link
+          href="/"
+          className={cn(
+            "flex items-center pl-3 mb-10",
+            collapsed ? "justify-center" : ""
+          )}
+        >
           <div className="relative w-8 h-8 mr-4">
             <Instagram className="h-8 w-8 text-pink-600" />
           </div>
@@ -104,11 +110,15 @@ export function Sidebar() {
               href={route.href}
               className={cn(
                 "text-sm group flex p-3 w-full justify-start font-medium cursor-pointer hover:text-white hover:bg-white/10 rounded-lg transition",
-                pathname === route.href ? "text-white bg-white/10" : "text-zinc-400",
-                collapsed ? "justify-center" : "",
+                pathname === route.href
+                  ? "text-white bg-white/10"
+                  : "text-zinc-400",
+                collapsed ? "justify-center" : ""
               )}
             >
-              <route.icon className={cn("h-5 w-5", route.color, collapsed ? "" : "mr-3")} />
+              <route.icon
+                className={cn("h-5 w-5", route.color, collapsed ? "" : "mr-3")}
+              />
               {!collapsed && route.title}
             </Link>
           ))}
@@ -121,7 +131,7 @@ export function Sidebar() {
           onClick={handleLogout}
           className={cn(
             "w-full text-zinc-400 hover:text-white hover:bg-white/10 p-3 rounded-lg flex items-center",
-            collapsed ? "justify-center" : "",
+            collapsed ? "justify-center" : ""
           )}
         >
           <LogOut className="h-5 w-5 text-red-500" />
@@ -129,5 +139,5 @@ export function Sidebar() {
         </button>
       </div>
     </div>
-  )
+  );
 }

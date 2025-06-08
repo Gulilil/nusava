@@ -48,6 +48,9 @@ def login_bot(request):
         # Try existing user session login
         try:
             user = User.objects.get(username=username)
+
+            # TODO Transfer user.id to LLM api to get persona
+            
             if not user.check_password(password):
                 return Response({"status": "error", "message": "Incorrect password"}, status=400)
             

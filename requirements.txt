@@ -16,7 +16,7 @@ requests>=2.31.0
 python-dotenv>=1.0.0
 
 # Logging
-logging>=0.4.9.6
+# logging>=0.4.9.6
 
 # LLM
 llama_index==0.12.40
