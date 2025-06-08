@@ -10,6 +10,7 @@ class Evaluator():
     """
     Initialize the evaluators for correctness, faithfulness, and relevancy.
     """
+    self.threshold = 0.8
     self.model_component = model_component
     self.faithfulness_evaluator = FaithfulnessEvaluator(llm=self.model_component.llm_model)
     self.relevancy_evaluator = RelevancyEvaluator(llm=self.model_component.llm_model)
@@ -21,9 +22,9 @@ class Evaluator():
     results = {}
     
     faithfulness = self.faithfulness_evaluator.evaluate(query=query, response=response, contexts=contexts)
-    results["faithfulness"] = {"score": faithfulness.score, "passing": faithfulness.passing}
+    results["faithfulness"] = {"score": faithfulness.score, "passing": faithfulness.score >= self.threshold}
     
     relevancy = self.relevancy_evaluator.evaluate(query=query, response=response, contexts=contexts)
-    results["relevancy"] = {"score": relevancy.score, "passing": relevancy.passing}
+    results["relevancy"] = {"score": relevancy.score, "passing": relevancy.score >= self.threshold}
 
     return results

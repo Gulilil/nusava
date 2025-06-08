@@ -41,7 +41,7 @@ class Persona():
     Display summary of persona data
     """
     print(f"[PERSONA SUMMARY] Current persona is: {self._persona['age']} years old with the occupation of {self._persona['occupation']} and the characterstics to be {self._persona['style']}" 
-          + f"under the name of {self._persona['name']}." if 'name' in self._persona else ".")
+          + f" The name is {self._persona['name']}." if 'name' in self._persona else "")
 
   def load_persona(self, persona_data: dict):
     """

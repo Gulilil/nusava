@@ -107,13 +107,14 @@ class Model():
          result = self.llm_model.complete(prompt).text
          return result, None
       else:
-        response = self._agent.query(prompt, return_source=True).response
+        response = self._agent.query(prompt)
         result = response.response
         contexts = [node.node.text for node in response.source_nodes]
       return result, contexts
     
     except Exception as e:
-       return "I'm sorry, I was unable to answer your question after several attempts. Could you please rephrase or try a simpler version?", None
+       print(f"[ERROR MODEL ANSWER] Error occured while processing answer: {e}")
+       return None, None
   
 
   def refresh_tools(self):

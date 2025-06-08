@@ -26,7 +26,9 @@ class PromptGenerator():
   ##############################
   def generate_subprompt_persona(self):
     age, style, occupation = self.persona_component.get_typing_style()
-    return f"You are {age} years old with the occupation of {occupation}. You have the characterstics to be {style} "
+    persona_subprompt = f"You are {age} years old with the occupation of {occupation}. You have the characterstics to be {style}"
+    persona_subprompt += " This is a crucial part of your identity, so make sure to always follow this persona in your responses."
+    return persona_subprompt
 
 
   def generate_subprompt_example(self, examples: list[dict]) -> str:
@@ -68,6 +70,29 @@ class PromptGenerator():
 
   # GENERATE PROMPT
   ##############################
+
+  def generate_prompt_error(self, user_query: str,  error_message: str) -> str:
+    """
+    Generate a prompt for error message
+    """
+    context_str = "You are expected to answer the user query, but you cannot answer this query due to some error."
+    context_str += f"\nHere is the user query: \"{user_query}\""
+    if (error_message is not None):
+      context_str += f"\nHere is the error message: {error_message}"
+
+    # Setup subprompts
+    persona_subprompt = self.generate_subprompt_persona()
+    context_subprompt = self.generate_subprompt_context(context_str)
+    example_subprompt = self.generate_subprompt_example(None)
+    additional_subprompt =  "You are expected to explain to user concisely yet informative." \
+                            "Make sure to not answer more than 1 paragraph."
+    query_str = "Explain to user that you cannot answer this query."
+
+    return self.prompt_template.format(persona_subprompt=persona_subprompt,
+                                  context_subprompt=context_subprompt,
+                                  example_subprompt=example_subprompt, 
+                                  additional_subprompt=additional_subprompt,
+                                  query_str=query_str)
 
   def generate_prompt_reply_chat(self, new_message: str, previous_messages: list[str] = None) -> str:
     context = "You have to be informative and clear in giving information to users. You also have to assure the correctness of the facts that you provide.\n"

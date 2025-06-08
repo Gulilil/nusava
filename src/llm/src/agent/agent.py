@@ -167,26 +167,50 @@ class Agent():
     """
     Operate the action reply chat
     """
-    #TODO What to do with user_id
-    #TODO How to determine that it is about hotel and construct metadata
-    # Load the data from pinecone
-    namespace_name = 'hotels'
-    vector_store, storage_context = self.pinecone_connector_component.get_vector_store(namespace_name)
-    self.model_component.load_data(
-      vector_store, 
-      storage_context, 
-      namespace_name,
-      chat_message)
+    try:
+      #TODO What to do with user_id
+      #TODO How to determine that it is about hotel and construct metadata
+      # Load the data from pinecone
+      namespace_name = 'hotels'
+      vector_store, storage_context = self.pinecone_connector_component.get_vector_store(namespace_name)
+      self.model_component.load_data(
+        vector_store, 
+        storage_context, 
+        namespace_name,
+        chat_message)
 
-    # Generate prompt
-    prompt = self.prompt_generator_component.generate_prompt_reply_chat(
-      new_message=chat_message,
-      previous_messages=None)
-    
-    answer, contexts = self.model_component.answer(prompt)
-    evaluation_result = self.evaluator_component.evaluate(chat_message, answer, contexts)
-    print(f"[EVALUATION RESULT]\n {evaluation_result}")
-    return answer
+      # Generate prompt
+      prompt = self.prompt_generator_component.generate_prompt_reply_chat(
+        new_message=chat_message,
+        previous_messages=None)
+      
+      # Do iteration of action reply chat
+      max_attempts = 3
+      attempt = 0
+      evaluation_result = None
+      while (evaluation_result is None or not evaluation_result['faithfulness']['passing'] or not evaluation_result['relevancy']['passing']):
+        # Answer the query
+        answer, contexts = self.model_component.answer(prompt)
+        if (answer is None):
+          raise ValueError("Detected None value as answer. Model cannot answer this query.")
+        print(f"[ACTION REPLY CHAT] Attempt {attempt+1} of {max_attempts}. Query: {chat_message} | Answer: {answer}")
+        
+        
+        # Evaluate the answer
+        evaluation_result = self.evaluator_component.evaluate(chat_message, answer, contexts)
+        print(f"[EVALUATION RESULT] {evaluation_result}")
+
+        # Increment attempt
+        attempt += 1
+        if (attempt >= max_attempts):
+          raise Exception(f"Model cannot answer this query after {max_attempts} attempts. The relevancy and faithfulness thresholds are not satisfied.")
+
+      return answer
+    except Exception as e:
+      print(f"[ERROR ACTION REPLY CHAT] Error occured while processing action reply chat: {e}")
+      error_prompt = self.prompt_generator_component.generate_prompt_error(user_query=chat_message, error_message=str(e))
+      answer, _ = self.model_component.answer(error_prompt, True)
+      return answer
 
 
   def action_reply_comment(self, 
@@ -234,17 +258,27 @@ class Agent():
     Operate the action post
     """
     # TODO To be improved
-    
-    # # Generate prompt
-    prompt = self.prompt_generator_component.generate_prompt_post_caption(
-      img_description=img_description,
-      keywords=caption_keywords,
-      additional_context=additional_context,
-      examples= None
-      )
-    
-    # # Generate caption message
-    caption_message, _ = self.model_component.answer(prompt, True)
+    try:
+      # # Generate prompt
+      prompt = self.prompt_generator_component.generate_prompt_post_caption(
+        img_description=img_description,
+        keywords=caption_keywords,
+        additional_context=additional_context,
+        examples= None
+        )
+      
+      # # Generate caption message
+      caption_message, _ = self.model_component.answer(prompt, True)
+      if (caption_message is None):
+        raise ValueError("Detected None value as answer. Model cannot answer this query.")
 
-    # TODO Schedule the post
-    print(caption_message)
+      # Schedule the post TODO
+      print(caption_message)
+
+
+    except Exception as e:
+      print(f"[ERROR ACTION POST] Error occured while processing action post caption: {e}")
+      user_query = f"Make a post caption with image description: {img_description}, keywords: {caption_keywords}, additional context: {additional_context}"
+      error_prompt = self.prompt_generator_component.generate_prompt_error(user_query=user_query, error_message=str(e))
+      answer, _ = self.model_component.answer(error_prompt, True)
+      return answer
