@@ -9,14 +9,14 @@ pip install -r requirements.txt
 
 ## For frontend
 ```bash
-cd web/frontend-v2
+cd src/frontend-v2
 npm install
 npm run dev
 ```
 
 ## For backend
 ```bash
-cd web/backend
+cd src/backend
 python manage.py makemigrations
 python manage.py migrate
 python manage.py runserver

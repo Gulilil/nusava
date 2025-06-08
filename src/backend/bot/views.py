@@ -18,6 +18,7 @@ from instagrapi.exceptions import LoginRequired
 from .serializers import ConfigurationSerializer, ActionLogSerializer
 from .models import Configuration, ActionLog
 from django.core.paginator import Paginator
+from .automation import automation_service
 
 logger = logging.getLogger(__name__)
 user_bots = {}
@@ -74,6 +75,11 @@ def login_bot(request):
                             bot = InstagramBot(user_obj=user, password=password, session_settings=user.session_info)
                             user_bots[user.id] = bot
                             refresh = RefreshToken.for_user(user)
+                            automation_service.auto_start_for_user(
+                                user, 
+                                min_interval=300,
+                                max_interval=3600  
+                            )
                             return Response({
                                 "status": "success",
                                 "message": "Logged in with saved session",
@@ -97,6 +103,11 @@ def login_bot(request):
                 bot = InstagramBot(user_obj=user, password=password, session_settings=user.session_info)
                 user_bots[user.id] = bot
                 refresh = RefreshToken.for_user(user)
+                automation_service.auto_start_for_user(
+                    user, 
+                    min_interval=300,
+                    max_interval=3600 
+                )
                 return Response({
                     "status": "success",
                     "message": "Logged in with saved session",
@@ -126,6 +137,11 @@ def login_bot(request):
                 bot = InstagramBot(user_obj=user, password=password, session_settings=new_session)
                 user_bots[user.id] = bot
                 refresh = RefreshToken.for_user(user)
+                automation_service.auto_start_for_user(
+                    user, 
+                    min_interval=300,
+                    max_interval=3600 
+                )
                 return Response({
                     "status": "success",
                     "message": "Logged in with new session (old session was flagged)",
@@ -152,6 +168,13 @@ def login_bot(request):
         # Create new user with session
         session = bot_client.get_settings()
         user = User.objects.create(username=username, session_info=session)
+        Configuration.objects.create(
+            user=user,
+            max_iteration=10,
+            temperature=0.3,
+            top_k=10,
+            max_token=4096
+        )
         user.set_password(password)
         user.save()
 
@@ -357,3 +380,29 @@ def action_logs(request):
             'has_previous': page_obj.has_previous(),
         }
     })
+
+@api_view(['GET'])
+@authentication_classes([JWTAuthentication])
+@permission_classes([IsAuthenticated])
+def automation_status(request):
+    user = request.user
+    status = automation_service.get_status_for_user(user.id)
+    return Response({"status": "success", "data": status})
+
+@api_view(['POST'])
+@authentication_classes([JWTAuthentication])
+@permission_classes([IsAuthenticated])
+def stop_dm_automation(request):
+    user = request.user
+    success, message = automation_service.stop_automation(user.id)
+    return Response({"status": "success" if success else "error", "message": message})
+
+@api_view(['GET'])
+@authentication_classes([JWTAuthentication])
+@permission_classes([IsAuthenticated])
+def admin_automation_overview(request):
+    if not request.user.is_staff:
+        return Response({"error": "Admin only"}, status=403)
+    
+    all_automations = automation_service.get_all_running_automations()
+    return Response({"data": all_automations})

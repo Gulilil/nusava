@@ -15,7 +15,7 @@ import {
   ImageIcon,
   User
 } from "lucide-react"
-import Cookies from "@/node_modules/@types/js-cookie"
+import Cookies from "js-cookie"
 
 import { cn } from "@/lib/utils"
 

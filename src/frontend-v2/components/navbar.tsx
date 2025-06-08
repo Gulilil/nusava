@@ -3,7 +3,7 @@
 import Link from "next/link"
 import { Bell, User, LogOut } from "lucide-react"
 import { ThemeToggle } from "./theme-toggle"
-import Cookies from "@/node_modules/@types/js-cookie"
+import Cookies from "js-cookie"
 import { useRouter } from "next/navigation"
 
 interface NavbarProps {
