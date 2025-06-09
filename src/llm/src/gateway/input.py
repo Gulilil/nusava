@@ -141,31 +141,56 @@ class InputGateway():
         return jsonify({"response": response}), 200
       except Exception as error: 
         return jsonify({"error": str(error)}), 400
-
+      
     @self.app.route("/post", methods=['POST'])
-    def respond_post():
+    def respond_schedule_post():
       """
-      Respond to post input from dashboard, will be scheduled
+      Respond to schedule post input from dashboard, will be scheduled
       Field format : 
       {
         image_url: str, 
-        image_description: str, 
-        caption_keywords : list[str]
+        caption_message: str, 
       }
       """
       try:
         data = request.get_json()
-        is_valid, error_message = self._check_data_validity(data, ["image_url", "image_description", "caption_keywords"])
+        is_valid, error_message = self._check_data_validity(data, ["image_url", "caption_message"])
         if (not is_valid):
           return jsonify({"error": error_message}), 400
         
         # Proceed to process
         img_url = data['image_url']
+        caption_message= data['caption_message']
+        # Process and schedule the post
+        self.agent.action_schedule_post(img_url, caption_message)
+
+        return jsonify({"response": True}), 200
+      except Exception as error: 
+        return jsonify({"error": str(error)}), 400
+
+    @self.app.route("/caption", methods=['POST'])
+    def respond_generate_caption():
+      """
+      Respond to post input from dashboard, returning the caption for the post
+      Field format : 
+      {
+        image_description: str, 
+        caption_keywords : list[str],
+        additional_context: str (optional)
+      }
+      """
+      try:
+        data = request.get_json()
+        is_valid, error_message = self._check_data_validity(data, ["image_description", "caption_keywords"])
+        if (not is_valid):
+          return jsonify({"error": error_message}), 400
+        
+        # Proceed to process
         img_description = data['image_description']
         caption_keywords = data['caption_keywords']
         additional_context = data.get('additional_context', None)
         # Process and schedule the action post
-        self.agent.action_post(img_url, img_description, caption_keywords, additional_context)
+        self.agent.action_generate_caption(img_description, caption_keywords, additional_context)
 
         return jsonify({"response": True}), 200
       except Exception as error: 

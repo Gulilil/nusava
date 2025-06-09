@@ -253,15 +253,22 @@ class Agent():
     """
     # TODO 
     return
+  
+
+  def action_schedule_post(self, img_url: str, caption_message: str):
+    """
+    Operate the action schedule post
+    """
+    # TODO
+    return
 
 
-  def action_post_caption(self, 
-                  img_url: str, 
+  def action_generate_caption(self, 
                   img_description: str, 
                   caption_keywords: list[str],
                   additional_context: str = None):
     """
-    Operate the action post
+    Operate the action generate caption
     """
     # TODO To be improved
     try:
@@ -285,21 +292,21 @@ class Agent():
           raise ValueError("Detected None value as answer. Model cannot answer this query.") 
         print(f"[ACTION POST CAPTION] Attempt {attempt+1} of {max_attempts}. \nCaption: {caption_message}")
 
-        # Make contexts for evaluation
-        contexts = [f"Here is the image description: {img_description}", f"Here are the keywords: {", ".join(caption_keywords)}"]  
+        # Prepare contexts for evaluation
+        keywords_str = ", ".join(caption_keywords)
+        contexts = [f"Here is the image description: {img_description}", f"Here are the keywords: {keywords_str}"]  
         
         # Evaluate the answer
-        relevancy_evaluation = self.evaluator_component.evaluate_relevancy(caption_message, answer, contexts)  
+        relevancy_evaluation = self.evaluator_component.evaluate_relevancy("Create a caption for an Instagram post", caption_message, contexts)  
         relevancy_pass = relevancy_evaluation['passing']
         print(f"[EVALUATION RESULT] \nRelevancy: {relevancy_evaluation}")
 
         # Increment attempt
         attempt += 1
         if (attempt >= max_attempts):
-          raise Exception(f"Model cannot answer this query after {max_attempts} attempts. The relevancy and faithfulness thresholds are not satisfied.")
+          raise Exception(f"Model cannot answer this query after {max_attempts} attempts. The relevancy threshold is not satisfied.")
 
-      # Schedule the post TODO
-      print(caption_message)
+      return caption_message
 
 
     except Exception as e:

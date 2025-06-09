@@ -137,6 +137,7 @@ class Model():
     self._top_k = config_data[1]
     self._max_token = config_data[2]
     self._max_iteration = config_data[3]
+    self.display_config()
 
     
 
