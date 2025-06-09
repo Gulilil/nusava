@@ -185,20 +185,26 @@ class Agent():
         previous_messages=None)
       
       # Do iteration of action reply chat
-      max_attempts = 3
+      # While the thresholds are not satisfied, do the iteration
+      max_attempts = 3 
       attempt = 0
-      evaluation_result = None
-      while (evaluation_result is None or not evaluation_result['faithfulness']['passing'] or not evaluation_result['relevancy']['passing']):
+      faithfulness_pass, relevancy_pass = False, False
+      while (not faithfulness_pass or not relevancy_pass):
         # Answer the query
         answer, contexts = self.model_component.answer(prompt)
         if (answer is None):
           raise ValueError("Detected None value as answer. Model cannot answer this query.")
-        print(f"[ACTION REPLY CHAT] Attempt {attempt+1} of {max_attempts}. Query: {chat_message} | Answer: {answer}")
-        
+        print(f"[ACTION REPLY CHAT] Attempt {attempt+1} of {max_attempts}. \nQuery: {chat_message} \nAnswer: {answer}")
+
+        for i, ctx in enumerate(contexts):
+          print(f"[ACTION REPLY CHAT CONTEXT #{i+1}] : {ctx}")
         
         # Evaluate the answer
-        evaluation_result = self.evaluator_component.evaluate(chat_message, answer, contexts)
-        print(f"[EVALUATION RESULT] {evaluation_result}")
+        faithfulness_evaluation = self.evaluator_component.evaluate_faithfulness(chat_message, answer, contexts)
+        faithfulness_pass = faithfulness_evaluation['passing']
+        relevancy_evaluation = self.evaluator_component.evaluate_relevancy(chat_message, answer, contexts)  
+        relevancy_pass = relevancy_evaluation['passing']
+        print(f"[EVALUATION RESULT] \nFaithfulness: {faithfulness_evaluation} \nRelevancy: {relevancy_evaluation}")
 
         # Increment attempt
         attempt += 1
@@ -249,7 +255,7 @@ class Agent():
     return
 
 
-  def action_post(self, 
+  def action_post_caption(self, 
                   img_url: str, 
                   img_description: str, 
                   caption_keywords: list[str],
@@ -267,10 +273,30 @@ class Agent():
         examples= None
         )
       
-      # # Generate caption message
-      caption_message, _ = self.model_component.answer(prompt, True)
-      if (caption_message is None):
-        raise ValueError("Detected None value as answer. Model cannot answer this query.")
+      # Do iteration of action generate caption
+      # While the thresholds are not satisfied, do the iteration
+      max_attempts = 3 
+      attempt = 0
+      relevancy_pass = False
+      while (not relevancy_pass):
+        # Generate caption message
+        caption_message, _ = self.model_component.answer(prompt, True)
+        if (caption_message is None):
+          raise ValueError("Detected None value as answer. Model cannot answer this query.") 
+        print(f"[ACTION POST CAPTION] Attempt {attempt+1} of {max_attempts}. \nCaption: {caption_message}")
+
+        # Make contexts for evaluation
+        contexts = [f"Here is the image description: {img_description}", f"Here are the keywords: {", ".join(caption_keywords)}"]  
+        
+        # Evaluate the answer
+        relevancy_evaluation = self.evaluator_component.evaluate_relevancy(caption_message, answer, contexts)  
+        relevancy_pass = relevancy_evaluation['passing']
+        print(f"[EVALUATION RESULT] \nRelevancy: {relevancy_evaluation}")
+
+        # Increment attempt
+        attempt += 1
+        if (attempt >= max_attempts):
+          raise Exception(f"Model cannot answer this query after {max_attempts} attempts. The relevancy and faithfulness thresholds are not satisfied.")
 
       # Schedule the post TODO
       print(caption_message)

@@ -27,8 +27,9 @@ class PostgresConnector():
     """
     Get persona data based on the user_id
     """
-    table_name = "persona"
-    self.cursor.execute(f"SELECT persona_data FROM {table_name} WHERE user_id=\'{user_id}\'")
+    table_name = "bot_user"
+    column_name = "persona"
+    self.cursor.execute(f"SELECT {column_name} FROM {table_name} WHERE id=\'{user_id}\'")
     data = self.cursor.fetchone()[0]
     return data
   
@@ -39,7 +40,8 @@ class PostgresConnector():
     Make sure to not change the order of the data returned
     """
     # TODO To be adjusted
-    table_name = "config"
-    self.cursor.execute(f"SELECT temperature, top_k, max_token, max_iteration FROM {table_name} WHERE user_id=\'{user_id}\'")
+    table_name = "bot_configuration"
+    column_names = "temperature, top_k, max_token, max_iteration"
+    self.cursor.execute(f"SELECT {column_names} FROM {table_name} WHERE user_id=\'{user_id}\'")
     data = self.cursor.fetchone()
     return data

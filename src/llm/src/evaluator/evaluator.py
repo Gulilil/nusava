@@ -15,16 +15,16 @@ class Evaluator():
     self.faithfulness_evaluator = FaithfulnessEvaluator(llm=self.model_component.llm_model)
     self.relevancy_evaluator = RelevancyEvaluator(llm=self.model_component.llm_model)
 
-  def evaluate(self, query: str, response: str, contexts: list) -> dict:
+  def evaluate_faithfulness(self, query: str, response: str, contexts: list) -> dict:
     """
-    Run multiple evaluators (correctness, faithfulness, relevancy) on a response.
+    Evaluate the faithfulness of a response based on the query and contexts.
     """
-    results = {}
-    
     faithfulness = self.faithfulness_evaluator.evaluate(query=query, response=response, contexts=contexts)
-    results["faithfulness"] = {"score": faithfulness.score, "passing": faithfulness.score >= self.threshold}
-    
+    return {"score": faithfulness.score, "passing": faithfulness.score >= self.threshold, "reason": faithfulness.feedback}
+  
+  def evaluate_relevancy(self, query: str, response: str, contexts: list) -> dict:
+    """
+    Evaluate the relevancy of a response based on the query.
+    """
     relevancy = self.relevancy_evaluator.evaluate(query=query, response=response, contexts=contexts)
-    results["relevancy"] = {"score": relevancy.score, "passing": relevancy.score >= self.threshold}
-
-    return results
+    return {"score": relevancy.score, "passing": relevancy.score >= self.threshold, "reason": relevancy.feedback}

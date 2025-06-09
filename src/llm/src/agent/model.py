@@ -94,7 +94,9 @@ class Model():
         llm=self.llm_model,
         embed_model=self.embed_model,
         similarity_top_k=self._top_k,
-        llm_kwargs={"max_tokens": self._max_token}
+        llm_kwargs={"max_tokens": self._max_token},
+        response_mode="compact",
+        return_source_nodes=True
       )
       self._setup_agent(query_engine, topic, query)
 
@@ -112,6 +114,7 @@ class Model():
         response = self._agent.query(prompt)
         result = response.response
         contexts = [node.node.text for node in response.source_nodes]
+
       return result, contexts
     
     except Exception as e:
