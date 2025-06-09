@@ -27,7 +27,6 @@ class PostgresConnector():
     """
     Get persona data based on the user_id
     """
-    # TODO To be adjusted
     table_name = "persona"
     self.cursor.execute(f"SELECT persona_data FROM {table_name} WHERE user_id=\'{user_id}\'")
     data = self.cursor.fetchone()[0]

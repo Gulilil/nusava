@@ -8,7 +8,9 @@ class Model():
   """
   Model name. Is adjustable to another model to be used
   """
-  _llm_model_name: str = "llama3.1"
+  # _llm_model_name: str = "llama3.1"
+  _llm_model_name: str = "llama3.2"
+  # _embed_model_name: str = "BAAI/bge-m3"
   _embed_model_name: str = "intfloat/multilingual-e5-base"
 
   """

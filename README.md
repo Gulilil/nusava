@@ -21,3 +21,13 @@ python manage.py makemigrations bot
 python manage.py migrate
 python manage.py runserver
 ```
+
+## For LLM 
+```bash
+cd src/llm/src
+python main.py
+# or
+python src/llm/src/main.py
+
+
+```
