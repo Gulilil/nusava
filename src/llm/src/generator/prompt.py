@@ -7,6 +7,7 @@ PROMPT_TEMPLATE = """Definition:
 {context_subprompt}
 {example_subprompt}
 {additional_subprompt}
+{previous_iteration_notes_subprompt}
 ---------------------
 Instruction:
 Given this information, answer the query.
@@ -68,6 +69,29 @@ class PromptGenerator():
       context_subprompt += "I have no provided context for this query."
     return context_subprompt
 
+  def generate_subprompt_previous_iteration_notes(self, previous_iteration_notes: list[dict]) -> str:
+    """
+    Prepare the previous iteration notes part of the prompt
+    Format of examples:
+    [
+      {"iteration" : x, "your_answer": "...", "evaluator": "...", "evaluation_score" : "...", "reason_of_rejection" : ...},
+      ..., 
+      {"iteration" : x, "your_answer": "...", "evaluator": "...", "evaluation_score" : "...", "reason_of_rejection" : ...},
+    ]
+    """
+    if (previous_iteration_notes is not None and len(previous_iteration_notes) > 0):
+      previous_iteration_notes_subprompt = "Here are some notes from your previous iterations. This notes are important to be considered in your answer.\n"
+      previous_iteration_notes_subprompt += "Your answer are expected to pass the evaluator. But, here I provide some notes on your previous answers and the reason it does not pass the evaluator.\n"
+      for notes in previous_iteration_notes:
+        previous_iteration_notes_subprompt += "{\n"
+        for key, value in notes.items():
+          previous_iteration_notes_subprompt += f"{key}: {value}\n"
+        previous_iteration_notes_subprompt += "}\n"
+    else:
+      previous_iteration_notes_subprompt = "I have no provided notes from the previous iteration. This is your first iteration"
+    
+    return previous_iteration_notes_subprompt
+
   # GENERATE PROMPT
   ##############################
 
@@ -86,15 +110,18 @@ class PromptGenerator():
     example_subprompt = self.generate_subprompt_example(None)
     additional_subprompt =  "You are expected to explain to user concisely yet informative." \
                             "Make sure to not answer more than 1 paragraph."
+    previous_iteration_notes_subprompt = ""
     query_str = "Explain to user that you cannot answer this query."
 
     return self.prompt_template.format(persona_subprompt=persona_subprompt,
                                   context_subprompt=context_subprompt,
                                   example_subprompt=example_subprompt, 
                                   additional_subprompt=additional_subprompt,
+                                  previous_iteration_notes_subprompt=previous_iteration_notes_subprompt,
                                   query_str=query_str)
 
-  def generate_prompt_reply_chat(self, new_message: str, previous_messages: list[str] = None) -> str:
+
+  def generate_prompt_reply_chat(self, new_message: str, previous_messages: list[str] = None, previous_iteration_notes: list[dict] = None) -> str:
     context = "You have to be informative and clear in giving information to users. You also have to assure the correctness of the facts that you provide.\n"
 
     # Process previous messages
@@ -102,7 +129,7 @@ class PromptGenerator():
       # TODO
       context += ""
     
-    # Process examples
+    # TODO Process examples
     examples = []
 
     # Setup subprompts
@@ -110,48 +137,53 @@ class PromptGenerator():
     context_subprompt = self.generate_subprompt_context(context)
     example_subprompt = self.generate_subprompt_example(examples)
     additional_subprompt = ""
+    previous_iteration_notes_subprompt = self.generate_subprompt_previous_iteration_notes(previous_iteration_notes)
 
     return self.prompt_template.format(persona_subprompt=persona_subprompt,
                                   context_subprompt=context_subprompt,
                                   example_subprompt=example_subprompt, 
                                   additional_subprompt=additional_subprompt,
+                                  previous_iteration_notes_subprompt=previous_iteration_notes_subprompt,
                                   query_str=new_message)
 
 
-  def generate_prompt_reply_comment(self, new_comment: str, previous_comments: list[str] = None) -> str:
-    # new_comment as context_str
-    # predefined query_str
-    # TODO
-    return 
-
-
-  def generate_prompt_comment(self, caption: str, additional_context: str = None, examples: list[dict] = None) -> str:
+  def generate_prompt_comment(self, caption: str, additional_context: str = None, previous_iteration_notes: list[dict] = None) -> str:
     context_str = f"You are expected to make a comment on a post in Instagram with this caption: \"{caption}\""
     if (additional_context is not None):
       context_str += "\n"
       context_str += f"Here are some additional context: {additional_context}"
 
+    # TODO Process examples
+    examples = []
+
     # Setup subprompts
     persona_subprompt = self.generate_subprompt_persona()
     context_subprompt = self.generate_subprompt_context(context_str)
-    example_subprompt = self.generate_subprompt_example(examples)
+    example_subprompt = self.generate_subprompt_example(examples) #TODO
     additional_subprompt = ""
+    previous_iteration_notes_subprompt = self.generate_subprompt_previous_iteration_notes(previous_iteration_notes)
+    
+    # Setup query string
     query_str = "Make a comment for Instagram post based on the context"
 
     return self.prompt_template.format(persona_subprompt=persona_subprompt,
                                   context_subprompt=context_subprompt,
                                   example_subprompt=example_subprompt, 
                                   additional_subprompt=additional_subprompt,
+                                  previous_iteration_notes_subprompt=previous_iteration_notes_subprompt,
                                   query_str=query_str)
 
 
-  def generate_prompt_post_caption(self, img_description: str,  keywords: list[str], additional_context: str = None, examples: list[dict] = None) -> str:
+  def generate_prompt_post_caption(self, img_description: str,  keywords: list[str], additional_context: str = None,  previous_iteration_notes: list[dict] = None) -> str:
     keywords_str = ", ".join(keywords)
     context_str = f"You are expected to make a caption with images of this description: \"{img_description}\" and based on these keywords: \"{keywords_str}\" at the same time."
     if (additional_context is not None):
       context_str += "\n"
       context_str += f"Here are some additional context of the captions: {additional_context}"
-    
+
+    # TODO Process examples
+    examples = []
+
     # Setup subprompts
     persona_subprompt = self.generate_subprompt_persona()
     context_subprompt = self.generate_subprompt_context(context_str)
@@ -160,12 +192,16 @@ class PromptGenerator():
                             "Return the answer in string format without any quotation (\") symbol."
     if (additional_context is not None):
       additional_subprompt += f" Here are some additional context: {additional_context}"
+    previous_iteration_notes_subprompt = self.generate_subprompt_previous_iteration_notes(previous_iteration_notes)
+    
+    # Setup query string
     query_str = "Make a caption for Instagram post based on the context"
 
     return self.prompt_template.format(persona_subprompt=persona_subprompt,
                                       context_subprompt=context_subprompt,
                                       example_subprompt=example_subprompt, 
                                       additional_subprompt=additional_subprompt,
+                                      previous_iteration_notes_subprompt=previous_iteration_notes_subprompt,
                                       query_str=query_str)
   
 

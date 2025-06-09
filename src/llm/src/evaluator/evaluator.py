@@ -10,21 +10,20 @@ class Evaluator():
     """
     Initialize the evaluators for correctness, faithfulness, and relevancy.
     """
-    self.threshold = 0.8
     self.model_component = model_component
     self.faithfulness_evaluator = FaithfulnessEvaluator(llm=self.model_component.llm_model)
     self.relevancy_evaluator = RelevancyEvaluator(llm=self.model_component.llm_model)
 
-  def evaluate_faithfulness(self, query: str, response: str, contexts: list) -> dict:
+  def evaluate_faithfulness(self, query: str, response: str, contexts: list, threshold : float = 0.8) -> dict:
     """
     Evaluate the faithfulness of a response based on the query and contexts.
     """
     faithfulness = self.faithfulness_evaluator.evaluate(query=query, response=response, contexts=contexts)
-    return {"score": faithfulness.score, "passing": faithfulness.score >= self.threshold, "reason": faithfulness.feedback}
+    return {"score": faithfulness.score, "passing": faithfulness.score >= threshold, "reason": faithfulness.feedback}
   
-  def evaluate_relevancy(self, query: str, response: str, contexts: list) -> dict:
+  def evaluate_relevancy(self, query: str, response: str, contexts: list, threshold : float = 0.8) -> dict:
     """
     Evaluate the relevancy of a response based on the query.
     """
     relevancy = self.relevancy_evaluator.evaluate(query=query, response=response, contexts=contexts)
-    return {"score": relevancy.score, "passing": relevancy.score >= self.threshold, "reason": relevancy.feedback}
+    return {"score": relevancy.score, "passing": relevancy.score >= threshold, "reason": relevancy.feedback}

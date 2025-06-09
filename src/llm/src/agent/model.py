@@ -73,6 +73,7 @@ class Model():
     """
     Display current config
     """
+    print("[MODEL CONFIGURATION]")
     print(f"LLM name: {self._llm_model_name}")
     print(f"Embedding Model name: {self._embed_model_name}")
     print(f"Temperature: {self._temperature}")

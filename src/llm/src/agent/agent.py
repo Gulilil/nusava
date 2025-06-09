@@ -179,17 +179,19 @@ class Agent():
         namespace_name,
         chat_message)
 
-      # Generate prompt
-      prompt = self.prompt_generator_component.generate_prompt_reply_chat(
-        new_message=chat_message,
-        previous_messages=None)
-      
       # Do iteration of action reply chat
       # While the thresholds are not satisfied, do the iteration
       max_attempts = 3 
       attempt = 0
       faithfulness_pass, relevancy_pass = False, False
+      previous_iteration_notes = []
       while (not faithfulness_pass or not relevancy_pass):
+        # Generate prompt
+        prompt = self.prompt_generator_component.generate_prompt_reply_chat(
+          new_message=chat_message,
+          previous_messages=None,
+          previous_iteration_notes=previous_iteration_notes)
+      
         # Answer the query
         answer, contexts = self.model_component.answer(prompt)
         if (answer is None):
@@ -210,6 +212,24 @@ class Agent():
         attempt += 1
         if (attempt >= max_attempts):
           raise Exception(f"Model cannot answer this query after {max_attempts} attempts. The relevancy and faithfulness thresholds are not satisfied.")
+        
+        # Add notes for failing evaluation
+        if (not faithfulness_pass):
+          previous_iteration_notes.append({
+            "iteration": attempt,
+            "your_answer" : answer,
+            "evaluator": "faithfulness",
+            "evaluation_score": faithfulness_evaluation['score'],
+            "reason_of_rejection": faithfulness_evaluation['reason']
+          })
+        if (not relevancy_pass):
+          previous_iteration_notes.append({
+            "iteration": attempt,
+            "your_answer" : answer,
+            "evaluator": "relevancy",
+            "evaluation_score": relevancy_evaluation['score'],
+            "reason_of_rejection": relevancy_evaluation['reason']
+          })
 
       return answer
     except Exception as e:
@@ -270,22 +290,22 @@ class Agent():
     """
     Operate the action generate caption
     """
-    # TODO To be improved
     try:
-      # # Generate prompt
-      prompt = self.prompt_generator_component.generate_prompt_post_caption(
-        img_description=img_description,
-        keywords=caption_keywords,
-        additional_context=additional_context,
-        examples= None
-        )
-      
       # Do iteration of action generate caption
       # While the thresholds are not satisfied, do the iteration
       max_attempts = 3 
       attempt = 0
       relevancy_pass = False
+      previous_iteration_notes = []
       while (not relevancy_pass):
+        # Generate prompt
+        prompt = self.prompt_generator_component.generate_prompt_post_caption(
+          img_description=img_description,
+          keywords=caption_keywords,
+          additional_context=additional_context,
+          previous_iteration_notes=previous_iteration_notes
+          )
+
         # Generate caption message
         caption_message, _ = self.model_component.answer(prompt, True)
         if (caption_message is None):
@@ -305,7 +325,18 @@ class Agent():
         attempt += 1
         if (attempt >= max_attempts):
           raise Exception(f"Model cannot answer this query after {max_attempts} attempts. The relevancy threshold is not satisfied.")
+        
+        # Add notes for failing evaluation
+        if (not relevancy_pass):
+          previous_iteration_notes.append({
+            "iteration": attempt,
+            "your_answer" : caption_message,
+            "evaluator": "relevancy",
+            "evaluation_score": relevancy_evaluation['score'],
+            "reason_of_rejection": relevancy_evaluation['reason']
+          })
 
+      # Return the generated caption
       return caption_message
 
 
