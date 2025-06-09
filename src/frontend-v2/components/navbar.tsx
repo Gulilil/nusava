@@ -1,10 +1,10 @@
 "use client";
 
-import Link from "next/link";
-import { Bell, User, LogOut } from "lucide-react";
-import { ThemeToggle } from "./theme-toggle";
-import Cookies from "js-cookie";
-import { useRouter } from "next/navigation";
+import Link from "next/link"
+import { Bell, User, LogOut } from "lucide-react"
+import { ThemeToggle } from "./theme-toggle"
+import Cookies from "js-cookie"
+import { useRouter } from "next/navigation"
 
 interface NavbarProps {
   title: string;

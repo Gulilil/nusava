@@ -2,6 +2,7 @@ from django.db import models
 from django.contrib.auth.hashers import make_password, check_password
 from django.contrib.auth.models import AbstractBaseUser, PermissionsMixin, BaseUserManager
 from django.utils import timezone
+from .persona import default_persona
 
 class UserManager(BaseUserManager):
     def create_user(self, username, password=None, **extra_fields):
@@ -25,6 +26,7 @@ class User(AbstractBaseUser, PermissionsMixin):
     id = models.BigAutoField(primary_key=True)
     username = models.CharField(max_length=100, unique=True)
     session_info = models.JSONField(blank=True, null=True)
+    persona = models.JSONField(default=default_persona, null=True)
     created_at = models.DateTimeField(default=timezone.now)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -50,7 +52,7 @@ class User(AbstractBaseUser, PermissionsMixin):
     
 # ActionLog model
 class ActionLog(models.Model):
-    id = models.BigAutoField(primary_key=True)  # serial PK
+    id = models.BigAutoField(primary_key=True)
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='action_logs')
     action_type = models.CharField(max_length=50)
     target = models.TextField(blank=True)
