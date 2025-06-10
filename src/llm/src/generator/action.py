@@ -3,6 +3,7 @@ import random
 from hmmlearn.hmm import CategoricalHMM
 from utils.constant import HMM_HIDDEN_STATES, HMM_OBSERVATION_LIST
 from datetime import datetime
+from typing import Tuple
 
 class ActionGenerator:
     """
@@ -51,7 +52,7 @@ class ActionGenerator:
         return observations
 
 
-    def decide_action(self, observations: list, iteration: int) -> str:
+    def decide_action(self, observations: list, iteration: int) -> Tuple[str, str]:
         """
         Function to decide action.
         Returns one of: 'like', 'follow', 'comment', None

@@ -14,17 +14,17 @@ class Evaluator():
     self.relevancy_evaluator = RelevancyEvaluator(llm=llm_model)
 
 
-  def evaluate_faithfulness(self, query: str, response: str, contexts: list) -> dict:
+  async def evaluate_faithfulness(self, query: str, response: str, contexts: list) -> dict:
     """
     Evaluate the faithfulness of a response based on the query and contexts.
     """
-    faithfulness = self.faithfulness_evaluator.evaluate(query=query, response=response, contexts=contexts)
+    faithfulness = await self.faithfulness_evaluator.aevaluate(query=query, response=response, contexts=contexts)
     return {"passing": faithfulness.passing, "reason": faithfulness.feedback}
   
-  
-  def evaluate_relevancy(self, query: str, response: str, contexts: list) -> dict:
+
+  async def evaluate_relevancy(self, query: str, response: str, contexts: list) -> dict:
     """
     Evaluate the relevancy of a response based on the query.
     """
-    relevancy = self.relevancy_evaluator.evaluate(query=query, response=response, contexts=contexts)
+    relevancy = await self.relevancy_evaluator.aevaluate(query=query, response=response, contexts=contexts)
     return {"passing": relevancy.passing, "reason": relevancy.feedback}

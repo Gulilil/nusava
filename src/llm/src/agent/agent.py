@@ -12,6 +12,7 @@ from generator.schedule import ScheduleGenerator
 from memory.episodic import EpisodicMemory
 from memory.semantic import SemanticMemory
 from utils.function import hotel_data_to_string_list, text_to_document, parse_documents, display_nested_list
+from typing import Any
 
 class Agent():
   """
@@ -50,15 +51,17 @@ class Agent():
 
   ######## SETUP PERSONA/ CONFIG ########
 
-  def set_user(self, user_id:str):
+  def set_user(self, user_id:str) -> None:
+    """
+    Set user_id, as well as model config and persona.
+    This function should be called first thing
+    """
     print(f"[AGENT CONSTRUCTED] Constructing agent for user_id: {user_id}")
     self.user_id = user_id
-
-    # TODO To be adjusted
     self.set_config()
     self.set_persona()
 
-  def set_persona(self):
+  def set_persona(self) -> None:
     """
     Change the agent persona
     """
@@ -66,7 +69,7 @@ class Agent():
     self.persona_component.load_persona(persona_data)
 
   
-  def set_config(self):
+  def set_config(self) -> None:
     """
     Adjust the performance of the model
     """
@@ -106,60 +109,12 @@ class Agent():
         self.action_comment()
       else:
         return
-      
-  ######## PROCESS DATA ########
-
-  def process_data_hotel(self):
-    """
-    Process data hotel, "migrate" it from mongodb document to pinecone vector
-    """
-    mongo_collection_name = "hotel"
-    pinecone_namespace_name = "hotels_new"
-
-    # Get hotel data from mongo
-    hotels = self.mongo_connector_component.get_data(mongo_collection_name, {})
-    print(f"[FETCHED] Fetched {len(hotels)} hotels")
-
-
-    idx = 0
-    n_batch = 20
-    length_per_batch = (len(hotels)//n_batch)+1
-    while (idx < len(hotels)):
-      # Set batch indices
-      hotel_docs = []
-      upper_idx = min(idx+length_per_batch, len(hotels))
-      curr_batch_hotels = hotels[idx : upper_idx]
-
-      # Iterate data in the current batch list
-      for hotel in curr_batch_hotels:
-        
-        hotel_string_data = hotel_data_to_string_list(hotel)
-        documents_list = text_to_document(hotel_string_data)
-        hotel_docs.extend(documents_list)
-
-      # Parse hotel data
-      hotel_data_parsed = parse_documents(hotel_docs)
-      # Insert to pinecone
-      _, storage_context = self.pinecone_connector_component.get_vector_store(pinecone_namespace_name)
-      self.pinecone_connector_component.store_data(hotel_data_parsed, storage_context, self.model_component.embed_model)      
-      print(f'[BATCH PROGRESS] Successfully inserted data idx {idx} to {upper_idx}')
-      
-      # Increment idx
-      idx += length_per_batch
-
-  # TODO Wait for later data mining process
-  def process_data_xxxx(self):
-    """
-    Process data xxxx, "migrate" it from mongodb document to pinecone vector
-    """
-    return
-
 
   ######## ACTION ########
 
   ######## EXTERNAL TRIGGER ACTION ########
 
-  def action_reply_chat(self, chat_message: str):
+  async def action_reply_chat(self, chat_message: str) -> str:
     """
     Operate the action reply chat
     """
@@ -169,7 +124,7 @@ class Agent():
       # Load the data from pinecone
       pinecone_namespace_name = 'hotels_new'
       vector_store, storage_context = self.pinecone_connector_component.get_vector_store(pinecone_namespace_name)
-      self.model_component.load_data(
+      await self.model_component.load_data(
         vector_store, 
         storage_context, 
         pinecone_namespace_name,
@@ -190,12 +145,12 @@ class Agent():
       
         # Answer the query
         # Skip if the answer is None
-        answer, contexts = self.model_component.answer(prompt)
+        answer, contexts = await self.model_component.answer(prompt)
         if (answer is not None):
           print(f"[ACTION REPLY CHAT] Attempt {attempt+1} of {max_attempts}. \nQuery: {chat_message} \nAnswer: {answer}")
 
           # Display contexts (for printing only)
-          for i, ctx in enumerate(contexts):
+          for i, ctx  in enumerate(contexts):
             ctx_topic = ctx.split('\n', 1)[0]
             print(f"[ACTION REPLY CHAT CONTEXT #{i+1}] : {ctx_topic}")
           
@@ -247,7 +202,7 @@ class Agent():
 
   ######## INTERNAL TRIGGER ACTION ########
 
-  def action_follow(self):
+  def action_follow(self) -> None:
     """
     Operate the action follow
     """
@@ -255,7 +210,7 @@ class Agent():
     return
 
 
-  def action_like(self):
+  def action_like(self) -> None:
     """
     Operate the action like
     """
@@ -263,7 +218,7 @@ class Agent():
     return
 
 
-  def action_comment(self):
+  def action_comment(self) -> None:
     """
     Operate the action comment
     """
@@ -271,7 +226,7 @@ class Agent():
     return
   
 
-  def action_schedule_post(self, img_url: str, caption_message: str):
+  def action_schedule_post(self, img_url: str, caption_message: str) -> None:
     """
     Operate the action schedule post
     """
@@ -282,7 +237,7 @@ class Agent():
   def action_generate_caption(self, 
                   img_description: str, 
                   caption_keywords: list[str],
-                  additional_context: str = None):
+                  additional_context: str = None) -> str:
     """
     Operate the action generate caption
     """
@@ -348,3 +303,57 @@ class Agent():
       error_prompt = self.prompt_generator_component.generate_prompt_error(user_query=user_query, error_message=str(e))
       answer, _ = self.model_component.answer(error_prompt, True)
       return answer
+
+
+      
+  ######## PROCESS DATA ########
+  """
+  Should only be run manually
+  It is run to convert the data from Document type in Mongo to Vector in Pinecone
+  """
+
+  def process_data_hotel(self) -> None:
+    """
+    Process data hotel, "migrate" it from mongodb document to pinecone vector
+    """
+    mongo_collection_name = "hotel"
+    pinecone_namespace_name = "hotels_new"
+
+    # Get hotel data from mongo
+    hotels = self.mongo_connector_component.get_data(mongo_collection_name, {})
+    print(f"[FETCHED] Fetched {len(hotels)} hotels")
+
+
+    idx = 0
+    n_batch = 20
+    length_per_batch = (len(hotels)//n_batch)+1
+    while (idx < len(hotels)):
+      # Set batch indices
+      hotel_docs = []
+      upper_idx = min(idx+length_per_batch, len(hotels))
+      curr_batch_hotels = hotels[idx : upper_idx]
+
+      # Iterate data in the current batch list
+      for hotel in curr_batch_hotels:
+        
+        hotel_string_data = hotel_data_to_string_list(hotel)
+        documents_list = text_to_document(hotel_string_data)
+        hotel_docs.extend(documents_list)
+
+      # Parse hotel data
+      hotel_data_parsed = parse_documents(hotel_docs)
+      # Insert to pinecone
+      _, storage_context = self.pinecone_connector_component.get_vector_store(pinecone_namespace_name)
+      self.pinecone_connector_component.store_data(hotel_data_parsed, storage_context, self.model_component.embed_model)      
+      print(f'[BATCH PROGRESS] Successfully inserted data idx {idx} to {upper_idx}')
+      
+      # Increment idx
+      idx += length_per_batch
+
+  # TODO Wait for later data mining process
+  def process_data_xxxx(self) -> None:
+    """
+    Process data xxxx, "migrate" it from mongodb document to pinecone vector
+    """
+    return
+

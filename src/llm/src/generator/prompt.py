@@ -1,5 +1,4 @@
 from llama_index.core.prompts import PromptTemplate
-import json
 
 PROMPT_TEMPLATE = """Definition:
 {persona_subprompt}.
@@ -25,7 +24,8 @@ class PromptGenerator():
 
   # GENERATE SUBPROMPT
   ##############################
-  def generate_subprompt_persona(self):
+  
+  def generate_subprompt_persona(self) -> str:
     age, style, occupation = self.persona_component.get_typing_style()
     persona_subprompt = f"You are {age} years old with the occupation of {occupation}. You have the characterstics to be {style}"
     persona_subprompt += " This is a crucial part of your identity, so make sure to always follow this persona in your responses."

@@ -1,4 +1,4 @@
-
+from typing import Tuple
 
 class Persona():
   """
@@ -15,7 +15,7 @@ class Persona():
 
   ######## PRIVATE ########
 
-  def _check_persona_data_validity(self, persona_data: dict):
+  def _check_persona_data_validity(self, persona_data: dict) -> bool:
     """
     Check if all important fields exist in the data
     """
@@ -29,21 +29,21 @@ class Persona():
 
   ######## PUBLIC ########
 
-  def display_persona(self):
+  def display_persona(self) -> None:
     """
     Display all persona data
     """
     for key, val in self._persona.items():
       print(f"{key} : {val}")
 
-  def _display_persona_summary(self):
+  def _display_persona_summary(self) -> None:
     """
     Display summary of persona data
     """
     print(f"[PERSONA SUMMARY] Current persona is: {self._persona['age']} years old with the occupation of {self._persona['occupation']} and the characterstics to be {self._persona['style']}" 
           + f" The name is {self._persona['name']}." if 'name' in self._persona else "")
 
-  def load_persona(self, persona_data: dict):
+  def load_persona(self, persona_data: dict) -> None:
     """
     Load persona data from a json
     """
@@ -52,14 +52,7 @@ class Persona():
     self._display_persona_summary()
 
 
-  def reset_persona(self):
-    """
-    Reset persona data
-    """
-    self._persona = None
-
-
-  def get_typing_style(self):
+  def get_typing_style(self) -> Tuple[str, str, str]:
     """
     Get typing style of the persona
     """

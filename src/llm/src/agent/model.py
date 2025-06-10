@@ -3,6 +3,7 @@ from llama_index.embeddings.huggingface import HuggingFaceEmbedding
 from llama_index.llms.ollama import Ollama
 from llama_index.core.agent import ReActAgent
 from llama_index.core import  VectorStoreIndex
+from typing import Tuple, Optional
 
 class Model():
   """
@@ -41,7 +42,7 @@ class Model():
 
   ######## PRIVATE ########
 
-  def _construct_metadata(self, topic, query):
+  def _construct_metadata(self, topic, query) -> ToolMetadata:
     """
     Construct metadata based on the topic and user input query for agentic tools usage
     """
@@ -70,7 +71,7 @@ class Model():
 
   ######## PUBLIC ########
 
-  def display_config(self):
+  def display_config(self) -> None:
     """
     Display current config
     """
@@ -83,7 +84,7 @@ class Model():
     print(f"Max Iteration: {self._max_iteration}")
     
 
-  def load_data(self,  vector_store, storage_context, topic, query) -> None:
+  async def load_data(self,  vector_store, storage_context, topic, query) -> None:
       """
       Load data from pinecone based on the vector store and storage_context
       """
@@ -103,7 +104,7 @@ class Model():
       self._setup_agent(query_engine, topic, query)
 
 
-  def answer(self, prompt: str, is_direct: bool = False):
+  async def answer(self, prompt: str, is_direct: bool = False) -> Tuple[Optional[str], Optional[list]]:
     """
     Answer the prompt using the llm_model or agentic system
     If is_direct is True, it will use the llm_model directly.
@@ -124,14 +125,14 @@ class Model():
        return None, None
   
 
-  def refresh_tools(self):
+  def refresh_tools(self) -> None:
     """
     Reset tools that has been constructed before
     """
     self._tools = []
 
 
-  def config(self, config_data : tuple):
+  def config(self, config_data : tuple) -> None:
     """
     Config the performance of the model
     """

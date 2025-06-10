@@ -1,5 +1,6 @@
 from llama_index.core import StorageContext, VectorStoreIndex
 from llama_index.vector_stores.pinecone import PineconeVectorStore
+from typing import Tuple
 
 from pinecone import Pinecone
 import os
@@ -20,7 +21,7 @@ class PineconeConnector():
     self.index = self.client.Index(os.getenv("PINECONE_INDEX"))
 
 
-  def get_vector_store(self, namespace: str):
+  def get_vector_store(self, namespace: str) -> Tuple[VectorStoreIndex, StorageContext]:
     """
     Get vector store and storage context from pinecone for certain namespace
     """
@@ -29,14 +30,14 @@ class PineconeConnector():
     return vector_store, storage_context
 
 
-  def store_data(self, nodes, storage_context, embed_model):
+  def store_data(self, nodes, storage_context, embed_model) -> None:
     """
     Store processed data to certain storage_context
     """
     VectorStoreIndex(nodes, storage_context=storage_context, embed_model=embed_model)
 
 
-  def get_index_stats(self):
+  def get_index_stats(self) -> None:
     """
     Display status of the pinecone index
     """

@@ -37,7 +37,7 @@ class InputGateway():
 
   ######## SETUP INPUT ########
   
-  def setup_routes(self):
+  def setup_routes(self) -> None:
     """
     Setup routing for the API
     Is used for input from other module (External-trigger Action)
@@ -197,7 +197,7 @@ class InputGateway():
         return jsonify({"error": str(error)}), 400
     
 
-  def run(self):
+  def run(self) -> None:
     """
     Run the system in specific ip and port 
     """

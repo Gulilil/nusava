@@ -23,7 +23,7 @@ class PostgresConnector():
     self.cursor = self.connection.cursor()
   
 
-  def get_persona_data(self, user_id: str):
+  def get_persona_data(self, user_id: str) -> tuple:
     """
     Get persona data based on the user_id
     """
@@ -34,7 +34,7 @@ class PostgresConnector():
     return data
   
 
-  def get_config_data(self, user_id: str):
+  def get_config_data(self, user_id: str) -> tuple:
     """
     Get persona data based on the user_id
     Make sure to not change the order of the data returned

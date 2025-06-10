@@ -31,6 +31,7 @@ from llama_index.core.node_parser import SimpleNodeParser
 #       data_str = f"{adjusted_prefix}: {str(val)}"
 #       result_arr.append(data_str)
 
+
 def json_to_string(data : dict, indent: int = 0) -> str:
   """
   Convert json data to string with indentation
@@ -40,6 +41,7 @@ def json_to_string(data : dict, indent: int = 0) -> str:
   for key, value in data.items():
       result += (" "*2*indent) + f"{key}: {value}\n"
   return result
+
 
 def hotel_data_to_string_list(data: dict, max_limit_arr: int = 20) -> list[str]:
   """
@@ -97,7 +99,7 @@ def text_to_document(text_list: list[str]) -> list[Document]:
   return [Document(text=text) for text in text_list]
 
 
-def parse_documents(document_list: list[Document]) :
+def parse_documents(document_list: list[Document]) -> list:
   """
   Parse documents using LlamaIndex parser
   """
@@ -105,7 +107,7 @@ def parse_documents(document_list: list[Document]) :
   return parser.get_nodes_from_documents(document_list)
 
 
-def display_nested_list(nested_list:list, indent: int = 0) -> str:
+def display_nested_list(nested_list:list, indent: int = 0) -> None:
   """
   Display nested list with indentation
   """

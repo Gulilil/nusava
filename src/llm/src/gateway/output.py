@@ -18,7 +18,7 @@ class OutputGateway():
     }
 
 
-  def request_statistics(self, user_id: str):
+  def request_statistics(self, user_id: str) -> dict:
     """
     Hit statistics api in automation module
     """
@@ -29,7 +29,7 @@ class OutputGateway():
     return
 
 
-  def request_follow(self, user_id: str):
+  def request_follow(self, user_id: str) -> None:
     """
     Hit follow api in automation module
     """
@@ -40,7 +40,7 @@ class OutputGateway():
     return
   
   
-  def request_like(self, post_id: str):
+  def request_like(self, post_id: str) -> None:
     """
     Hit like api in automation module
     """
@@ -51,7 +51,7 @@ class OutputGateway():
     return
   
 
-  def request_comment(self, post_id: str, comment_message:str):
+  def request_comment(self, post_id: str, comment_message:str) -> None:
     """
     Hit comment api in automation module
     """
@@ -62,7 +62,7 @@ class OutputGateway():
     return
   
 
-  def request_post(self, img_url: str, caption_message:str):
+  def request_post(self, img_url: str, caption_message:str) -> None:
     """
     Hit comment api in automation module
     """

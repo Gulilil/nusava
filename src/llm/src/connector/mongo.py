@@ -17,7 +17,7 @@ class MongoConnector():
     self.database = self.client[os.getenv("MONGO_DB_NAME")]
 
 
-  def get_data(self, collection_name: str, filters: dict = {}) -> list:
+  def get_data(self, collection_name: str, filters: dict = {}) -> list[dict]:
     """
     Get data from mongo db with filters as parameters
     """
