@@ -69,14 +69,15 @@ class PromptGenerator():
       context_subprompt += "I have no provided context for this query."
     return context_subprompt
 
+
   def generate_subprompt_previous_iteration_notes(self, previous_iteration_notes: list[dict]) -> str:
     """
     Prepare the previous iteration notes part of the prompt
     Format of examples:
     [
-      {"iteration" : x, "your_answer": "...", "evaluator": "...", "evaluation_score" : "...", "reason_of_rejection" : ...},
+      {"iteration" : x, "your_answer": "...", "evaluator": "...", "reason_of_rejection" : ...},
       ..., 
-      {"iteration" : x, "your_answer": "...", "evaluator": "...", "evaluation_score" : "...", "reason_of_rejection" : ...},
+      {"iteration" : x, "your_answer": "...", "evaluator": "...", "reason_of_rejection" : ...},
     ]
     """
     if (previous_iteration_notes is not None and len(previous_iteration_notes) > 0):
@@ -120,31 +121,6 @@ class PromptGenerator():
                                   previous_iteration_notes_subprompt=previous_iteration_notes_subprompt,
                                   query_str=query_str)
 
-  def generate_prompt_evaluate(self, query: str, answer: str, contexts: list[str], evaluator_type: str) -> str:
-    """
-    Generate a prompt for evaluation
-    """
-    context_str = "You are expected to evaluate the answer based on the query and contexts."
-    context_str += f"\nHere is the query: \"{query}\""
-    context_str += f"\nHere is the answer: \"{answer}\""
-    context_str += "\nHere are the contexts that can be used to evaluate the answer:\n"
-    for i, context in enumerate(contexts):
-      context_str += f"{i+1}. {context}\n"
-
-    # Setup subprompts
-    persona_subprompt = self.generate_subprompt_persona()
-    context_subprompt = self.generate_subprompt_context(context_str)
-    example_subprompt = self.generate_subprompt_example(None)
-    if (evaluator_type == "faithfulness"):
-      additional_subprompt = f"You are expected to evaluate the answer based on the {evaluator_type} evaluator."
-    previous_iteration_notes_subprompt = ""
-
-    return self.prompt_template.format(persona_subprompt=persona_subprompt,
-                                  context_subprompt=context_subprompt,
-                                  example_subprompt=example_subprompt, 
-                                  additional_subprompt=additional_subprompt,
-                                  previous_iteration_notes_subprompt=previous_iteration_notes_subprompt,
-                                  query_str="Evaluate the answer")
 
   def generate_prompt_reply_chat(self, new_message: str, previous_messages: list[str] = None, previous_iteration_notes: list[dict] = None) -> str:
     """
@@ -153,11 +129,11 @@ class PromptGenerator():
     context = "You have to be informative and clear in giving information to users. You also have to assure the correctness of the facts that you provide.\n"
 
     # Process previous messages
+    # TODO Provide previous messages to the context
     if (previous_messages is not None):
-      # TODO
       context += ""
     
-    # TODO Process examples
+    # Chat does not need to have examples. It can be vary depending on the topic/ message
     examples = []
 
     # Setup subprompts
@@ -185,7 +161,8 @@ class PromptGenerator():
       context_str += "\n"
       context_str += f"Here are some additional context: {additional_context}"
 
-    # TODO Process examples
+    # Give some example for few shot learning
+    # TODO Wait from the actual data 
     examples = []
 
     # Setup subprompts
@@ -216,7 +193,7 @@ class PromptGenerator():
       context_str += "\n"
       context_str += f"Here are some additional context of the captions: {additional_context}"
 
-    # TODO Process examples
+    # TODO Wait from the actual data 
     examples = []
 
     # Setup subprompts

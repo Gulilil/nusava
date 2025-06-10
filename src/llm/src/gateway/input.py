@@ -190,9 +190,9 @@ class InputGateway():
         caption_keywords = data['caption_keywords']
         additional_context = data.get('additional_context', None)
         # Process and schedule the action post
-        self.agent.action_generate_caption(img_description, caption_keywords, additional_context)
+        caption_message = self.agent.action_generate_caption(img_description, caption_keywords, additional_context)
 
-        return jsonify({"response": True}), 200
+        return jsonify({"response": caption_message}), 200
       except Exception as error: 
         return jsonify({"error": str(error)}), 400
     
