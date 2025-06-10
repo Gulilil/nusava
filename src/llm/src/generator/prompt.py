@@ -120,8 +120,36 @@ class PromptGenerator():
                                   previous_iteration_notes_subprompt=previous_iteration_notes_subprompt,
                                   query_str=query_str)
 
+  def generate_prompt_evaluate(self, query: str, answer: str, contexts: list[str], evaluator_type: str) -> str:
+    """
+    Generate a prompt for evaluation
+    """
+    context_str = "You are expected to evaluate the answer based on the query and contexts."
+    context_str += f"\nHere is the query: \"{query}\""
+    context_str += f"\nHere is the answer: \"{answer}\""
+    context_str += "\nHere are the contexts that can be used to evaluate the answer:\n"
+    for i, context in enumerate(contexts):
+      context_str += f"{i+1}. {context}\n"
+
+    # Setup subprompts
+    persona_subprompt = self.generate_subprompt_persona()
+    context_subprompt = self.generate_subprompt_context(context_str)
+    example_subprompt = self.generate_subprompt_example(None)
+    if (evaluator_type == "faithfulness"):
+      additional_subprompt = f"You are expected to evaluate the answer based on the {evaluator_type} evaluator."
+    previous_iteration_notes_subprompt = ""
+
+    return self.prompt_template.format(persona_subprompt=persona_subprompt,
+                                  context_subprompt=context_subprompt,
+                                  example_subprompt=example_subprompt, 
+                                  additional_subprompt=additional_subprompt,
+                                  previous_iteration_notes_subprompt=previous_iteration_notes_subprompt,
+                                  query_str="Evaluate the answer")
 
   def generate_prompt_reply_chat(self, new_message: str, previous_messages: list[str] = None, previous_iteration_notes: list[dict] = None) -> str:
+    """
+    Generate a prompt for replying chat
+    """
     context = "You have to be informative and clear in giving information to users. You also have to assure the correctness of the facts that you provide.\n"
 
     # Process previous messages
@@ -148,6 +176,10 @@ class PromptGenerator():
 
 
   def generate_prompt_comment(self, caption: str, additional_context: str = None, previous_iteration_notes: list[dict] = None) -> str:
+    """
+    Generate a prompt for making a comment on Instagram post
+    """
+
     context_str = f"You are expected to make a comment on a post in Instagram with this caption: \"{caption}\""
     if (additional_context is not None):
       context_str += "\n"
@@ -175,6 +207,9 @@ class PromptGenerator():
 
 
   def generate_prompt_post_caption(self, img_description: str,  keywords: list[str], additional_context: str = None,  previous_iteration_notes: list[dict] = None) -> str:
+    """
+    Generate a prompt for generating caption for Instagram post
+    """
     keywords_str = ", ".join(keywords)
     context_str = f"You are expected to make a caption with images of this description: \"{img_description}\" and based on these keywords: \"{keywords_str}\" at the same time."
     if (additional_context is not None):

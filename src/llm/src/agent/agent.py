@@ -34,7 +34,7 @@ class Agent():
     self.postgres_connector_component = PostgresConnector()
     print("[AGENT INITIALIZED] Connector component(s) initialized")
     # Instantiate Evaluator
-    self.evaluator_component = Evaluator(self.model_component)
+    self.evaluator_component = Evaluator(self.model_component.llm_model)
     print("[AGENT INITIALIZED] Evaluator component(s) initialized")
     # Instantiate Gateway
     self.input_gateway_component = InputGateway(self)
@@ -189,20 +189,22 @@ class Agent():
           previous_iteration_notes=previous_iteration_notes)
       
         # Answer the query
+        # Skip if the answer is None
         answer, contexts = self.model_component.answer(prompt)
-        if (answer is None):
-          raise ValueError("Detected None value as answer. Model cannot answer this query.")
-        print(f"[ACTION REPLY CHAT] Attempt {attempt+1} of {max_attempts}. \nQuery: {chat_message} \nAnswer: {answer}")
+        if (answer is not None):
+          print(f"[ACTION REPLY CHAT] Attempt {attempt+1} of {max_attempts}. \nQuery: {chat_message} \nAnswer: {answer}")
 
-        for i, ctx in enumerate(contexts):
-          print(f"[ACTION REPLY CHAT CONTEXT #{i+1}] : {ctx}")
-        
-        # Evaluate the answer
-        faithfulness_evaluation = self.evaluator_component.evaluate_faithfulness(chat_message, answer, contexts)
-        faithfulness_pass = faithfulness_evaluation['passing']
-        relevancy_evaluation = self.evaluator_component.evaluate_relevancy(chat_message, answer, contexts)  
-        relevancy_pass = relevancy_evaluation['passing']
-        print(f"[EVALUATION RESULT] \nFaithfulness: {faithfulness_evaluation} \nRelevancy: {relevancy_evaluation}")
+          # Display contexts (for printing only)
+          for i, ctx in enumerate(contexts):
+            ctx_topic = ctx.split('\n', 1)[0]
+            print(f"[ACTION REPLY CHAT CONTEXT #{i+1}] : {ctx_topic}")
+          
+          # Evaluate the answer
+          faithfulness_evaluation = self.evaluator_component.evaluate_faithfulness(chat_message, answer, contexts)
+          faithfulness_pass = faithfulness_evaluation['passing']
+          relevancy_evaluation = self.evaluator_component.evaluate_relevancy(chat_message, answer, contexts)  
+          relevancy_pass = relevancy_evaluation['passing']
+          print(f"[EVALUATION RESULT] \nFaithfulness: {faithfulness_evaluation} \nRelevancy: {relevancy_evaluation}")
 
         # Increment attempt
         attempt += 1
@@ -210,24 +212,32 @@ class Agent():
           raise Exception(f"Model cannot answer this query after {max_attempts} attempts. The relevancy and faithfulness thresholds are not satisfied.")
         
         # Add notes for failing evaluation
-        if (not faithfulness_pass):
+        if (answer is None):
           previous_iteration_notes.append({
             "iteration": attempt,
-            "your_answer" : answer,
-            "evaluator": "faithfulness",
-            "evaluation_score": faithfulness_evaluation['score'],
-            "reason_of_rejection": faithfulness_evaluation['reason']
+            "your_answer" : None,
+            "evaluator": "model",
+            "evaluation_score": None,
+            "reason_of_rejection": "Model cannot answer this query."
           })
-        if (not relevancy_pass):
-          previous_iteration_notes.append({
-            "iteration": attempt,
-            "your_answer" : answer,
-            "evaluator": "relevancy",
-            "evaluation_score": relevancy_evaluation['score'],
-            "reason_of_rejection": relevancy_evaluation['reason']
-          })
-
+        else:
+          if (not faithfulness_pass):
+            previous_iteration_notes.append({
+              "iteration": attempt,
+              "your_answer" : answer,
+              "evaluator": "faithfulness",
+              "reason_of_rejection": faithfulness_evaluation['reason']
+            })
+          if (not relevancy_pass):
+            previous_iteration_notes.append({
+              "iteration": attempt,
+              "your_answer" : answer,
+              "evaluator": "relevancy",
+              "reason_of_rejection": relevancy_evaluation['reason']
+            })
+      # Return the answer
       return answer
+    
     except Exception as e:
       print(f"[ERROR ACTION REPLY CHAT] Error occured while processing action reply chat: {e}")
       error_prompt = self.prompt_generator_component.generate_prompt_error(user_query=chat_message, error_message=str(e))
@@ -235,16 +245,6 @@ class Agent():
       return answer
 
 
-  def action_reply_comment(self, 
-                           comment_message: str, 
-                           post_caption: str, 
-                           previous_comments: list[str]):
-    """
-    Operate the action reply comment
-    """
-    # TODO
-    return
-  
   ######## INTERNAL TRIGGER ACTION ########
 
   def action_follow(self):
@@ -303,19 +303,21 @@ class Agent():
           )
 
         # Generate caption message
+        # Skip is the caption message is None
         caption_message, _ = self.model_component.answer(prompt, True)
-        if (caption_message is None):
-          raise ValueError("Detected None value as answer. Model cannot answer this query.") 
-        print(f"[ACTION POST CAPTION] Attempt {attempt+1} of {max_attempts}. \nCaption: {caption_message}")
+        if (caption_message is not None):
+          print(f"[ACTION POST CAPTION] Attempt {attempt+1} of {max_attempts}. \nCaption: {caption_message}")
 
-        # Prepare contexts for evaluation
-        keywords_str = ", ".join(caption_keywords)
-        contexts = [f"Here is the image description: {img_description}", f"Here are the keywords: {keywords_str}"]  
-        
-        # Evaluate the answer
-        relevancy_evaluation = self.evaluator_component.evaluate_relevancy("Create a caption for an Instagram post", caption_message, contexts)  
-        relevancy_pass = relevancy_evaluation['passing']
-        print(f"[EVALUATION RESULT] \nRelevancy: {relevancy_evaluation}")
+          # Prepare contexts for evaluation
+          keywords_str = ", ".join(caption_keywords)
+          contexts = [f"Here is the image description: {img_description}", f"Here are the keywords: {keywords_str}"]  
+          
+          # Evaluate the answer
+          relevancy_evaluation = self.evaluator_component.evaluate_relevancy("Create a caption for an Instagram post", caption_message, contexts)  
+          relevancy_pass = relevancy_evaluation['passing']
+          print(f"[EVALUATION RESULT] \nRelevancy: {relevancy_evaluation}")
+        else:
+          print(f"[FAILED ACTION POST CAPTION] Attempt {attempt+1} of {max_attempts}. Model cannot generate caption.")
 
         # Increment attempt
         attempt += 1
@@ -323,18 +325,22 @@ class Agent():
           raise Exception(f"Model cannot answer this query after {max_attempts} attempts. The relevancy threshold is not satisfied.")
         
         # Add notes for failing evaluation
-        if (not relevancy_pass):
+        if (caption_message is None):
+          previous_iteration_notes.append({
+            "iteration": attempt,
+            "your_answer" : None,
+            "evaluator": "model",
+            "reason_of_rejection": "Model cannot generate caption."
+          })
+        elif (caption_message and not relevancy_pass):
           previous_iteration_notes.append({
             "iteration": attempt,
             "your_answer" : caption_message,
             "evaluator": "relevancy",
-            "evaluation_score": relevancy_evaluation['score'],
             "reason_of_rejection": relevancy_evaluation['reason']
           })
-
       # Return the generated caption
       return caption_message
-
 
     except Exception as e:
       print(f"[ERROR ACTION POST] Error occured while processing action post caption: {e}")
