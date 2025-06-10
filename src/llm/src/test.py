@@ -1,28 +1,39 @@
 from agent.agent import Agent
+import asyncio
 
-if __name__ == "__main__":
-  nusava = Agent()
+
+async def test(nusava: Agent) -> None:
   # nusava.run() # To run on Flask
 
+  # # Setup (IMPORTANT)
   user_id = 1
   nusava.set_user(user_id)
-  # nusava.set_user("isabella_rivera")
+
 
   # # Test process data
   # nusava.process_data_hotel()
 
+
   # # Test action chat
-  # answer = nusava.action_reply_chat("Give me general informations of Tanto hotel.")
-  # answer = nusava.action_reply_chat("Give me your 5 recommended Hotels")
-  # answer = nusava.action_reply_chat("Tell me the location of Tanto Hotel")
-  answer = nusava.action_reply_chat("Summarize me some reviews of Tanto Hotel. State the ratings and the description of some of the reviews too.")
+  # answer = await nusava.action_reply_chat("Give me general informations of Tanto hotel.")
+  # answer = await nusava.action_reply_chat("Give me your 5 recommended Hotels")
+  # answer = await nusava.action_reply_chat("Tell me the location of Tanto Hotel")
+  # answer = await nusava.action_reply_chat("Summarize me some reviews of Tanto Hotel. State the ratings and the description of some of the reviews too.")
 
   # # Test action post
-  # answer = nusava.action_generate_caption("Image of Kuta beach in Bali when sunset", ["beach", "holiday", "beautiful", "nature", "pretty", "sunkissed"], "Make it short and simple. Do not use hashtags.")
-  # answer = nusava.action_generate_caption("Images of destination places in Singapore consists of Universal Studio, Merlion, and Orchard Road", ["holiday", "fun", "friends", "urban travel", "city"])  
-
+  # answer = await nusava.action_generate_caption("Image of Kuta beach in Bali when sunset", ["beach", "holiday", "beautiful", "nature", "pretty", "sunkissed"], "Make it short and simple. Do not use hashtags.")
+  answer = await nusava.action_generate_caption("Images of destination places in Singapore consists of Universal Studio, Merlion, and Orchard Road", ["holiday", "fun", "friends", "urban travel", "city"])  
+  
+  print(answer)
 
   # # Test decision maker
   # for i in range(3):
   #   nusava.decide_action()
+
+
+
+if __name__ == "__main__":
+  nusava = Agent()
+  asyncio.run(test(nusava))
+
 

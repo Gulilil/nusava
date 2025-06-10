@@ -111,14 +111,14 @@ class Model():
     """
     try:
       if (is_direct):
-         result = self.llm_model.complete(prompt).text
+         response = await self.llm_model.acomplete(prompt)
+         result = response.text
          return result, None
       else:
-        response = self._agent.query(prompt)
+        response = await self._agent.aquery(prompt)
         result = response.response
         contexts = [node.node.text for node in response.source_nodes]
-
-      return result, contexts
+        return result, contexts
     
     except Exception as e:
        print(f"[ERROR MODEL ANSWER] Error occured while processing answer: {e}")

@@ -155,9 +155,9 @@ class Agent():
             print(f"[ACTION REPLY CHAT CONTEXT #{i+1}] : {ctx_topic}")
           
           # Evaluate the answer
-          faithfulness_evaluation = self.evaluator_component.evaluate_faithfulness(chat_message, answer, contexts)
+          faithfulness_evaluation = await self.evaluator_component.evaluate_faithfulness(chat_message, answer, contexts)
           faithfulness_pass = faithfulness_evaluation['passing']
-          relevancy_evaluation = self.evaluator_component.evaluate_relevancy(chat_message, answer, contexts)  
+          relevancy_evaluation = await self.evaluator_component.evaluate_relevancy(chat_message, answer, contexts)  
           relevancy_pass = relevancy_evaluation['passing']
           print(f"[EVALUATION RESULT] \nFaithfulness: {faithfulness_evaluation} \nRelevancy: {relevancy_evaluation}")
 
@@ -196,7 +196,7 @@ class Agent():
     except Exception as e:
       print(f"[ERROR ACTION REPLY CHAT] Error occured while processing action reply chat: {e}")
       error_prompt = self.prompt_generator_component.generate_prompt_error(user_query=chat_message, error_message=str(e))
-      answer, _ = self.model_component.answer(error_prompt, True)
+      answer, _ = await self.model_component.answer(error_prompt, True)
       return answer
 
 
@@ -234,7 +234,7 @@ class Agent():
     return
 
 
-  def action_generate_caption(self, 
+  async def action_generate_caption(self, 
                   img_description: str, 
                   caption_keywords: list[str],
                   additional_context: str = None) -> str:
@@ -259,7 +259,7 @@ class Agent():
 
         # Generate caption message
         # Skip is the caption message is None
-        caption_message, _ = self.model_component.answer(prompt, True)
+        caption_message, _ = await self.model_component.answer(prompt, True)
         if (caption_message is not None):
           print(f"[ACTION POST CAPTION] Attempt {attempt+1} of {max_attempts}. \nCaption: {caption_message}")
 
@@ -268,7 +268,7 @@ class Agent():
           contexts = [f"Here is the image description: {img_description}", f"Here are the keywords: {keywords_str}"]  
           
           # Evaluate the answer
-          relevancy_evaluation = self.evaluator_component.evaluate_relevancy("Create a caption for an Instagram post", caption_message, contexts)  
+          relevancy_evaluation = await self.evaluator_component.evaluate_relevancy("Create a caption for an Instagram post", caption_message, contexts)  
           relevancy_pass = relevancy_evaluation['passing']
           print(f"[EVALUATION RESULT] \nRelevancy: {relevancy_evaluation}")
         else:
@@ -301,7 +301,7 @@ class Agent():
       print(f"[ERROR ACTION POST] Error occured while processing action post caption: {e}")
       user_query = f"Make a post caption with image description: {img_description}, keywords: {caption_keywords}, additional context: {additional_context}"
       error_prompt = self.prompt_generator_component.generate_prompt_error(user_query=user_query, error_message=str(e))
-      answer, _ = self.model_component.answer(error_prompt, True)
+      answer, _ = await self.model_component.answer(error_prompt, True)
       return answer
 
 

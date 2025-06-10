@@ -1,4 +1,5 @@
 from flask import Flask, request, jsonify
+import asyncio
 import os
 from dotenv import load_dotenv
 load_dotenv()
@@ -95,7 +96,7 @@ class InputGateway():
     ######## ACTIONS INPUT ########
 
     @self.app.route("/chat", methods=['POST'])
-    def respond_chat():
+    async def respond_chat():
       """
       Respond to input chat from user, returning the reply to the inputted message
       Field format : 
@@ -111,39 +112,13 @@ class InputGateway():
 
         # Proceed to process
         chat_message = data['chat_message']
-        response = self.agent.action_reply_chat(chat_message)
-        return jsonify({"response": response}), 200
-      except Exception as error: 
-        return jsonify({"error": str(error)}), 400
-
-    @self.app.route("/comment", methods=['POST'])
-    def respond_comment():
-      """
-      Respond to input comment from user, returning the reply to the comment
-      Field format : 
-      {
-        comment_message : str,
-        post_caption: str, 
-        previous_comments : list[str]
-      }
-      """
-      try:
-        data = request.get_json()
-        is_valid, error_message = self._check_data_validity(data, ["comment_message", "post_caption", "previous_comments"])
-        if (not is_valid):
-          return jsonify({"error": error_message}), 400
-        
-        # Proceed to process
-        comment_message = data['comment_message']
-        post_caption = data['post_caption']
-        previous_comments = data['previous_comments']
-        response = self.agent.action_reply_comment(comment_message, post_caption, previous_comments)
+        response = await self.agent.action_reply_chat(chat_message)
         return jsonify({"response": response}), 200
       except Exception as error: 
         return jsonify({"error": str(error)}), 400
       
     @self.app.route("/post", methods=['POST'])
-    def respond_schedule_post():
+    async def respond_schedule_post():
       """
       Respond to schedule post input from dashboard, will be scheduled
       Field format : 
@@ -162,14 +137,14 @@ class InputGateway():
         img_url = data['image_url']
         caption_message= data['caption_message']
         # Process and schedule the post
-        self.agent.action_schedule_post(img_url, caption_message)
+        await self.agent.action_schedule_post(img_url, caption_message)
 
         return jsonify({"response": True}), 200
       except Exception as error: 
         return jsonify({"error": str(error)}), 400
 
     @self.app.route("/caption", methods=['POST'])
-    def respond_generate_caption():
+    async def respond_generate_caption():
       """
       Respond to post input from dashboard, returning the caption for the post
       Field format : 
@@ -190,7 +165,7 @@ class InputGateway():
         caption_keywords = data['caption_keywords']
         additional_context = data.get('additional_context', None)
         # Process and schedule the action post
-        caption_message = self.agent.action_generate_caption(img_description, caption_keywords, additional_context)
+        caption_message = await self.agent.action_generate_caption(img_description, caption_keywords, additional_context)
 
         return jsonify({"response": caption_message}), 200
       except Exception as error: 
