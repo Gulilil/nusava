@@ -1,9 +1,11 @@
-from llama_index.core.tools import QueryEngineTool, ToolMetadata
 from llama_index.embeddings.huggingface import HuggingFaceEmbedding
 from llama_index.llms.ollama import Ollama
-from llama_index.core.agent import ReActAgent
 from llama_index.core import  VectorStoreIndex
+from llama_index.core.agent import ReActAgent
+from llama_index.core.callbacks import CallbackManager, TokenCountingHandler
+from llama_index.core.tools import QueryEngineTool, ToolMetadata, FunctionTool
 from typing import Tuple, Optional
+
 
 class Model():
   """
@@ -29,8 +31,11 @@ class Model():
   _request_timeout: float = 60.0
   _tools: list = []
 
+  """
+  Persona component
+  """
 
-  def __init__(self):
+  def __init__(self, persona_component):
     """
     Initialization of the LLM and the embedding model
     """
@@ -38,36 +43,46 @@ class Model():
                             temperature = self._temperature,
                             request_timeout = self._request_timeout)
     self.embed_model  = HuggingFaceEmbedding(model_name=self._embed_model_name)
+    self._persona_component = persona_component
+    self._callback_manager = CallbackManager([TokenCountingHandler()])
     print(f"[MODEL INITIALIZED] Model is initialized with llm_model: {self._llm_model_name} and embed_model: {self._embed_model_name}")
+
+  ######## SETUP ########
+
+  def config(self, config_data : tuple) -> None:
+    """
+    Config the performance of the model
+    """
+    self._temperature = config_data[0]
+    self._top_k = config_data[1]
+    self._max_token = config_data[2]
+    self._max_iteration = config_data[3]
+    self.display_config()
 
   ######## PRIVATE ########
 
-  def _construct_metadata(self, topic, query) -> ToolMetadata:
+  def _construct_metadata(self, name, description) -> ToolMetadata:
     """
     Construct metadata based on the topic and user input query for agentic tools usage
     """
     return ToolMetadata(
-      name= f"rag_tools_for_{topic}",
-      description= f"Used to answering {topic}-related query of input: \"{query}\" based on retrieved documents"
+      name= name,
+      description= description
     )
 
 
-  def _setup_agent(self, query_engine, topic, query) -> None:
+  def _setup_tool(self, query_engine, topic, query) -> None:
     """
-    Setup agentic system and tools for query engine
+    Setup tools for agentic system and query engine
     """
-    metadata = self._construct_metadata(topic, query)
+    metadata_name = f"rag_tools_for_{topic}"
+    metadata_description = f"Used to answering {topic}-related query of input: \"{query}\" based on retrieved documents"
+    metadata = self._construct_metadata(metadata_name, metadata_description)
     tool = QueryEngineTool(
       query_engine=query_engine,
       metadata=metadata
     )
     self._tools.append(tool)
-    self._agent = ReActAgent.from_tools(
-      self._tools, 
-      llm = self.llm_model, 
-      verbose= True, 
-      max_iterations=self._max_iteration
-    )
 
   ######## PUBLIC ########
 
@@ -101,21 +116,40 @@ class Model():
         response_mode="compact",
         return_source_nodes=True
       )
-      self._setup_agent(query_engine, topic, query)
+      self._setup_tool(query_engine, topic, query)
 
 
-  async def answer(self, prompt: str, is_direct: bool = False) -> Tuple[Optional[str], Optional[list]]:
+  async def answer(self, 
+                   prompt: str, 
+                   is_direct: bool = False, 
+                   verbose: bool = True
+                  ) -> Tuple[Optional[str], Optional[list]]:
     """
     Answer the prompt using the llm_model or agentic system
     If is_direct is True, it will use the llm_model directly.
     """
+    system_prompt=(
+        f"You are a user in Instagram who responds with clarity and purpose."
+        f"You have a certain persona on which you should follow strictly."
+        f"Here is the detaul of your persona:\n"
+        f"{self._persona_component.get_persona_str()}\n\n"
+    )
+
     try:
       if (is_direct):
          response = await self.llm_model.acomplete(prompt)
          result = response.text
          return result, None
       else:
-        response = await self._agent.aquery(prompt)
+
+        agent = ReActAgent.from_tools(
+          self._tools, 
+          llm = self.llm_model, 
+          verbose= verbose, 
+          max_iterations=self._max_iteration,
+          system_prompt = system_prompt
+        )
+        response = await agent.aquery(prompt)
         result = response.response
         contexts = [node.node.text for node in response.source_nodes]
         return result, contexts
@@ -131,16 +165,4 @@ class Model():
     """
     self._tools = []
 
-
-  def config(self, config_data : tuple) -> None:
-    """
-    Config the performance of the model
-    """
-    self._temperature = config_data[0]
-    self._top_k = config_data[1]
-    self._max_token = config_data[2]
-    self._max_iteration = config_data[3]
-    self.display_config()
-
-    
 

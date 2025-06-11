@@ -19,14 +19,14 @@ class PromptGenerator():
     """
     Instantiate the template
     """
-    self.prompt_template = PromptTemplate(PROMPT_TEMPLATE)
-    self.persona_component = persona_component
+    self._prompt_template = PromptTemplate(PROMPT_TEMPLATE)
+    self._persona_component = persona_component
 
   # GENERATE SUBPROMPT
   ##############################
   
   def generate_subprompt_persona(self) -> str:
-    age, style, occupation = self.persona_component.get_typing_style()
+    age, style, occupation = self._persona_component.get_typing_style()
     persona_subprompt = f"You are {age} years old with the occupation of {occupation}. You have the characterstics to be {style}"
     persona_subprompt += " This is a crucial part of your identity, so make sure to always follow this persona in your responses."
     return persona_subprompt
@@ -96,14 +96,12 @@ class PromptGenerator():
   # GENERATE PROMPT
   ##############################
 
-  def generate_prompt_error(self, user_query: str,  error_message: str) -> str:
+  def generate_prompt_error(self, user_query: str) -> str:
     """
     Generate a prompt for error message
     """
     context_str = "You are expected to answer the user query, but you cannot answer this query due to some error."
     context_str += f"\nHere is the user query: \"{user_query}\""
-    if (error_message is not None):
-      context_str += f"\nHere is the error message: {error_message}"
 
     # Setup subprompts
     persona_subprompt = self.generate_subprompt_persona()
@@ -114,7 +112,7 @@ class PromptGenerator():
     previous_iteration_notes_subprompt = ""
     query_str = "Explain to user that you cannot answer this query."
 
-    return self.prompt_template.format(persona_subprompt=persona_subprompt,
+    return self._prompt_template.format(persona_subprompt=persona_subprompt,
                                   context_subprompt=context_subprompt,
                                   example_subprompt=example_subprompt, 
                                   additional_subprompt=additional_subprompt,
@@ -132,18 +130,16 @@ class PromptGenerator():
     # TODO Provide previous messages to the context
     if (previous_messages is not None):
       context += ""
-    
-    # Chat does not need to have examples. It can be vary depending on the topic/ message
-    examples = []
 
     # Setup subprompts
     persona_subprompt = self.generate_subprompt_persona()
     context_subprompt = self.generate_subprompt_context(context)
-    example_subprompt = self.generate_subprompt_example(examples)
+    # Chat does not need to have examples. It can be vary depending on the topic/ message
+    example_subprompt = self.generate_subprompt_example(None)
     additional_subprompt = ""
     previous_iteration_notes_subprompt = self.generate_subprompt_previous_iteration_notes(previous_iteration_notes)
 
-    return self.prompt_template.format(persona_subprompt=persona_subprompt,
+    return self._prompt_template.format(persona_subprompt=persona_subprompt,
                                   context_subprompt=context_subprompt,
                                   example_subprompt=example_subprompt, 
                                   additional_subprompt=additional_subprompt,
@@ -175,7 +171,7 @@ class PromptGenerator():
     # Setup query string
     query_str = "Make a comment for Instagram post based on the context"
 
-    return self.prompt_template.format(persona_subprompt=persona_subprompt,
+    return self._prompt_template.format(persona_subprompt=persona_subprompt,
                                   context_subprompt=context_subprompt,
                                   example_subprompt=example_subprompt, 
                                   additional_subprompt=additional_subprompt,
@@ -209,7 +205,7 @@ class PromptGenerator():
     # Setup query string
     query_str = "Make a caption for Instagram post based on the context"
 
-    return self.prompt_template.format(persona_subprompt=persona_subprompt,
+    return self._prompt_template.format(persona_subprompt=persona_subprompt,
                                       context_subprompt=context_subprompt,
                                       example_subprompt=example_subprompt, 
                                       additional_subprompt=additional_subprompt,

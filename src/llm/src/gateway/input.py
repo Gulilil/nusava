@@ -10,14 +10,14 @@ class InputGateway():
   Input gateway for other module
   """
   def __init__(self, 
-               agent, 
+               agent_component, 
                host : str = os.getenv("LLM_MODULE_HOST"), 
                port : str = os.getenv("LLM_MODULE_PORT")):
     """
     Instantiate Flask as the framework for the API and the gateway
     """
     self.app = Flask(__name__)
-    self.agent = agent
+    self._agent_component = agent_component
     self.host = host
     self.port = port
     self.setup_routes()
@@ -66,7 +66,7 @@ class InputGateway():
         
         # Proceed to process
         user_id = data['user_id']
-        self.agent.set_user(user_id)
+        self._agent_component.set_user(user_id)
         return jsonify({"response": True}), 200
       except Exception as error: 
         return jsonify({"error": str(error)}), 400
@@ -77,7 +77,7 @@ class InputGateway():
       Respond to change persona input from dashboard
       """
       try:
-        self.agent.set_persona()
+        self._agent_component.set_persona()
         return jsonify({"response": True}), 200
       except Exception as error: 
         return jsonify({"error": str(error)}), 400
@@ -88,7 +88,7 @@ class InputGateway():
       Respond to change model configuration input from dashboard
       """
       try:
-        self.agent.set_config()
+        self._agent_component.set_config()
         return jsonify({"response": True}), 200
       except Exception as error: 
         return jsonify({"error": str(error)}), 400
@@ -112,7 +112,7 @@ class InputGateway():
 
         # Proceed to process
         chat_message = data['chat_message']
-        response = await self.agent.action_reply_chat(chat_message)
+        response = await self._agent_component.action_reply_chat(chat_message)
         return jsonify({"response": response}), 200
       except Exception as error: 
         return jsonify({"error": str(error)}), 400
@@ -137,7 +137,7 @@ class InputGateway():
         img_url = data['image_url']
         caption_message= data['caption_message']
         # Process and schedule the post
-        await self.agent.action_schedule_post(img_url, caption_message)
+        await self._agent_component.action_schedule_post(img_url, caption_message)
 
         return jsonify({"response": True}), 200
       except Exception as error: 
@@ -165,7 +165,7 @@ class InputGateway():
         caption_keywords = data['caption_keywords']
         additional_context = data.get('additional_context', None)
         # Process and schedule the action post
-        caption_message = await self.agent.action_generate_caption(img_description, caption_keywords, additional_context)
+        caption_message = await self._agent_component.action_generate_caption(img_description, caption_keywords, additional_context)
 
         return jsonify({"response": caption_message}), 200
       except Exception as error: 

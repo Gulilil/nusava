@@ -12,7 +12,7 @@ from generator.schedule import ScheduleGenerator
 from memory.episodic import EpisodicMemory
 from memory.semantic import SemanticMemory
 from utils.function import hotel_data_to_string_list, text_to_document, parse_documents, clean_quotation_string
-from typing import Any
+
 
 class Agent():
   """
@@ -22,8 +22,8 @@ class Agent():
   def __init__(self):
     self.user_id = None
     # Instantiate Agent Component
-    self.model_component = Model()
     self.persona_component = Persona()
+    self.model_component = Model(self.persona_component)
     print("[AGENT INITIALIZED] Agent component(s) initialized")
     # Instantiate Memory
     # self.episodic_memory_component = EpisodicMemory()
@@ -58,6 +58,11 @@ class Agent():
     """
     print(f"[AGENT CONSTRUCTED] Constructing agent for user_id: {user_id}")
     self.user_id = user_id
+
+    # Reset model tools
+    self.model_component.refresh_tools()
+
+    # Setup components
     self.set_config()
     self.set_persona()
 
@@ -204,8 +209,8 @@ class Agent():
     
     except Exception as e:
       print(f"[ERROR ACTION REPLY CHAT] Error occured while processing action reply chat: {e}")
-      error_prompt = self.prompt_generator_component.generate_prompt_error(user_query=chat_message, error_message=str(e))
-      answer, _ = await self.model_component.answer(error_prompt, True)
+      error_prompt = self.prompt_generator_component.generate_prompt_error(user_query=chat_message)
+      answer, _ = await self.model_component.answer(error_prompt, is_direct=True)
       return clean_quotation_string(answer)
 
 
@@ -268,7 +273,7 @@ class Agent():
 
         # Generate caption message
         # Skip is the caption message is None
-        caption_message, _ = await self.model_component.answer(prompt, True)
+        caption_message, _ = await self.model_component.answer(prompt, is_direct=True)
         if (caption_message is not None):
           print(f"[ACTION POST CAPTION] Attempt {attempt+1} of {max_attempts}. \nCaption: {caption_message}")
 
@@ -309,8 +314,8 @@ class Agent():
     except Exception as e:
       print(f"[ERROR ACTION POST] Error occured while processing action post caption: {e}")
       user_query = f"Make a post caption with image description: {img_description}, keywords: {caption_keywords}, additional context: {additional_context}"
-      error_prompt = self.prompt_generator_component.generate_prompt_error(user_query=user_query, error_message=str(e))
-      answer, _ = await self.model_component.answer(error_prompt, True)
+      error_prompt = self.prompt_generator_component.generate_prompt_error(user_query=user_query)
+      answer, _ = await self.model_component.answer(error_prompt, is_direct=True)
       return clean_quotation_string(answer)
 
 

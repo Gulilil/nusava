@@ -1,4 +1,6 @@
 from typing import Tuple
+from utils.function import json_to_string_list
+
 
 class Persona():
   """
@@ -36,12 +38,14 @@ class Persona():
     for key, val in self._persona.items():
       print(f"{key} : {val}")
 
+
   def _display_persona_summary(self) -> None:
     """
     Display summary of persona data
     """
     print(f"[PERSONA SUMMARY] Current persona is: {self._persona['age']} years old with the occupation of {self._persona['occupation']} and the characterstics to be {self._persona['style']}" 
           + f" The name is {self._persona['name']}." if 'name' in self._persona else "")
+
 
   def load_persona(self, persona_data: dict) -> None:
     """
@@ -57,3 +61,13 @@ class Persona():
     Get typing style of the persona
     """
     return self._persona['age'], self._persona['style'], self._persona['occupation']
+  
+
+  def get_persona_str(self):
+    """
+    Call persona data as string
+    """
+    persona_str_list = []
+    json_to_string_list(self._persona, "persona", persona_str_list)
+    persona_str = "\n".join(persona_str_list)
+    return persona_str
