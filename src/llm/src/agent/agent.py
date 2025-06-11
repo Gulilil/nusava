@@ -11,7 +11,7 @@ from generator.action import ActionGenerator
 from generator.schedule import ScheduleGenerator
 from memory.episodic import EpisodicMemory
 from memory.semantic import SemanticMemory
-from utils.function import hotel_data_to_string_list, text_to_document, parse_documents, display_nested_list
+from utils.function import hotel_data_to_string_list, text_to_document, parse_documents, clean_quotation_string
 from typing import Any
 
 class Agent():
@@ -134,9 +134,9 @@ class Agent():
       # While the thresholds are not satisfied, do the iteration
       max_attempts = 3 
       attempt = 0
-      faithfulness_pass, relevancy_pass = False, False
+      correctness_pass, faithfulness_pass, relevancy_pass = False, False, False
       previous_iteration_notes = []
-      while (not faithfulness_pass or not relevancy_pass):
+      while (not correctness_pass or not faithfulness_pass or not relevancy_pass):
         # Generate prompt
         prompt = self.prompt_generator_component.generate_prompt_reply_chat(
           new_message=chat_message,
@@ -155,16 +155,18 @@ class Agent():
             print(f"[ACTION REPLY CHAT CONTEXT #{i+1}] : {ctx_topic}")
           
           # Evaluate the answer
+          correctness_evaluation = await self.evaluator_component.evaluate_correctness(chat_message, answer, contexts)
+          correctness_pass = correctness_evaluation["passing"]
           faithfulness_evaluation = await self.evaluator_component.evaluate_faithfulness(chat_message, answer, contexts)
-          faithfulness_pass = faithfulness_evaluation['passing']
+          faithfulness_pass = faithfulness_evaluation["passing"]
           relevancy_evaluation = await self.evaluator_component.evaluate_relevancy(chat_message, answer, contexts)  
-          relevancy_pass = relevancy_evaluation['passing']
-          print(f"[EVALUATION RESULT] \nFaithfulness: {faithfulness_evaluation} \nRelevancy: {relevancy_evaluation}")
+          relevancy_pass = relevancy_evaluation["passing"]
+          print(f"[EVALUATION RESULT] \nCorrectness: {correctness_evaluation} \nFaithfulness: {faithfulness_evaluation} \nRelevancy: {relevancy_evaluation}")
 
         # Increment attempt
         attempt += 1
         if (attempt >= max_attempts):
-          raise Exception(f"Model cannot answer this query after {max_attempts} attempts. The relevancy and faithfulness thresholds are not satisfied.")
+          raise Exception(f"Model cannot answer this query after {max_attempts} attempts. The evaluations thresholds are not satisfied.")
         
         # Add notes for failing evaluation
         if (answer is None):
@@ -176,6 +178,13 @@ class Agent():
             "reason_of_rejection": "Model cannot answer this query."
           })
         else:
+          if (not correctness_pass):
+            previous_iteration_notes.append({
+              "iteration": attempt,
+              "your_answer" : answer,
+              "evaluator": "correctness",
+              "reason_of_rejection": correctness_evaluation['reason']
+            })
           if (not faithfulness_pass):
             previous_iteration_notes.append({
               "iteration": attempt,
@@ -191,13 +200,13 @@ class Agent():
               "reason_of_rejection": relevancy_evaluation['reason']
             })
       # Return the answer
-      return answer
+      return clean_quotation_string(answer)
     
     except Exception as e:
       print(f"[ERROR ACTION REPLY CHAT] Error occured while processing action reply chat: {e}")
       error_prompt = self.prompt_generator_component.generate_prompt_error(user_query=chat_message, error_message=str(e))
       answer, _ = await self.model_component.answer(error_prompt, True)
-      return answer
+      return clean_quotation_string(answer)
 
 
   ######## INTERNAL TRIGGER ACTION ########
@@ -277,7 +286,7 @@ class Agent():
         # Increment attempt
         attempt += 1
         if (attempt >= max_attempts):
-          raise Exception(f"Model cannot answer this query after {max_attempts} attempts. The relevancy threshold is not satisfied.")
+          raise Exception(f"Model cannot answer this query after {max_attempts} attempts. The evaluation threshold is not satisfied.")
         
         # Add notes for failing evaluation
         if (caption_message is None):
@@ -295,17 +304,16 @@ class Agent():
             "reason_of_rejection": relevancy_evaluation['reason']
           })
       # Return the generated caption
-      return caption_message
+      return clean_quotation_string(caption_message)
 
     except Exception as e:
       print(f"[ERROR ACTION POST] Error occured while processing action post caption: {e}")
       user_query = f"Make a post caption with image description: {img_description}, keywords: {caption_keywords}, additional context: {additional_context}"
       error_prompt = self.prompt_generator_component.generate_prompt_error(user_query=user_query, error_message=str(e))
       answer, _ = await self.model_component.answer(error_prompt, True)
-      return answer
+      return clean_quotation_string(answer)
 
 
-      
   ######## PROCESS DATA ########
   """
   Should only be run manually

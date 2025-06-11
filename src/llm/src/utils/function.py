@@ -117,3 +117,10 @@ def display_nested_list(nested_list:list, indent: int = 0) -> None:
     else:
       print((" " * 2 * indent) + item)
       print("========================")
+
+
+def clean_quotation_string(text: str) -> str:
+  if ("\"" == text[0] and "\"" == text[-1]):
+    return text[1:-1]
+  else:
+    return text
