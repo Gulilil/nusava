@@ -15,7 +15,8 @@ Query: {query_str}
 
 class PromptGenerator():
 
-  def __init__(self, persona_component):
+  def __init__(self, 
+               persona_component: object):
     """
     Instantiate the template
     """
@@ -80,8 +81,9 @@ class PromptGenerator():
       {"iteration" : x, "your_answer": "...", "evaluator": "...", "reason_of_rejection" : ...},
     ]
     """
+    previous_iteration_notes_subprompt = "Previous Iteration Notes:\n"
     if (previous_iteration_notes is not None and len(previous_iteration_notes) > 0):
-      previous_iteration_notes_subprompt = "Here are some notes from your previous iterations. This notes are important to be considered in your answer.\n"
+      previous_iteration_notes_subprompt += "Here are some notes from your previous iterations. This notes are important to be considered in your answer.\n"
       previous_iteration_notes_subprompt += "Your answer are expected to pass the evaluator. But, here I provide some notes on your previous answers and the reason it does not pass the evaluator.\n"
       for notes in previous_iteration_notes:
         previous_iteration_notes_subprompt += "{\n"
@@ -89,12 +91,14 @@ class PromptGenerator():
           previous_iteration_notes_subprompt += f"{key}: {value}\n"
         previous_iteration_notes_subprompt += "}\n"
     else:
-      previous_iteration_notes_subprompt = "I have no provided notes from the previous iteration. This is your first iteration"
+      previous_iteration_notes_subprompt += "I have no provided notes from the previous iteration. This is your first iteration"
     
     return previous_iteration_notes_subprompt
 
   # GENERATE PROMPT
   ##############################
+
+  ######## SUPPORTING PROMPT ########
 
   def generate_prompt_error(self, user_query: str) -> str:
     """
@@ -118,18 +122,54 @@ class PromptGenerator():
                                   additional_subprompt=additional_subprompt,
                                   previous_iteration_notes_subprompt=previous_iteration_notes_subprompt,
                                   query_str=query_str)
+  
+
+  def generate_prompt_summarize_memory(self, memory_data: list[dict]) -> str:
+    """
+    Generate a prompt for summarizing memory
+    """
+    context_str = "You are expected to summarize this memory. This is the memory of the chat between you and specific user."
+    context_str += "In these messages, you have the role `bot` while the user have the role `user`.\n"
+    context_str += "Here is the memory data:\n\n"
+    for i, memory in enumerate(memory_data): 
+      timestamp_str = memory['timestamp'].strftime("%Y-%m-%d %H:%M:%S")
+      context_str += f"Memory {i+1}. {memory['role']} [{timestamp_str}]: \"{memory['content']}\"\n"
+
+    # Setup subprompts
+    persona_subprompt = self.generate_subprompt_persona()
+    context_subprompt = self.generate_subprompt_context(context_str)
+    example_subprompt = self.generate_subprompt_example(None)
+    additional_subprompt =  "You do not have to be so concise when summarizing." \
+                            "However, you have to make sure that you are not missing any critical points of the chat." \
+                            "This memory will later be used for RAG system. Therefore, you need to summarize this in form of a document."
+    previous_iteration_notes_subprompt = ""
+    query_str = "Summarize this memory data."
+
+    return self._prompt_template.format(persona_subprompt=persona_subprompt,
+                                  context_subprompt=context_subprompt,
+                                  example_subprompt=example_subprompt, 
+                                  additional_subprompt=additional_subprompt,
+                                  previous_iteration_notes_subprompt=previous_iteration_notes_subprompt,
+                                  query_str=query_str)
 
 
-  def generate_prompt_reply_chat(self, new_message: str, previous_messages: list[str] = None, previous_iteration_notes: list[dict] = None) -> str:
+  ######## ACTION PROMPT ########
+
+  def generate_prompt_reply_chat(self, new_message: str, previous_messages: list[dict] = [], previous_iteration_notes: list[dict] = None) -> str:
     """
     Generate a prompt for replying chat
+    See the Class Memory for the template of the previous messages
     """
     context = "You have to be informative and clear in giving information to users. You also have to assure the correctness of the facts that you provide.\n"
 
     # Process previous messages
-    # TODO Provide previous messages to the context
-    if (previous_messages is not None):
-      context += ""
+    if (len(previous_messages) > 0):
+      context += "Here will be provided some of the most recent messages.\n"
+      context += "You need to keep in mind that there might be other messages before this. However, they were omitted for brevity.\n"
+      context += "In these messages, you have the role `bot` while the user have the role `user`.\n"
+      context += "Here is the messages:\n\n"
+      for i, message in enumerate(previous_messages):
+        context += f"Message {i+1}. {message['role']}: \"{message['content']}\"\n"
 
     # Setup subprompts
     persona_subprompt = self.generate_subprompt_persona()

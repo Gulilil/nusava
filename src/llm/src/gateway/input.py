@@ -101,18 +101,20 @@ class InputGateway():
       Respond to input chat from user, returning the reply to the inputted message
       Field format : 
       {
-        chat_message : str
+        chat_message : str,
+        sender_id: str
       }
       """
       try:
         data = request.get_json()
-        is_valid, error_message = self._check_data_validity(data, ['chat_message'])
+        is_valid, error_message = self._check_data_validity(data, ['chat_message', 'sender_id'])
         if (not is_valid):
           return jsonify({"error": error_message}), 400
 
         # Proceed to process
         chat_message = data['chat_message']
-        response = await self._agent_component.action_reply_chat(chat_message)
+        sender_id = data['sender_id']
+        response = await self._agent_component.action_reply_chat(chat_message, sender_id)
         return jsonify({"response": response}), 200
       except Exception as error: 
         return jsonify({"error": str(error)}), 400

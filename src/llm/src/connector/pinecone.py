@@ -42,3 +42,11 @@ class PineconeConnector():
     Display status of the pinecone index
     """
     print(self.index.describe_index_stats())
+
+  
+  def is_namespace_exist(self, namespace_name: str) -> bool:
+    """
+    Check if a certain namespace exist
+    """
+    namespaces_data = self.index.describe_index_stats()['namespaces']
+    return namespace_name in namespaces_data

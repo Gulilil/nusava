@@ -35,7 +35,8 @@ class Model():
   Persona component
   """
 
-  def __init__(self, persona_component):
+  def __init__(self, 
+               persona_component: object):
     """
     Initialization of the LLM and the embedding model
     """

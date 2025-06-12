@@ -1,3 +1,4 @@
+from agent.memory import Memory
 from agent.model import Model
 from agent.persona import Persona
 from connector.pinecone import PineconeConnector
@@ -9,8 +10,6 @@ from gateway.output import OutputGateway
 from generator.prompt import PromptGenerator
 from generator.action import ActionGenerator
 from generator.schedule import ScheduleGenerator
-from memory.episodic import EpisodicMemory
-from memory.semantic import SemanticMemory
 from utils.function import hotel_data_to_string_list, text_to_document, parse_documents, clean_quotation_string
 
 
@@ -23,12 +22,9 @@ class Agent():
     self.user_id = None
     # Instantiate Agent Component
     self.persona_component = Persona()
+    self.memory_component = Memory(self)
     self.model_component = Model(self.persona_component)
     print("[AGENT INITIALIZED] Agent component(s) initialized")
-    # Instantiate Memory
-    # self.episodic_memory_component = EpisodicMemory()
-    # self.semantic_memory_component = SemanticMemory() 
-    print("[AGENT INITIALIZED] Memory component(s) initialized")
     # Instantiate Connector
     self.pinecone_connector_component = PineconeConnector()
     self.mongo_connector_component = MongoConnector()
@@ -114,19 +110,48 @@ class Agent():
         self.action_comment()
       else:
         return
+      
+
+  async def summarize_and_store_memory(self, sender_id: str, memory_data: list[dict]) -> bool:
+    """
+    Summarize memory and store it to vector database
+    """
+    # Make the summary
+    try:
+      prompt = self.prompt_generator_component.generate_prompt_summarize_memory(memory_data)
+      summary, _ = await self.model_component.answer(prompt, is_direct=True)
+      
+      # Prepare to insert
+      pinecone_namespace_name = f"chat_bot[{self.user_id}]_sender[{sender_id}]"
+      summary_document = text_to_document([summary])
+      summary_parsed = parse_documents(summary_document)
+      _, storage_context = self.pinecone_connector_component.get_vector_store(pinecone_namespace_name)
+
+      # Insert to pinecone
+      self.pinecone_connector_component.store_data(summary_parsed, storage_context, self.model_component.embed_model) 
+      return True
+
+    except Exception as e:
+      print(f"[ERROR SUMMARIZE AND STORE MEMORY] {e}")
+      return False
+
+
 
   ######## ACTION ########
 
   ######## EXTERNAL TRIGGER ACTION ########
 
-  async def action_reply_chat(self, chat_message: str) -> str:
+  async def action_reply_chat(self, chat_message: str, sender_id: str) -> str:
     """
     Operate the action reply chat
     """
+
+    # Store in user query reply memory
+    await self.memory_component.store(sender_id, {"role": "user", "content" : chat_message})
+
     try:
-      #TODO What to do with user_id
-      #TODO How to determine that it is about hotel and construct metadata
       # Load the data from pinecone
+      # First hotel data
       pinecone_namespace_name = 'hotels_new'
       vector_store, storage_context = self.pinecone_connector_component.get_vector_store(pinecone_namespace_name)
       await self.model_component.load_data(
@@ -134,6 +159,18 @@ class Agent():
         storage_context, 
         pinecone_namespace_name,
         chat_message)
+      
+      # Load the long-term memory from pinecone
+      pinecone_namespace_name = f"chat_bot[{self.user_id}]_sender[{sender_id}]"
+      if (self.pinecone_connector_component.is_namespace_exist(pinecone_namespace_name)):
+        vector_store, storage_context = self.pinecone_connector_component.get_vector_store(pinecone_namespace_name)
+        await self.model_component.load_data(
+          vector_store, 
+          storage_context, 
+          pinecone_namespace_name,
+          chat_message)
+        print(f"[LOADING MEMORY] Inserting long-term memory as tools for RAG")
+
 
       # Do iteration of action reply chat
       # While the thresholds are not satisfied, do the iteration
@@ -145,7 +182,7 @@ class Agent():
         # Generate prompt
         prompt = self.prompt_generator_component.generate_prompt_reply_chat(
           new_message=chat_message,
-          previous_messages=None,
+          previous_messages=self.memory_component.retrieve(sender_id),
           previous_iteration_notes=previous_iteration_notes)
       
         # Answer the query
@@ -155,9 +192,9 @@ class Agent():
           print(f"[ACTION REPLY CHAT] Attempt {attempt+1} of {max_attempts}. \nQuery: {chat_message} \nAnswer: {answer}")
 
           # Display contexts (for printing only)
-          for i, ctx  in enumerate(contexts):
-            ctx_topic = ctx.split('\n', 1)[0]
-            print(f"[ACTION REPLY CHAT CONTEXT #{i+1}] : {ctx_topic}")
+          for i, context  in enumerate(contexts):
+            context_topic = context.split('\n', 1)[0]
+            print(f"[ACTION REPLY CHAT CONTEXT #{i+1}] : {context_topic}")
           
           # Evaluate the answer
           correctness_evaluation = await self.evaluator_component.evaluate_correctness(chat_message, answer, contexts)
@@ -205,13 +242,25 @@ class Agent():
               "reason_of_rejection": relevancy_evaluation['reason']
             })
       # Return the answer
-      return clean_quotation_string(answer)
+      answer = clean_quotation_string(answer)
+
+      # Store in bot's reply memory
+      await self.memory_component.store(sender_id, {"role": "bot", "content" : answer})
+
+      return answer
     
     except Exception as e:
       print(f"[ERROR ACTION REPLY CHAT] Error occured while processing action reply chat: {e}")
+
+      # LLM should explain to user
       error_prompt = self.prompt_generator_component.generate_prompt_error(user_query=chat_message)
       answer, _ = await self.model_component.answer(error_prompt, is_direct=True)
-      return clean_quotation_string(answer)
+      answer = clean_quotation_string(answer)
+
+      # Store in bot's reply memory
+      await self.memory_component.store(sender_id, {"role": "bot", "content" : answer})
+
+      return answer
 
 
   ######## INTERNAL TRIGGER ACTION ########
@@ -309,14 +358,16 @@ class Agent():
             "reason_of_rejection": relevancy_evaluation['reason']
           })
       # Return the generated caption
-      return clean_quotation_string(caption_message)
+      answer = clean_quotation_string(caption_message)
+      return answer
 
     except Exception as e:
       print(f"[ERROR ACTION POST] Error occured while processing action post caption: {e}")
       user_query = f"Make a post caption with image description: {img_description}, keywords: {caption_keywords}, additional context: {additional_context}"
       error_prompt = self.prompt_generator_component.generate_prompt_error(user_query=user_query)
       answer, _ = await self.model_component.answer(error_prompt, is_direct=True)
-      return clean_quotation_string(answer)
+      answer = clean_quotation_string(answer)
+      return answer
 
 
   ######## PROCESS DATA ########
@@ -348,7 +399,6 @@ class Agent():
 
       # Iterate data in the current batch list
       for hotel in curr_batch_hotels:
-        
         hotel_string_data = hotel_data_to_string_list(hotel)
         documents_list = text_to_document(hotel_string_data)
         hotel_docs.extend(documents_list)

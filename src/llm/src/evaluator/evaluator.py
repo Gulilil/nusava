@@ -1,4 +1,5 @@
 from llama_index.core.evaluation import FaithfulnessEvaluator, RelevancyEvaluator, CorrectnessEvaluator
+from typing import Any
 
 class Evaluator():
   """
@@ -6,7 +7,7 @@ class Evaluator():
   It uses various evaluators such as faithfulness and relevancy to assess the agent's responses.
   """
 
-  def __init__(self, llm_model):
+  def __init__(self, llm_model: Any):
     """
     Initialize the evaluators for correctness, faithfulness, and relevancy.
     """
