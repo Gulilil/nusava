@@ -47,11 +47,20 @@ class Agent():
 
   ######## SETUP PERSONA/ CONFIG ########
 
-  def set_user(self, user_id:str) -> None:
+  async def set_user(self, user_id:str) -> None:
     """
     Set user_id, as well as model config and persona.
     This function should be called first thing
     """
+
+    # Check if there is any memory
+    # Insert first the memory before changing user_id
+    if (self.user_id and self.memory_component.count() > 0):
+      memories = self.memory_component.retrieve_all()
+      for sender_id, memory_data in memories.items():
+        print(f"[STORING REMAINING MEMORY] Storing remaining memory from previous user with user_id: {user_id} with {sender_id}")
+        await self.summarize_and_store_memory(sender_id, memory_data)
+      
     print(f"[AGENT CONSTRUCTED] Constructing agent for user_id: {user_id}")
     self.user_id = user_id
 

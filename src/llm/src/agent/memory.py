@@ -87,14 +87,21 @@ class Memory():
   
   ######## RETRIEVE ########
 
-  def retrieve(self, sender_id: str) -> dict:
+  def retrieve(self, sender_id: str) -> list:
       """
-      Return the chat memory with certain
+      Return the chat memory with certain sender
       """
       if (sender_id in self._memory):
         return self._memory[sender_id]
       else:
         return []
+      
+
+  def retrieve_all(self) -> dict:
+     """
+     Return all the memory
+     """
+     return self._memory
       
 
 """

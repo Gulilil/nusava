@@ -50,7 +50,7 @@ class InputGateway():
     """
 
     @self.app.route("/user", methods=['POST'])
-    def set_user():
+    async def set_user():
       """
       Set user_id to the agent
       Field format : 
@@ -66,7 +66,7 @@ class InputGateway():
         
         # Proceed to process
         user_id = data['user_id']
-        self._agent_component.set_user(user_id)
+        await self._agent_component.set_user(user_id)
         return jsonify({"response": True}), 200
       except Exception as error: 
         return jsonify({"error": str(error)}), 400
