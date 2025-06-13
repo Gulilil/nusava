@@ -97,7 +97,7 @@ class Agent():
     self.input_gateway_component.run()
 
 
-  def decide_action(self) -> None:
+  async def decide_action(self) -> None:
     """
     Decide action based on the current conditions and statistics
     This is the main entry point for the agent to decide what to do next.
@@ -116,7 +116,7 @@ class Agent():
       elif (action == "follow"):
         self.action_follow()
       elif (action == "comment"):
-        self.action_comment()
+        await self.action_comment()
       else:
         return
       
@@ -368,7 +368,7 @@ class Agent():
     print(f"[ACTION LIKE] Like post with post_id {post_id} in community {community_id}")
 
 
-  def action_comment(self) -> None:
+  async def action_comment(self) -> None:
     """
     Operate the action comment
     """
@@ -413,6 +413,18 @@ class Agent():
 
     # Get Influencer
     post_id = chosen_post['id']
+    post_caption = chosen_post["caption"]
+    comments = chosen_post['comments']
+    max_length = 20
+    selected_comments = comments[:min(max_length, len(comments))]
+    selected_comments_str = [comment['content'] for comment in selected_comments]
+
+    # Generate prompt
+    prompt = self.prompt_generator_component.generate_prompt_comment(post_caption, selected_comments_str)
+    
+    # Make comment
+    comment, _ = await self.model_component.answer(prompt, is_direct=True)
+    print(comment)
 
     print(f"[ACTION COMMENT] Comment post with post_id {post_id} in community {community_id}")
   

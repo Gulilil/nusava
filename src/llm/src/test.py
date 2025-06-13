@@ -31,7 +31,7 @@ async def test(nusava: Agent) -> None:
   
 
   # # Test decision maker
-  nusava.decide_action()
+  await nusava.decide_action()
 
 
 
