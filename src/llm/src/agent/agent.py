@@ -11,7 +11,7 @@ from generator.prompt import PromptGenerator
 from generator.action import ActionGenerator
 from generator.schedule import ScheduleGenerator
 from utils.function import hotel_data_to_string_list, text_to_document, parse_documents, clean_quotation_string
-
+import random
 
 class Agent():
   """
@@ -161,7 +161,7 @@ class Agent():
     try:
       # Load the data from pinecone
       # First hotel data
-      pinecone_namespace_name = 'hotels_new'
+      pinecone_namespace_name = 'hotels'
       vector_store, storage_context = self.pinecone_connector_component.get_vector_store(pinecone_namespace_name)
       await self.model_component.load_data(
         vector_store, 
@@ -278,7 +278,44 @@ class Agent():
     """
     Operate the action follow
     """
-    # TODO
+    mongo_collection_name = "communities"
+    communities = self.mongo_connector_component.get_data(mongo_collection_name, {})
+    
+    found = False
+    chosen_influencer = None
+    visited_communities_id = []
+    # Pick certain influencer
+    while (not found):
+      # Randomly pick community
+      community = random.choice(communities)
+      community_id = community['community_id']
+      while (community_id in visited_communities_id):
+        # If the community has been visited
+        community = random.choice(communities)
+        community_id = community['community_id']
+
+      # Get influencer
+      influencers = community['influencers']
+      # Traverse the influencer
+      for influencer in influencers:
+        if (not "marked_follow" in influencer):
+          found = True
+          chosen_influencer = influencer
+          break
+      
+      # For context if all the influencer is already been marked
+      if (not found):
+        # Append community_id to visited_communities_list
+        if (community_id not in visited_communities_id):
+          visited_communities_id.append(community_id)
+        if (len(visited_communities_id) == len(communities)):
+          print(f"[NO AVAILABLE DATA] All data has been marked")
+
+    # Get Influencer
+    influencer_id = chosen_influencer['id']
+    influencer_username = chosen_influencer['username']
+
+    print(f"[ACTION FOLLOW] Follow influencer {influencer_username} with influencer_id {influencer_id} in community {community_id}")
     return
 
 
@@ -286,16 +323,98 @@ class Agent():
     """
     Operate the action like
     """
-    # TODO
-    return
+    mongo_collection_name = "communities"
+    communities = self.mongo_connector_component.get_data(mongo_collection_name, {})
+
+    found = False
+    chosen_post = None
+    visited_communities_id = []
+    # Pick certain post
+    while (not found):
+      # Randomly pick community
+      community = random.choice(communities)
+      community_id = community['community_id']
+      if (len(community['posts']) == 0 and community_id not in visited_communities_id):
+        visited_communities_id.append(community_id)
+      # Iterate until find the correct one
+      while (community_id in visited_communities_id):
+        # If the community has been visited
+        community = random.choice(communities)
+        community_id = community['community_id']
+        if (len(community['posts']) == 0 and community_id not in visited_communities_id):
+          visited_communities_id.append(community_id)
+
+      # Get post
+      posts = community['posts']
+      sorted_posts = sorted(posts, key=lambda p: len(p['comments']), reverse=True)
+      # Traverse the posts
+      for post in sorted_posts:
+        if (not "marked_like" in post):
+          found = True
+          chosen_post = post
+          break
+      
+      # For context if all the influencer is already been marked
+      if (not found):
+        # Append community_id to visited_communities_list
+        if (community_id not in visited_communities_id):
+          visited_communities_id.append(community_id)
+        if (len(visited_communities_id) == len(communities)):
+          print(f"[NO AVAILABLE DATA] All data has been marked")
+
+    # Get Influencer
+    post_id = chosen_post['id']
+
+    print(f"[ACTION LIKE] Like post with post_id {post_id} in community {community_id}")
 
 
   def action_comment(self) -> None:
     """
     Operate the action comment
     """
-    # TODO 
-    return
+    mongo_collection_name = "communities"
+    communities = self.mongo_connector_component.get_data(mongo_collection_name, {})
+
+    found = False
+    chosen_post = None
+    visited_communities_id = []
+    # Pick certain post
+    while (not found):
+      # Randomly pick community
+      community = random.choice(communities)
+      community_id = community['community_id']
+      if (len(community['posts']) == 0 and community_id not in visited_communities_id):
+        visited_communities_id.append(community_id)
+      # Iterate until find the correct one
+      while (community_id in visited_communities_id):
+        # If the community has been visited
+        community = random.choice(communities)
+        community_id = community['community_id']
+        if (len(community['posts']) == 0 and community_id not in visited_communities_id):
+          visited_communities_id.append(community_id)
+
+      # Get post
+      posts = community['posts']
+      sorted_posts = sorted(posts, key=lambda p: len(p['comments']), reverse=True)
+      # Traverse the posts
+      for post in sorted_posts:
+        if (not "marked_comment" in post):
+          found = True
+          chosen_post = post
+          break
+      
+      # For context if all the influencer is already been marked
+      if (not found):
+        # Append community_id to visited_communities_list
+        if (community_id not in visited_communities_id):
+          visited_communities_id.append(community_id)
+        if (len(visited_communities_id) == len(communities)):
+          print(f"[NO AVAILABLE DATA] All data has been marked")
+
+    # Get Influencer
+    post_id = chosen_post['id']
+
+    print(f"[ACTION COMMENT] Comment post with post_id {post_id} in community {community_id}")
   
 
   def action_schedule_post(self, img_url: str, caption_message: str) -> None:
@@ -390,7 +509,7 @@ class Agent():
     Process data hotel, "migrate" it from mongodb document to pinecone vector
     """
     mongo_collection_name = "hotel"
-    pinecone_namespace_name = "hotels_new"
+    pinecone_namespace_name = "hotels"
 
     # Get hotel data from mongo
     hotels = self.mongo_connector_component.get_data(mongo_collection_name, {})
@@ -421,11 +540,3 @@ class Agent():
       
       # Increment idx
       idx += length_per_batch
-
-  # TODO Wait for later data mining process
-  def process_data_xxxx(self) -> None:
-    """
-    Process data xxxx, "migrate" it from mongodb document to pinecone vector
-    """
-    return
-

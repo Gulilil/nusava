@@ -6,8 +6,8 @@ async def test(nusava: Agent) -> None:
   # nusava.run() # To run on Flask
 
   # # Setup (IMPORTANT)
-  user_id = 1
-  # user_id = 2
+  # user_id = 1
+  user_id = 2
   await nusava.set_user(user_id)
 
 
@@ -16,6 +16,7 @@ async def test(nusava: Agent) -> None:
 
 
   # # Test action chat
+  # print(await nusava.action_reply_chat("Hi There!", "nusava_test"))
   # print(await nusava.action_reply_chat("Give me general informations of Tanto hotel.", "nusava_test"))
   # print(await nusava.action_reply_chat("Give me your 5 recommended Hotels in Nusa Tenggara. Please list it down along the name of the hotels", "nusava_test"))
   # print(await nusava.action_reply_chat("Tell me the location of Tanto Hotel", "nusava_test"))
@@ -30,8 +31,7 @@ async def test(nusava: Agent) -> None:
   
 
   # # Test decision maker
-  # for i in range(3):
-  #   nusava.decide_action()
+  nusava.decide_action()
 
 
 
