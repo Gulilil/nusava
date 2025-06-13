@@ -21,6 +21,9 @@ from .models import Configuration, ActionLog
 from django.core.paginator import Paginator
 from .automation import automation_service
 
+from dotenv import load_dotenv
+load_dotenv()
+
 logger = logging.getLogger(__name__)
 env = environ.Env()
 max_interval = env('MAX_INTERVAL', default=900, cast=int)
@@ -54,7 +57,17 @@ def login_bot(request):
         try:
             user = User.objects.get(username=username)
 
-            # TODO Transfer user.id to LLM api to get persona
+            # Transfer user_id for persona set
+            llm_module_url = os.getenv("LLM_MODULE_URL")
+            api_url = f"{llm_module_url}/user"
+            data = {
+                "user_id": user.id
+                }
+            response = requests.post(api_url, json=data)
+
+            if (not response.status_code == 200 or not response.json()['response']):
+                return Response({"status": "error", "message": "Cannot set user to llm module"}, status=400)
+
             
             if not user.check_password(password):
                 return Response({"status": "error", "message": "Incorrect password"}, status=400)

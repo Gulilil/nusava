@@ -110,7 +110,7 @@ class PromptGenerator():
     # Setup subprompts
     persona_subprompt = self.generate_subprompt_persona()
     context_subprompt = self.generate_subprompt_context(context_str)
-    example_subprompt = self.generate_subprompt_example(None)
+    example_subprompt = self.generate_subprompt_example([])
     additional_subprompt =  "You are expected to explain to user concisely yet informative." \
                             "Make sure to not answer more than 1 paragraph."
     previous_iteration_notes_subprompt = ""
@@ -138,7 +138,7 @@ class PromptGenerator():
     # Setup subprompts
     persona_subprompt = self.generate_subprompt_persona()
     context_subprompt = self.generate_subprompt_context(context_str)
-    example_subprompt = self.generate_subprompt_example(None)
+    example_subprompt = self.generate_subprompt_example([])
     additional_subprompt =  "You do not have to be so concise when summarizing." \
                             "However, you have to make sure that you are not missing any critical points of the chat." \
                             "This memory will later be used for RAG system. Therefore, you need to summarize this in form of a document."
@@ -155,7 +155,7 @@ class PromptGenerator():
 
   ######## ACTION PROMPT ########
 
-  def generate_prompt_reply_chat(self, new_message: str, previous_messages: list[dict] = [], previous_iteration_notes: list[dict] = None) -> str:
+  def generate_prompt_reply_chat(self, new_message: str, previous_messages: list[dict] = [], previous_iteration_notes: list[dict] = []) -> str:
     """
     Generate a prompt for replying chat
     See the Class Memory for the template of the previous messages
@@ -175,10 +175,9 @@ class PromptGenerator():
     persona_subprompt = self.generate_subprompt_persona()
     context_subprompt = self.generate_subprompt_context(context)
     # Chat does not need to have examples. It can be vary depending on the topic/ message
-    example_subprompt = self.generate_subprompt_example(None)
+    example_subprompt = self.generate_subprompt_example([])
     additional_subprompt = ""
     previous_iteration_notes_subprompt = self.generate_subprompt_previous_iteration_notes(previous_iteration_notes)
-
     return self._prompt_template.format(persona_subprompt=persona_subprompt,
                                   context_subprompt=context_subprompt,
                                   example_subprompt=example_subprompt, 

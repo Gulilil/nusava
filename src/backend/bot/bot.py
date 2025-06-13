@@ -4,6 +4,11 @@ from instagrapi import Client
 from .models import User, ActionLog
 from typing import List
 from instagrapi.types import DirectThread
+import requests
+from dotenv import load_dotenv
+load_dotenv()
+import os
+
 
 class InstagramBot:
     def __init__(self, user_obj: User, password: str, session_settings=None):
@@ -196,7 +201,7 @@ class InstagramBot:
             print(f"\n--- Processing {username} ---")
             
             # Generate response based on combined message
-            reply_text = self.generate_response(combined_message)
+            reply_text = self.generate_response(combined_message, username)
             
             # Send reply
             reply_success = self.client.direct_send(text=reply_text, thread_ids=[thread_id])
@@ -256,8 +261,21 @@ class InstagramBot:
         except Exception as e:
             print(f"Error in optimized automation: {str(e)}")
 
-    def generate_response(self, combined_message):
+    def generate_response(self, combined_message: str, username: str):
         """Generate travel response based on combined conversation context"""
-        # TODO: @Juan Send combined_message to your LLM for better context
-        return "ini testing"
+        llm_module_url = os.getenv("LLM_MODULE_URL")
+        api_url = f"{llm_module_url}/chat"
+
+        data = {
+            "chat_message": combined_message,
+            "sender_id": username
+            }
+
+        response = requests.post(api_url, json=data)
+
+        if (response.status_code == 200):
+            response_json = response.json()
+            return response_json['response']
+        else:
+            return None
         

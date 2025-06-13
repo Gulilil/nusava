@@ -168,7 +168,7 @@ class Agent():
         storage_context, 
         pinecone_namespace_name,
         chat_message)
-      
+            
       # Load the long-term memory from pinecone
       pinecone_namespace_name = f"chat_bot[{self.user_id}]_sender[{sender_id}]"
       if (self.pinecone_connector_component.is_namespace_exist(pinecone_namespace_name)):
@@ -180,7 +180,6 @@ class Agent():
           chat_message)
         print(f"[LOADING MEMORY] Inserting long-term memory as tools for RAG")
 
-
       # Do iteration of action reply chat
       # While the thresholds are not satisfied, do the iteration
       max_attempts = 3 
@@ -188,11 +187,12 @@ class Agent():
       correctness_pass, faithfulness_pass, relevancy_pass = False, False, False
       previous_iteration_notes = []
       while (not correctness_pass or not faithfulness_pass or not relevancy_pass):
+        
         # Generate prompt
         prompt = self.prompt_generator_component.generate_prompt_reply_chat(
           new_message=chat_message,
           previous_messages=self.memory_component.retrieve(sender_id),
-          previous_iteration_notes=previous_iteration_notes)
+          previous_iteration_notes=previous_iteration_notes)  
       
         # Answer the query
         # Skip if the answer is None
