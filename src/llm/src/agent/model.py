@@ -1,11 +1,13 @@
 from llama_index.embeddings.huggingface import HuggingFaceEmbedding
-from llama_index.llms.ollama import Ollama
+from llama_index.llms.openai import OpenAI
 from llama_index.core import  VectorStoreIndex
 from llama_index.core.agent import ReActAgent
 from llama_index.core.callbacks import CallbackManager, TokenCountingHandler
 from llama_index.core.tools import QueryEngineTool, ToolMetadata, FunctionTool
 from typing import Tuple, Optional
-
+from dotenv import load_dotenv
+load_dotenv()
+import os
 
 class Model():
   """
@@ -40,9 +42,8 @@ class Model():
     """
     Initialization of the LLM and the embedding model
     """
-    self.llm_model = Ollama(model = self._llm_model_name,
-                            temperature = self._temperature,
-                            request_timeout = self._request_timeout)
+    self.llm_model = OpenAI(model="gpt-4o-mini",
+                            api_key=os.getenv("OPENAI_API_KEY"))
     self.embed_model  = HuggingFaceEmbedding(model_name=self._embed_model_name)
     self._persona_component = persona_component
     self._callback_manager = CallbackManager([TokenCountingHandler()])
