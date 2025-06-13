@@ -126,3 +126,12 @@ export interface UseAuthReturn {
 // Status Types
 export type ActionStatus = "success" | "error" | "failed" | "pending";
 export type MediaType = "photo" | "video" | "carousel" | "reel";
+
+export interface AutomationStatus { 
+  is_running: boolean;
+  user_id?: number;
+  thread_name?: string;
+  last_run?: string;
+  next_run?: string;
+  error?: string;
+}

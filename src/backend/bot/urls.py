@@ -7,7 +7,7 @@ from .views import (
     login_bot, get_posts, proxy_image,
     like_post, follow_user, comment_post, post_photo, share_post,
     bot_configuration, action_logs,
-    automation_status, stop_dm_automation, admin_automation_overview  
+    automation_status, stop_dm_automation, start_dm_automation, admin_automation_overview
 )
 
 urlpatterns = [
@@ -29,5 +29,6 @@ urlpatterns = [
 
     path('automation/status/', automation_status, name='automation_status'),
     path('automation/stop/', stop_dm_automation, name='stop_dm_automation'),
+    path('automation/start/', start_dm_automation, name='start_dm_automation'),
     path('automation/admin/', admin_automation_overview, name='admin_automation_overview'),
 ]

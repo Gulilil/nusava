@@ -1,9 +1,12 @@
 import threading
 import time
 import random
+import logging
 from django.conf import settings
 from .models import User, ActionLog
 from .bot import InstagramBot
+
+logger = logging.getLogger('automation')
 
 class DMAutomationService:
     """Singleton service that manages automation for all users"""
@@ -30,7 +33,6 @@ class DMAutomationService:
         This gets called from the login view
         """
         if user.id in self.running_automations:
-            # Already running, just return success
             return True, "Automation already running"
         
         return self.start_automation(user.id, min_interval, max_interval)
@@ -43,7 +45,6 @@ class DMAutomationService:
         try:
             user = User.objects.get(id=user_id)
             
-            # Create bot instance for this user
             bot = InstagramBot(user_obj=user, password=user.password, 
                              session_settings=user.session_info)
             self.user_bots[user_id] = bot
@@ -62,9 +63,8 @@ class DMAutomationService:
             self.running_automations[user_id] = thread
             thread.start()
             
-            bot.log("dm_automation", "", "success", 
-                   f"Automation started for user {user.username}")
-            
+            logger.info(f"Automation thread started successfully for user {user.username} (ID: {user_id})")
+
             return True, f"Automation started for user {user.username}"
             
         except Exception as e:
@@ -106,36 +106,25 @@ class DMAutomationService:
             
             while not self.automation_flags[user_id].is_set():
                 try:
-                    # Get messages for THIS specific user
-                    messages = bot.get_direct_messages()
-                    unread = [msg for msg in messages if not msg['is_seen']]
+                    result = bot.start_dm_automation(amount=20)
+                    if result and result.get('total', 0) > 0: 
+                        logger.info(f"Automation cycle completed for {user.username}: {result.get('message', 'Success')}")
+                    else:
+                        logger.debug(f"No new messages to process for {user.username}")
                     
-                    if unread:
-                        bot.log("dm_automation", "", "info", 
-                               f"User {user.username}: Found {len(unread)} unread messages")
-                        
-                        for msg in unread:
-                            bot.log("new_dm", msg['username'], "info",
-                                   f"New message from {msg['username']}: {msg['text'][:50]}...")
+                    sleep_time = random.randint(min_interval // 30, max_interval // 30) * 30
+                    logger.debug(f"Next check for {user.username} in {sleep_time} seconds")
                     
-                    # Random sleep for THIS user
-                    sleep_time = random.randint(min_interval, max_interval)
-                    bot.log("dm_automation", "", "info", 
-                           f"User {user.username}: Sleeping for {sleep_time} seconds")
-                    
-                    # Sleep in chunks to allow quick stopping
-                    for _ in range(0, sleep_time, 10):
+                    for _ in range(0, sleep_time, 30):
                         if self.automation_flags[user_id].is_set():
                             break
-                        time.sleep(10)
+                        time.sleep(30)
                         
                 except Exception as e:
-                    bot.log("dm_automation", "", "error", 
-                           f"Loop error for user {user.username}: {str(e)}")
-                    time.sleep(60)  # Wait before retrying
+                    logger.error(f"Automation loop error for user {user.username}: {str(e)}")
+                    time.sleep(60) 
             
-            bot.log("dm_automation", "", "success", 
-                   f"Worker stopped for {user.username}")
+            logger.info(f"Automation worker stopped for {user.username}")
             
         except Exception as e:
             try:
