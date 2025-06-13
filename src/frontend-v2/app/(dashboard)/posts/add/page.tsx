@@ -122,7 +122,7 @@ export default function SchedulePostPage() {
                 </div>
                 <div className="flex items-center space-x-2">
                   <RadioGroupItem value="caption" id="caption" />
-                  <Label htmlFor="caption">Full Caption</Label>
+                  <Label htmlFor="caption">Image Description</Label>
                 </div>
               </RadioGroup>
 
@@ -138,10 +138,10 @@ export default function SchedulePostPage() {
                 </div>
               ) : (
                 <div className="space-y-2">
-                  <Label htmlFor="caption-input">Enter Full Caption</Label>
+                  <Label htmlFor="caption-input">Enter Image Description</Label>
                   <Textarea
                     id="caption-input"
-                    placeholder="Write your full post caption here..."
+                    placeholder="Write your image description here..."
                     className="min-h-[150px]"
                     value={text}
                     onChange={(e) => setText(e.target.value)}

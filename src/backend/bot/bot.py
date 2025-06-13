@@ -1,3 +1,5 @@
+import random
+import time
 from instagrapi import Client
 from .models import User, ActionLog
 from typing import List
@@ -190,18 +192,8 @@ class InstagramBot:
             thread_id = thread_data['thread_id']
             username = thread_data['username']
             combined_message = thread_data['combined_message']
-            is_pending = thread_data['is_pending']
             
             print(f"\n--- Processing {username} ---")
-            
-            if is_pending and thread_data.get('approved'):
-                print(f"Status: PENDING (Already approved)")
-            elif is_pending:
-                print(f"Status: PENDING (Not approved)")
-            else:
-                print(f"Status: REGULAR")
-                
-            print(f"Combined message: {combined_message[:150]}...")
             
             # Generate response based on combined message
             reply_text = self.generate_response(combined_message)
@@ -213,12 +205,10 @@ class InstagramBot:
                 print("Failed to send reply")
                 return False
             
-            print(f"Replied: {reply_text[:50]}...")
-            
+            self.log("dm_reply", username, "success", f"Replied to {username}: {reply_text[:50]}...")
+
             # Mark as seen
-            self.client.direct_send_seen(thread_id)
-            print("Marked as seen")
-            
+            self.client.direct_send_seen(thread_id)            
             return True
             
         except Exception as e:
@@ -235,23 +225,39 @@ class InstagramBot:
             
             if not all_threads:
                 print("No threads to process")
-                return
+                return {"success": 0, "total": 0, "message": "No threads to process"}
             
             # Process each thread
             success_count = 0
-            for thread_data in all_threads:
+            total_threads = len(all_threads)
+            for i, thread_data in enumerate(all_threads):
                 success = self.send_dm_replies(thread_data)
                 if success:
                     success_count += 1
+                if i < total_threads - 1: 
+                    if total_threads <= 3:
+                        sleep_time = random.randint(10, 15)   # 10-15 seconds for few messages
+                    elif total_threads <= 10:
+                        sleep_time = random.randint(15, 30)  # 15-30 seconds for moderate
+                    else:
+                        sleep_time = random.randint(30, 60) # 30-60 seconds for many messages
+                    
+                    print(f"⏰ Waiting {sleep_time} seconds before next reply...")
+                    time.sleep(sleep_time)
             
-            print(f"\n=== Automation Complete ===")
-            print(f"Processed: {success_count}/{len(all_threads)} threads successfully")
+            result_message = f"Processed: {success_count}/{len(all_threads)} threads successfully"
+            
+            return {
+                "success": success_count,
+                "total": len(all_threads),
+                "message": result_message
+            }
             
         except Exception as e:
             print(f"Error in optimized automation: {str(e)}")
 
     def generate_response(self, combined_message):
         """Generate travel response based on combined conversation context"""
-        # TODO: Send combined_message to your LLM for better context
-        return "Thanks for reaching out! I'm here to help with all your travel needs. What destination or travel service are you interested in?"
+        # TODO: @Juan Send combined_message to your LLM for better context
+        return "ini testing"
         

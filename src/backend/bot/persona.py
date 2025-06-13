@@ -53,3 +53,5 @@ default_persona = {
   ]
 }
 
+def get_default_persona():
+    return default_persona

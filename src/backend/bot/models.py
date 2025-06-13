@@ -2,7 +2,7 @@ from django.db import models
 from django.contrib.auth.hashers import make_password, check_password
 from django.contrib.auth.models import AbstractBaseUser, PermissionsMixin, BaseUserManager
 from django.utils import timezone
-from .persona import default_persona
+from .persona import get_default_persona
 
 class UserManager(BaseUserManager):
     def create_user(self, username, password=None, **extra_fields):
@@ -26,7 +26,7 @@ class User(AbstractBaseUser, PermissionsMixin):
     id = models.BigAutoField(primary_key=True)
     username = models.CharField(max_length=100, unique=True)
     session_info = models.JSONField(blank=True, null=True)
-    persona = models.JSONField(default=default_persona, null=True)
+    persona = models.JSONField(default=get_default_persona, null=True)
     created_at = models.DateTimeField(default=timezone.now)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -74,3 +74,48 @@ class Configuration(models.Model):
 
     def __str__(self):
         return f"Configuration for {self.user.username}"
+    
+class InstagramStatistics(models.Model):
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='instagram_stats')
+    
+    # Account basic info
+    followers_count = models.IntegerField(default=0)
+    following_count = models.IntegerField(default=0)
+    posts_count = models.IntegerField(default=0)
+    
+    # Account insights - Profile metrics
+    profile_visits = models.IntegerField(default=0)
+    profile_visits_delta = models.IntegerField(default=0)
+    website_visits = models.IntegerField(default=0)
+    website_visits_delta = models.IntegerField(default=0)
+    
+    # Content metrics
+    impressions = models.IntegerField(default=0)
+    impressions_delta = models.IntegerField(default=0)
+    reach = models.IntegerField(null=True, blank=True)
+    reach_delta = models.IntegerField(null=True, blank=True)
+    
+    # Weekly data
+    last_week_impressions = models.IntegerField(default=0)
+    last_week_posts_count = models.IntegerField(default=0)
+    last_week_stories_count = models.IntegerField(default=0)
+    
+    # Metadata
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    
+    class Meta:
+        ordering = ['-created_at']
+        verbose_name = 'Instagram Statistics'
+        verbose_name_plural = 'Instagram Statistics'
+    
+    def __str__(self):
+        return f"{self.user.username} - {self.created_at.strftime('%Y-%m-%d %H:%M')}"
+    
+    @property
+    def engagement_rate(self):
+        """Calculate basic engagement rate if we have posts and followers"""
+        if self.followers_count > 0 and self.posts_count > 0:
+            # This is a simplified calculation
+            return round((self.impressions / self.followers_count) * 100, 2) if self.impressions > 0 else 0
+        return 0

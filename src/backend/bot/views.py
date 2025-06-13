@@ -7,6 +7,7 @@ from rest_framework_simplejwt.authentication import JWTAuthentication
 from rest_framework.permissions import IsAuthenticated, AllowAny
 from django.http import HttpResponse
 import requests
+import environ
 
 from .models import User
 from .bot import InstagramBot
@@ -21,6 +22,9 @@ from django.core.paginator import Paginator
 from .automation import automation_service
 
 logger = logging.getLogger(__name__)
+env = environ.Env()
+max_interval = env('MAX_INTERVAL', default=900, cast=int)
+min_interval = env('MIN_INTERVAL', default=300, cast=int)
 user_bots = {}
 
 def proxy_image(request):
@@ -77,8 +81,8 @@ def login_bot(request):
                             refresh = RefreshToken.for_user(user)
                             automation_service.auto_start_for_user(
                                 user, 
-                                min_interval=300,
-                                max_interval=3600  
+                                min_interval=min_interval,
+                                max_interval=max_interval  
                             )
                             return Response({
                                 "status": "success",
@@ -105,8 +109,8 @@ def login_bot(request):
                 refresh = RefreshToken.for_user(user)
                 automation_service.auto_start_for_user(
                     user, 
-                    min_interval=300,
-                    max_interval=3600 
+                    min_interval=min_interval,
+                    max_interval=max_interval 
                 )
                 return Response({
                     "status": "success",
@@ -139,8 +143,8 @@ def login_bot(request):
                 refresh = RefreshToken.for_user(user)
                 automation_service.auto_start_for_user(
                     user, 
-                    min_interval=300,
-                    max_interval=3600 
+                    min_interval=min_interval,
+                    max_interval=max_interval 
                 )
                 return Response({
                     "status": "success",
@@ -406,3 +410,18 @@ def admin_automation_overview(request):
     
     all_automations = automation_service.get_all_running_automations()
     return Response({"data": all_automations})
+
+@api_view(['POST'])
+@authentication_classes([JWTAuthentication])
+@permission_classes([IsAuthenticated])
+def start_dm_automation(request):
+    user = request.user
+    min_interval = request.data.get('min_interval', 300)
+    max_interval = request.data.get('max_interval', 900)
+    
+    success, message = automation_service.start_automation(user.id, min_interval, max_interval)
+    
+    return Response({
+        "status": "success" if success else "error",
+        "message": message
+    })
