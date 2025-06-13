@@ -83,7 +83,7 @@ class ActionGenerator:
           model.emissionprob_ = np.array([
                 # new_msg, new_com, new_fol, liked, morning, afternoon, evening
                 [0.1,     0.2,     0.3,     0.2,    0.05,    0.1,       0.05],   # growth
-                [0.2,     0.3,     0.2,     0.1,    0.1,     0.05,      0.05],   # engagement
+                [0.2,     0.3,     0.1,     0.2,    0.1,     0.05,      0.05],   # engagement
                 [0.1,     0.1,     0.1,     0.1,    0.2,     0.2,       0.2],    # idle
             ])
 
@@ -94,7 +94,7 @@ class ActionGenerator:
 
           # Define simplified action policies
           state_action_map = {
-              'growth': ['follow'],
+              'growth': ['follow', 'like'],
               'engagement': ['comment', 'like'],
               'idle': ['like', None] 
           }
