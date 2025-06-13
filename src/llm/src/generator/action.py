@@ -42,7 +42,7 @@ class ActionGenerator:
         # elif 12 <= hour < 18:
         #     observations.append("afternoon_time")
         # else:
-        #     observations.append("evening_time")
+        #     observations.append("night_time")
 
         # TODO To Be Removed if the logic is implemented
         n = random.randint(1, 4)
@@ -81,7 +81,7 @@ class ActionGenerator:
           ])
           # Define emission probability
           model.emissionprob_ = np.array([
-                # new_msg, new_com, new_fol, liked, morning, afternoon, evening
+                # new_msg, new_com, new_fol, liked, morning, afternoon, night
                 [0.1,     0.2,     0.3,     0.2,    0.05,    0.1,       0.05],   # growth
                 [0.2,     0.3,     0.1,     0.2,    0.1,     0.05,      0.05],   # engagement
                 [0.1,     0.1,     0.1,     0.1,    0.2,     0.2,       0.2],    # idle

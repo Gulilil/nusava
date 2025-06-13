@@ -14,5 +14,5 @@ HMM_OBSERVATION_LIST = [
   # Time of day observations
   "morning_time",
   "afternoon_time",
-  "evening_time",
+  "night_time",
 ]
