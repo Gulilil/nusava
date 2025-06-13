@@ -1,4 +1,4 @@
-from llama_index.embeddings.huggingface import HuggingFaceEmbedding
+from llama_index.embeddings.openai import OpenAIEmbedding
 from llama_index.llms.openai import OpenAI
 from llama_index.core import  VectorStoreIndex
 from llama_index.core.agent import ReActAgent
@@ -13,8 +13,8 @@ class Model():
   """
   Model name. Is adjustable to another model to be used
   """
-  _llm_model_name: str = "llama3.1"
-  _embed_model_name: str = "intfloat/multilingual-e5-base"
+  _llm_model_name: str = "gpt-4o-mini"
+  _embed_model_name: str = "text-embedding-3-small"
   # Uncomment the following lines to use alternative models
   # _llm_model_name: str = "llama3.2"
   # _embed_model_name: str = "BAAI/bge-m3"
@@ -30,23 +30,20 @@ class Model():
   """
   Constant variable in the model. Should not be changed when the model is operating
   """
-  _request_timeout: float = 60.0
   _tools: list = []
-
-  """
-  Persona component
-  """
+  
 
   def __init__(self, 
                persona_component: object):
     """
     Initialization of the LLM and the embedding model
     """
-    self.llm_model = OpenAI(model="gpt-4o-mini",
-                            api_key=os.getenv("OPENAI_API_KEY"))
-    self.embed_model  = HuggingFaceEmbedding(model_name=self._embed_model_name)
+    self.llm_model = OpenAI(model=self._llm_model_name,
+                            api_key=os.getenv("OPENAI_API_KEY"),
+                            temperature=self._temperature)
+    self.embed_model  = OpenAIEmbedding(model=self._embed_model_name,
+                                        api_key=os.getenv("OPENAI_API_KEY"))
     self._persona_component = persona_component
-    self._callback_manager = CallbackManager([TokenCountingHandler()])
     print(f"[MODEL INITIALIZED] Model is initialized with llm_model: {self._llm_model_name} and embed_model: {self._embed_model_name}")
 
   ######## SETUP ########
