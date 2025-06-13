@@ -64,7 +64,6 @@ def login_bot(request):
                 "user_id": user.id
                 }
             response = requests.post(api_url, json=data)
-
             if (not response.status_code == 200 or not response.json()['response']):
                 return Response({"status": "error", "message": "Cannot set user to llm module"}, status=400)
 

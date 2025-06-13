@@ -20,6 +20,8 @@ python-dotenv>=1.0.0
 
 # LLM
 llama_index==0.12.40
+llama-index-vector-stores-postgres==0.12.40
+llama-index-vector-stores-pinecone==0.12.40
 Flask==3.1.1
 hmmlearn==0.3.3
 
