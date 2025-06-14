@@ -1,5 +1,6 @@
 import random
 import json
+import time
 
 from agent.memory import Memory
 from agent.model import Model
@@ -122,6 +123,10 @@ class Agent():
         await self.action_comment()
       else:
         return
+      
+      sleep_time = random.randint(5, 15)
+      print(f"[ACTION TIME SLEEP] Delay for {sleep_time} seconds")
+      time.sleep(sleep_time)
       
 
   async def summarize_and_store_memory(self, sender_id: str, memory_data: list[dict]) -> bool:

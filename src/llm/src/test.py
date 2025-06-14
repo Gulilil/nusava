@@ -26,24 +26,23 @@ async def test(nusava: Agent) -> None:
 
 
   # # Test action post
-  caption_message = await nusava.action_generate_caption("Image of Kuta beach in Bali when sunset", ["beach", "holiday", "beautiful", "nature", "pretty", "sunkissed"], "Make it short and simple. Do not use hashtags.")
-  await nusava.action_schedule_post("", caption_message)
-  caption_message = await nusava.action_generate_caption("Images of destination places in Singapore consists of Universal Studio, Merlion, and Orchard Road", ["holiday", "fun", "friends", "urban travel", "city"])
-  await nusava.action_schedule_post("", caption_message)
-  caption_message = await nusava.action_generate_caption("Image of the Eiffel Tower during golden hour", ["Paris", "Eiffel", "romantic", "city", "travel", "light"], "Simple and charming. Avoid clichés.")
-  await nusava.action_schedule_post("", caption_message)
-  caption_message = await nusava.action_generate_caption("Image of a hot air balloon flying over Cappadocia's rocky landscape", ["Cappadocia", "balloon", "sunrise", "landscape", "unique", "explore"], "Use a light and magical tone.")
-  await nusava.action_schedule_post("", caption_message)
-  caption_message = await nusava.action_generate_caption("Image of tourists hiking to a viewpoint overlooking a Norwegian fjord", ["Norway", "fjord", "hike", "nature", "fresh", "breathtaking"], "Make it invigorating and scenic.")
-  await nusava.action_schedule_post("", caption_message)
-  caption_message = await nusava.action_generate_caption("Image of the Great Wall of China stretching across green hills", ["China", "GreatWall", "heritage", "travel", "epic", "history"], "Capture the scale and legacy.")
-  await nusava.action_schedule_post("", caption_message)
-  caption_message = await nusava.action_generate_caption("Image of Machu Picchu ruins with misty mountains in the background", ["Peru", "MachuPicchu", "history", "nature", "hiking", "awe"], "Make it reflective and respectful.")
-  await nusava.action_schedule_post("", caption_message)
-
+  # caption_message = await nusava.action_generate_caption("Image of Kuta beach in Bali when sunset", ["beach", "holiday", "beautiful", "nature", "pretty", "sunkissed"], "Make it short and simple. Do not use hashtags.")
+  # await nusava.action_schedule_post("", caption_message)
+  # caption_message = await nusava.action_generate_caption("Images of destination places in Singapore consists of Universal Studio, Merlion, and Orchard Road", ["holiday", "fun", "friends", "urban travel", "city"])
+  # await nusava.action_schedule_post("", caption_message)
+  # caption_message = await nusava.action_generate_caption("Image of the Eiffel Tower during golden hour", ["Paris", "Eiffel", "romantic", "city", "travel", "light"], "Simple and charming. Avoid clichés.")
+  # await nusava.action_schedule_post("", caption_message)
+  # caption_message = await nusava.action_generate_caption("Image of a hot air balloon flying over Cappadocia's rocky landscape", ["Cappadocia", "balloon", "sunrise", "landscape", "unique", "explore"], "Use a light and magical tone.")
+  # await nusava.action_schedule_post("", caption_message)
+  # caption_message = await nusava.action_generate_caption("Image of tourists hiking to a viewpoint overlooking a Norwegian fjord", ["Norway", "fjord", "hike", "nature", "fresh", "breathtaking"], "Make it invigorating and scenic.")
+  # await nusava.action_schedule_post("", caption_message)
+  # caption_message = await nusava.action_generate_caption("Image of the Great Wall of China stretching across green hills", ["China", "GreatWall", "heritage", "travel", "epic", "history"], "Capture the scale and legacy.")
+  # await nusava.action_schedule_post("", caption_message)
+  # caption_message = await nusava.action_generate_caption("Image of Machu Picchu ruins with misty mountains in the background", ["Peru", "MachuPicchu", "history", "nature", "hiking", "awe"], "Make it reflective and respectful.")
+  # await nusava.action_schedule_post("", caption_message)
 
   # # Test decision maker
-  # await nusava.decide_action()
+  await nusava.decide_action()
 
 
 
