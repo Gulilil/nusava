@@ -20,7 +20,6 @@ export function Navbar({ title }: NavbarProps) {
   //   Cookies.remove("auth");
   //   localStorage.removeItem("jwtToken");
   //   localStorage.removeItem("jwtRefresh");
-  //   localStorage.removeItem("igUsername");
   //   router.push("/login")
   // }
   return (

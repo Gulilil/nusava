@@ -1,10 +1,13 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
 import { toast } from "sonner"
+import { useRouter } from "next/navigation"
+import Cookies from "js-cookie"
+import axios from "axios"
 
 // Default JSON template
 const defaultPersonaJson = `{
@@ -15,14 +18,6 @@ const defaultPersonaJson = `{
 
 // Additional templates
 const templates = [
-  {
-    name: "Adventure Seeker",
-    json: `{
-  "age": 28,
-  "style": "An adrenaline-driven and fearless person who speaks with excitement about extreme activities and hidden gems. Uses action-packed language and always challenges followers to step out of their comfort zones. Sounds like someone who's always planning the next big adventure.",
-  "occupation": "Adventure Travel Guide"
-}`,
-  },
   {
     name: "Luxury Travel Expert",
     json: `{
@@ -64,14 +59,6 @@ const templates = [
 }`,
   },
   {
-    name: "Local Insider",
-    json: `{
-  "age": 27,
-  "style": "A friendly and knowledgeable person who speaks like they know every corner of their destination. Uses insider language and local slang, always sharing secret spots that only locals know. Sounds like your best friend who happens to live in the coolest place ever.",
-  "occupation": "Local Tour Guide"
-}`,
-  },
-  {
     name: "Eco-Conscious Traveler",
     json: `{
   "age": 31,
@@ -81,22 +68,136 @@ const templates = [
   },
 ]
 
+const API = process.env.NEXT_PUBLIC_API_BASE_URL
+
 export default function PersonaPage() {
-  const [personaJson, setPersonaJson] = useState<string>(defaultPersonaJson)
+  const router = useRouter()
+
+  const [personaJson, setPersonaJson] = useState<string>("")
+  const [originalPersonaJson, setOriginalPersonaJson] = useState<string>("")
+  const [loading, setLoading] = useState<boolean>(true)
+  const [saving, setSaving] = useState<boolean>(false)
+  const handleUnauthorized = () => {
+    Cookies.remove("auth")
+    localStorage.removeItem("jwtToken")
+    localStorage.removeItem("jwtRefresh")
+    router.push("/login")
+  }
+  useEffect(() => {
+    const fetchPersona = async () => {
+      try {
+        const token = localStorage.getItem('jwtToken')
+        if (!token) return
+        const response = await axios.get(`${API}/persona/`, {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+          },
+        })
+
+        if (response.status === 401) {
+          handleUnauthorized()
+          return
+        }
+
+        const personaData = response.data.data.persona
+        console.log(personaData)
+        if (personaData) {
+          // If persona exists, format it as JSON string
+          const formattedJson = JSON.stringify(personaData, null, 2)
+          setPersonaJson(formattedJson)
+          setOriginalPersonaJson(formattedJson)
+        } else {
+          // If no persona exists, use default template
+          setPersonaJson(defaultPersonaJson)
+          setOriginalPersonaJson("")
+        }
+      } catch (error) {
+        if (axios.isAxiosError(error) && error.response?.status === 401) {
+          handleUnauthorized()
+          return
+        }
+        console.error("Error fetching persona:", error)
+        toast.error("Error fetching persona")
+        setPersonaJson(defaultPersonaJson)
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    fetchPersona()
+  }, [router])
 
   const handleTemplateClick = (template: string) => {
     setPersonaJson(template)
     toast.info("Template applied")
   }
 
-  const handleSubmit = () => {
+  const validatePersonaJson = (jsonString: string): boolean => {
     try {
-      // Validate JSON
-      JSON.parse(personaJson)
-      toast.success("Persona saved successfully")
+      const parsed = JSON.parse(jsonString)
+
+      if (!parsed.age || !parsed.style || !parsed.occupation) {
+        return false
+      }
+
+      return true
     } catch (error) {
-      toast.error("Invalid JSON format")
+      return false
     }
+  }
+
+  const handleSubmit = async () => {
+    if (!validatePersonaJson(personaJson)) {
+      toast.error("Invalid JSON format or missing required fields (age, style, occupation)")
+      return
+    }
+
+    setSaving(true)
+    try {
+      const token = localStorage.getItem('jwtToken')
+      if (!token) return
+      const response = await axios.post(`${API}/persona/`,
+        {
+          persona: JSON.parse(personaJson)
+        },
+        {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+          },
+        }
+      )
+      if (response.status === 401) {
+        handleUnauthorized()
+        return
+      }
+
+      toast.success("Persona saved successfully")
+      setOriginalPersonaJson(personaJson)
+    } catch (error) {
+      console.error("Error saving persona:", error)
+      toast.error("Error saving persona")
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  // Check if save button should be disabled
+  const isSaveDisabled = () => {
+    if (saving || loading) return true
+    if (!personaJson.trim()) return true
+    if (personaJson === originalPersonaJson) return true
+    if (!validatePersonaJson(personaJson)) return true
+    return false
+  }
+
+  if (loading) {
+    return (
+      <div className="container mx-auto py-6">
+        <div className="flex items-center justify-center h-64">
+          <div className="text-lg">Loading persona...</div>
+        </div>
+      </div>
+    )
   }
 
   return (
@@ -110,7 +211,9 @@ export default function PersonaPage() {
         <Card>
           <CardHeader>
             <CardTitle>Persona JSON</CardTitle>
-            <CardDescription>Configure your AI assistant&apos;s persona using JSON format</CardDescription>
+            <CardDescription>
+              Configure your AI assistant&apos;s persona using JSON format. Required fields: age, style, occupation
+            </CardDescription>
           </CardHeader>
           <CardContent>
             <Textarea
@@ -123,12 +226,22 @@ export default function PersonaPage() {
           <CardFooter className="flex justify-between flex-wrap gap-2">
             <div className="flex flex-wrap gap-2">
               {templates.map((template, index) => (
-                <Button key={index} variant="outline" onClick={() => handleTemplateClick(template.json)}>
+                <Button
+                  key={index}
+                  variant="outline"
+                  onClick={() => handleTemplateClick(template.json)}
+                  disabled={saving}
+                >
                   {template.name} Template
                 </Button>
               ))}
             </div>
-            <Button onClick={handleSubmit}>Save Persona</Button>
+            <Button
+              onClick={handleSubmit}
+              disabled={isSaveDisabled()}
+            >
+              {saving ? "Saving..." : "Save Persona"}
+            </Button>
           </CardFooter>
         </Card>
       </div>

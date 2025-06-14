@@ -76,6 +76,7 @@ class Configuration(models.Model):
         return f"Configuration for {self.user.username}"
     
 class InstagramStatistics(models.Model):
+    id = models.BigAutoField(primary_key=True)
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='instagram_stats')
     
     # Account basic info
@@ -94,11 +95,6 @@ class InstagramStatistics(models.Model):
     impressions_delta = models.IntegerField(default=0)
     reach = models.IntegerField(null=True, blank=True)
     reach_delta = models.IntegerField(null=True, blank=True)
-    
-    # Weekly data
-    last_week_impressions = models.IntegerField(default=0)
-    last_week_posts_count = models.IntegerField(default=0)
-    last_week_stories_count = models.IntegerField(default=0)
     
     # Metadata
     created_at = models.DateTimeField(auto_now_add=True)

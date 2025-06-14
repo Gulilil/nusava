@@ -9,14 +9,22 @@ import { useEffect, useState } from "react"
 import { Button } from "@/components/ui/button"
 import Link from "next/link"
 import { ActionLog, ConfigData } from "@/types/types"
+import { useRouter } from "next/navigation"
+import Cookies from "js-cookie"
 
 const API = process.env.NEXT_PUBLIC_API_BASE_URL
 
 export default function Dashboard() {
+  const router = useRouter()
   const [recentActivities, setRecentActivities] = useState<ActionLog[]>([])
   const [botConfig, setBotConfig] = useState<ConfigData | null>(null)
   const [loading, setLoading] = useState(true)
-
+  const handleUnauthorized = () => {
+    Cookies.remove("auth")
+    localStorage.removeItem("jwtToken")
+    localStorage.removeItem("jwtRefresh")
+    router.push("/login")
+  }
   useEffect(() => {
     loadDashboardData()
   }, [])
@@ -34,6 +42,11 @@ export default function Dashboard() {
         },
       })
 
+      if (logsResponse.status === 401) {
+        handleUnauthorized()
+        return
+      }
+
       if (logsResponse.ok) {
         const logsResult = await logsResponse.json()
         setRecentActivities(logsResult.data)
@@ -47,6 +60,11 @@ export default function Dashboard() {
         },
       })
 
+      if (configResponse.status === 401) {
+        handleUnauthorized()
+        return
+      }
+      
       if (configResponse.ok) {
         const configResult = await configResponse.json()
         setBotConfig(configResult.data)
