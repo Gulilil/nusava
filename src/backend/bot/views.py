@@ -9,7 +9,7 @@ from django.http import HttpResponse
 import requests
 import environ
 
-from .models import User
+from .models import InstagramStatistics, User
 from .bot import InstagramBot
 from instagrapi import Client
 from rest_framework_simplejwt.tokens import RefreshToken
@@ -44,109 +44,158 @@ def proxy_image(request):
     except Exception as e:
         return HttpResponse(str(e), status=500)
 
+
 @api_view(['POST'])
 @permission_classes([AllowAny])
-def login_bot(request):
+def register_user(request):
+    """Register a new user with Instagram credentials"""
     username = request.data.get('username')
     password = request.data.get('password')
+    
     if not username or not password:
-        return Response({"status": "error", "message": "Username and password required"}, status=400)
+        return Response({
+            "status": "error", 
+            "message": "Username and password required"
+        }, status=400)
 
     try:
-        # Try existing user session login
-        try:
-            user = User.objects.get(username=username)
+        # Check if user already exists
+        if User.objects.filter(username=username).exists():
+            return Response({
+                "status": "error",
+                "message": "User already exists"
+            }, status=400)
 
-            # Transfer user_id for persona set
-            llm_module_url = os.getenv("LLM_MODULE_URL")
-            api_url = f"{llm_module_url}/user"
-            data = {
-                "user_id": user.id
-                }
-            response = requests.post(api_url, json=data)
-            if (not response.status_code == 200 or not response.json()['response']):
-                return Response({"status": "error", "message": "Cannot set user to llm module"}, status=400)
-
-            
-            if not user.check_password(password):
-                return Response({"status": "error", "message": "Incorrect password"}, status=400)
-            
-            # Load existing session
-            bot_client = Client()
-            if user.session_info:
-                try:
-                    # Extract sessionid from session_info
-                    session_data = user.session_info
-                    if isinstance(session_data, str):
-                        session_data = json.loads(session_data)
-                    
-                    sessionid = None
-                    if 'authorization_data' in session_data:
-                        sessionid = session_data['authorization_data'].get('sessionid')
-                    else:
-                        sessionid = session_data.get('sessionid')
-                        
-                    if sessionid:
-                        # Try to login using sessionid
-                        success = bot_client.login_by_sessionid(sessionid)
-                        if success:
-                            # Session is valid, create bot and return success
-                            bot = InstagramBot(user_obj=user, password=password, session_settings=user.session_info)
-                            user_bots[user.id] = bot
-                            refresh = RefreshToken.for_user(user)
-                            automation_service.auto_start_for_user(
-                                user, 
-                                min_interval=min_interval,
-                                max_interval=max_interval  
-                            )
-                            return Response({
-                                "status": "success",
-                                "message": "Logged in with saved session",
-                                "access": str(refresh.access_token),
-                                "refresh": str(refresh),
-                            })
-                        else:
-                            # Session invalid, will create new one below
-                            logger.warning(f"Session invalid for user {username}, creating new session")
-                    else:
-                        logger.warning(f"No sessionid found for user {username}")
-                        
-                except (json.JSONDecodeError, KeyError, Exception) as e:
-                    logger.warning(f"Error loading session for user {username}: {e}")
-            
+        # Test Instagram login before creating user
+        bot_client = Client()
+        is_success = bot_client.login(username, password)
+        
+        if not is_success:
             try:
-                # Test the session by getting user info
-                bot_client.account_info()
-                
-                # Session is valid, create bot and return success
-                bot = InstagramBot(user_obj=user, password=password, session_settings=user.session_info)
-                user_bots[user.id] = bot
-                refresh = RefreshToken.for_user(user)
-                automation_service.auto_start_for_user(
+                # Try relogin if first attempt fails
+                is_success = bot_client.login(username, password, relogin=True)
+                if not is_success:
+                    return Response({
+                        "status": "error", 
+                        "message": "Instagram login failed - incorrect credentials"
+                    }, status=400)
+            except LoginRequired:
+                return Response({
+                    "status": "error", 
+                    "message": "Instagram login failed - account may be restricted"
+                }, status=400)
+        
+        # Create new user with session
+        session = bot_client.get_settings()
+        user = User.objects.create(username=username, session_info=session)
+        user.set_password(password)
+        user.save()
+        
+        # Create default configuration
+        Configuration.objects.create(
+            user=user,
+            max_iteration=10,
+            temperature=0.3,
+            top_k=10,
+            max_token=4096
+        )
+
+        automation_service.auto_start_for_user(
                     user, 
                     min_interval=min_interval,
                     max_interval=max_interval 
                 )
-                return Response({
-                    "status": "success",
-                    "message": "Logged in with saved session",
-                    "access": str(refresh.access_token),
-                    "refresh": str(refresh),
-                })
+        
+        # Transfer user_id for persona set
+        llm_module_url = os.getenv("LLM_MODULE_URL")
+        api_url = f"{llm_module_url}/user"
+        data = {
+            "user_id": user.id
+            }
+        response = requests.post(api_url, json=data)
+        if (not response.status_code == 200 or not response.json()['response']):
+            return Response({"status": "error", "message": "Cannot set user to llm module"}, status=400)
+        refresh = RefreshToken.for_user(user)
+
+        return Response({
+            "status": "success",
+            "message": "User registered successfully",
+            "access": str(refresh.access_token),
+            "refresh": str(refresh),
+        })
+
+    except Exception as e:
+        logger.error(f"Registration error: {str(e)}")
+        return Response({
+            "status": "error", 
+            "message": f"Registration failed: {str(e)}"
+        }, status=400)
+
+@api_view(['POST'])
+@permission_classes([AllowAny])
+def login_bot(request):
+    """Login existing user"""
+    username = request.data.get('username')
+    password = request.data.get('password')
+    
+    if not username or not password:
+        return Response({
+            "status": "error", 
+            "message": "Username and password required"
+        }, status=400)
+
+    try:
+        # Get existing user
+        try:
+            user = User.objects.get(username=username)
+        except User.DoesNotExist:
+            return Response({
+                "status": "error", 
+                "message": "User not found. Please register first."
+            }, status=404)
+            
+        # Check password
+        if not user.check_password(password):
+            return Response({
+                "status": "error", 
+                "message": "Incorrect password"
+            }, status=400)
+        
+        # Load existing session
+        bot_client = Client()
+        session_valid = False
+        
+        if user.session_info:
+            try:
+                # Extract sessionid from session_info
+                session_data = user.session_info
+                if isinstance(session_data, str):
+                    session_data = json.loads(session_data)
                 
+                sessionid = None
+                if 'authorization_data' in session_data:
+                    sessionid = session_data['authorization_data'].get('sessionid')
+                else:
+                    sessionid = session_data.get('sessionid')
+                    
+                if sessionid:
+                    # Try to login using sessionid
+                    success = bot_client.login_by_sessionid(sessionid)
+                    if success:
+                        session_valid = True
+                    else:
+                        logger.warning(f"Session invalid for user {username}")
+
             except LoginRequired:
                 # Session is flagged, delete it and create new one
                 logger.warning(f"Session flagged for user {username}, creating new session")
                 
                 # Try fresh login
                 fresh_client = Client()
-                is_success = fresh_client.login(username, password)
+                is_success = fresh_client.login(username, password, relogin=True)
                 
                 if not is_success:
-                    # Try relogin if first attempt fails
-                    is_success = fresh_client.login(username, password, relogin=True)
-                    if not is_success:
-                        return Response({"status": "error", "message": "Instagram login failed after relogin attempt"}, status=400)
+                    return Response({"status": "error", "message": "Instagram login failed after relogin attempt"}, status=400)
                 
                 # Update user with new session
                 new_session = fresh_client.get_settings()
@@ -166,50 +215,53 @@ def login_bot(request):
                     "message": "Logged in with new session (old session was flagged)",
                     "access": str(refresh.access_token),
                     "refresh": str(refresh),
-                })
-                
-        except User.DoesNotExist:
-            pass  # No existing user, try Instagram login fresh
-
-        # Fresh Instagram login for new user
-        bot_client = Client()
-        is_success = bot_client.login(username, password)
+                })  
+            except (json.JSONDecodeError, KeyError, LoginRequired, Exception) as e:
+                logger.warning(f"Error loading session for user {username}: {e}")
         
-        if not is_success:
-            try:
-                # Try relogin if first attempt fails
-                is_success = bot_client.login(username, password, relogin=True)
-                if not is_success:
-                    return Response({"status": "error", "message": "Instagram login failed - incorrect credentials"}, status=400)
-            except LoginRequired:
-                return Response({"status": "error", "message": "Instagram login failed - account may be restricted"}, status=400)
+        # If session is invalid, create new one
+        if not session_valid:
+            return Response({
+                "status": "error", 
+                "message": "Session expired or invalid. Please register again to refresh your Instagram session."
+            }, status=401)
         
-        # Create new user with session
-        session = bot_client.get_settings()
-        user = User.objects.create(username=username, session_info=session)
-        Configuration.objects.create(
-            user=user,
-            max_iteration=10,
-            temperature=0.3,
-            top_k=10,
-            max_token=4096
-        )
-        user.set_password(password)
-        user.save()
-
-        refresh = RefreshToken.for_user(user)
-        bot = InstagramBot(user_obj=user, password=password, session_settings=session)
+        # Create bot instance and tokens
+        bot = InstagramBot(user_obj=user, password=password, session_settings=user.session_info)
         user_bots[user.id] = bot
+        
+        refresh = RefreshToken.for_user(user)
+        
+        # Start automation
+        automation_service.auto_start_for_user(
+            user, 
+            min_interval=min_interval,
+            max_interval=max_interval  
+        )
+        
+        # Transfer user_id for persona set
+        llm_module_url = os.getenv("LLM_MODULE_URL")
+        api_url = f"{llm_module_url}/user"
+        data = {
+            "user_id": user.id
+            }
+        response = requests.post(api_url, json=data)
+        if (not response.status_code == 200 or not response.json()['response']):
+            return Response({"status": "error", "message": "Cannot set user to llm module"}, status=400)
+        
         return Response({
             "status": "success",
-            "message": "New user created and logged in",
+            "message": "Login successful",
             "access": str(refresh.access_token),
             "refresh": str(refresh),
         })
 
     except Exception as e:
-        logger.error(f"Instagram login error: {str(e)}")
-        return Response({"status": "error", "message": f"Instagram login error: {str(e)}"}, status=400)
+        logger.error(f"Login error: {str(e)}")
+        return Response({
+            "status": "error", 
+            "message": f"Login failed: {str(e)}"
+        }, status=400)
     
 @api_view(['GET'])
 @authentication_classes([JWTAuthentication])
@@ -463,3 +515,103 @@ def start_dm_automation(request):
         "status": "success" if success else "error",
         "message": message
     })
+
+@api_view(['GET', 'POST'])
+@authentication_classes([JWTAuthentication])
+@permission_classes([IsAuthenticated])
+def user_persona(request):
+    """Get or update the persona for the authenticated user"""
+    user = request.user
+    
+    if request.method == 'GET':
+        persona = getattr(user, 'persona', None)
+        
+        return Response({
+            'status': 'success',
+            'data': {
+                'persona': persona
+            }
+        })
+    
+    elif request.method == 'POST':
+        persona = request.data.get('persona')
+        
+        if persona is None:
+            return Response({
+                'status': 'error',
+                'message': 'Persona field is required'
+            }, status=400)
+        
+        # Update user persona
+        user.persona = persona
+        user.save()
+        
+        # Hit LLM API after save to notify
+        # Try maximum tries 3 times
+        max_attempt = 3
+        attempt =1
+        is_success = False
+        while(attempt <= max_attempt and not is_success):
+            llm_module_url = os.getenv("LLM_MODULE_URL")
+            api_url = f"{llm_module_url}/persona"
+            response = requests.post(api_url)
+            # Break if already success
+            if (response.status_code == 200):
+                is_success = True
+                attempt +=1
+        return Response({
+            'status': 'success',
+            'message': 'Persona updated successfully',
+            'data': {
+                'persona': persona
+            }
+        })
+
+@api_view(['GET'])
+@authentication_classes([JWTAuthentication])
+@permission_classes([IsAuthenticated])
+def get_instagram_statistics(request):
+    """Get Instagram statistics for the authenticated user"""
+    user = request.user
+    
+    try:
+        stats = InstagramStatistics.objects.get(user=user)
+        
+        # Serialize the statistics data
+        stats_data = {
+            'followers_count': stats.followers_count,
+            'following_count': stats.following_count,
+            'posts_count': stats.posts_count,
+            'all_likes_count': stats.all_likes_count,
+            'all_comments_count': stats.all_comments_count,
+            'profile_visits': stats.profile_visits,
+            'profile_visits_delta': stats.profile_visits_delta,
+            'website_visits': stats.website_visits,
+            'website_visits_delta': stats.website_visits_delta,
+            'impressions': stats.impressions,
+            'impressions_delta': stats.impressions_delta,
+            'reach': stats.reach,
+            'reach_delta': stats.reach_delta,
+            'new_followers': stats.new_followers,
+            'new_likes': stats.new_likes,
+            'new_comments': stats.new_comments,
+            'engagement_rate': stats.engagement_rate,
+            'created_at': stats.created_at,
+            'updated_at': stats.updated_at,
+        }
+        
+        return Response({
+            'status': 'success',
+            'data': stats_data
+        })
+        
+    except InstagramStatistics.DoesNotExist:
+        return Response({
+            'status': 'error',
+            'message': 'No statistics found for this user. Please run the update command first.'
+        }, status=404)
+    except Exception as e:
+        return Response({
+            'status': 'error',
+            'message': str(e)
+        }, status=500)

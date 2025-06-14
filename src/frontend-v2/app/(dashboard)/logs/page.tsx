@@ -10,8 +10,11 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Heart, MessageCircle, UserPlus, Clock, CheckCircle2, XCircle, Settings, RefreshCw } from "lucide-react"
 import { useState, useEffect } from "react"
 import { ActionLog, PaginationInfo } from "@/types/types"
+import { useRouter } from "next/navigation"
+import Cookies from "js-cookie"
 
 export default function LogsPage() {
+  const router = useRouter()
   const [logs, setLogs] = useState<ActionLog[]>([])
   const [loading, setLoading] = useState(true)
   const [mounted, setMounted] = useState(false)
@@ -23,6 +26,12 @@ export default function LogsPage() {
     page: 1
   })
 
+  const handleUnauthorized = () => {
+    Cookies.remove("auth")
+    localStorage.removeItem("jwtToken")
+    localStorage.removeItem("jwtRefresh")
+    router.push("/login")
+  }
   const API = process.env.NEXT_PUBLIC_API_BASE_URL
 
   useEffect(() => {
@@ -54,6 +63,11 @@ export default function LogsPage() {
           'Content-Type': 'application/json',
         },
       })
+
+      if (response.status === 401) {
+        handleUnauthorized()
+        return
+      }
 
       if (response.ok) {
         const result = await response.json()
