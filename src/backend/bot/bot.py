@@ -36,13 +36,13 @@ class InstagramBot:
             message=message,
         )
 
-    def like_post(self, media_url: str):
+    def like_post(self, media_id: str):
         try:
-            media_id = self.client.media_pk_from_url(media_url)
+            # media_id = self.client.media_pk_from_url(media_url)
             self.client.media_like(media_id)
-            self.log("like", media_url, "success", "Liked post")
+            self.log("like", media_id, "success", "Liked post")
         except Exception as e:
-            self.log("like", media_url, "failed", str(e))
+            self.log("like", media_id, "failed", str(e))
             raise e
 
     def follow_user(self, target_username: str):
@@ -54,13 +54,13 @@ class InstagramBot:
             self.log("follow", target_username, "failed", str(e))
             raise e
 
-    def comment_on_post(self, media_url: str, comment: str):
+    def comment_on_post(self, media_id: str, comment: str):
         try:
-            media_id = self.client.media_pk_from_url(media_url)
+            # media_id = self.client.media_pk_from_url(media_url)
             self.client.media_comment(media_id, comment)
-            self.log("comment", media_url, "success", f"Commented: {comment}")
+            self.log("comment", media_id, "success", f"Commented: {comment}")
         except Exception as e:
-            self.log("comment", media_url, "failed", str(e))
+            self.log("comment", media_id, "failed", str(e))
             raise e
 
     def post_photo(self, image_path: str, caption: str):

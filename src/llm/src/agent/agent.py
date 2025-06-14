@@ -316,14 +316,14 @@ class Agent():
       influencer_id = chosen_influencer['id']
       influencer_username = chosen_influencer['username']
 
-      # TODO Implement Follow Logic
-
-      # Mark influencer
-      chosen_influencer['mark_follow'] = True
-      self.mongo_connector_component.update_one_data(mongo_collection_name, {"community_id": community_id}, {"influencers": influencers})
-
-
-      print(f"[ACTION FOLLOW] Follow influencer {influencer_username} with influencer_id {influencer_id} in community {community_id}")
+      # Request
+      is_success = self.output_gateway_component.request_follow(influencer_username)
+      if (is_success):
+        # Mark influencer
+        chosen_influencer['mark_follow'] = True
+        self.mongo_connector_component.update_one_data(mongo_collection_name, {"community_id": community_id}, {"influencers": influencers})
+        print(f"[ACTION FOLLOW] Follow influencer {influencer_username} with influencer_id {influencer_id} in community {community_id}")
+      
     except Exception as e:
       print(f"[ERROR ACTION FOLLOW] Error occured in executing `follow`: {e}")
 
@@ -374,14 +374,14 @@ class Agent():
       # Get Influencer
       post_id = chosen_post['id']
 
-      # TODO Implement Like Logic
+      # Request
+      is_success = self.output_gateway_component.request_like(post_id)
+      if (is_success):
+        # Mark post
+        chosen_post['mark_like'] = True
+        self.mongo_connector_component.update_one_data(mongo_collection_name, {"community_id": community_id}, {"posts": posts})
+        print(f"[ACTION LIKE] Like post with post_id {post_id} in community {community_id}")
 
-      # Mark influencer
-      chosen_post['mark_like'] = True
-      self.mongo_connector_component.update_one_data(mongo_collection_name, {"community_id": community_id}, {"posts": posts})
-
-
-      print(f"[ACTION LIKE] Like post with post_id {post_id} in community {community_id}")
     except Exception as e:
       print(f"[ERROR ACTION LIKE] Error occured in executing `like`: {e}")
 
@@ -443,16 +443,16 @@ class Agent():
       prompt = self.prompt_generator_component.generate_prompt_comment(post_caption, selected_comments_str)
       
       # Make comment
-      comment, _ = await self.model_component.answer(prompt, is_direct=True)
+      comment_message, _ = await self.model_component.answer(prompt, is_direct=True)
 
-      # TODO Do comment logic
-
-      # Mark post
-      chosen_post['mark_comment'] = True
-      self.mongo_connector_component.update_one_data(mongo_collection_name, {"community_id": community_id}, {"posts": posts})
-
-
-      print(f"[ACTION COMMENT] Comment post with post_id {post_id} in community {community_id}")
+      # Request
+      is_success = self.output_gateway_component.request_comment(post_id, comment_message)
+      if (is_success):
+        # Mark post
+        chosen_post['mark_comment'] = True
+        self.mongo_connector_component.update_one_data(mongo_collection_name, {"community_id": community_id}, {"posts": posts})
+        print(f"[ACTION COMMENT] Comment post with post_id {post_id} in community {community_id}")
+        
     except Exception as e:
       print(f"[ERROR ACTION COMMENT] Error occured in executing `comment`: {e}")
 

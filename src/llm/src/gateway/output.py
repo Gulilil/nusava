@@ -18,48 +18,80 @@ class OutputGateway():
     }
 
 
-  def request_statistics(self, user_id: str) -> dict:
-    """
-    Hit statistics api in automation module
-    """
-    path = "/statistics"
-    url = f"{self.base_url}{path}"
-    # TODO 
-
-    return
-
-
-  def request_follow(self, user_id: str) -> None:
+  def request_follow(self, username: str) -> bool:
     """
     Hit follow api in automation module
     """
-    path = "/follow"
-    url = f"{self.base_url}{path}"
-    # TODO 
+    try:
+      path = "/follow"
+      url = f"{self.base_url}{path}"
+      data = {
+          "target_username": username
+      }
 
-    return
+      # Check response
+      response = requests.post(url, json=data)
+      if (response.status_code == 200):
+        return True
+      else:
+        response_json = response.json()
+        print(f"[ERROR REQUEST FOLLOW] Status code: {response.status_code}. Error : {response_json['error']}")
+        return False
+
+    except Exception as e:
+      print(f"[ERROR REQUEST FOLLOW] Error occured in requesting action `follow` to {username}: {e}")
+      return False
   
   
-  def request_like(self, post_id: str) -> None:
+  def request_like(self, post_id: str) -> bool:
     """
     Hit like api in automation module
     """
-    path = "/like"
-    url = f"{self.base_url}{path}"
-    # TODO 
+    try:
+      path = "/like"
+      url = f"{self.base_url}{path}"
+      data = {
+          "media_id": post_id
+      }
 
-    return
+      # Check response
+      response = requests.post(url, json=data)
+      if (response.status_code == 200):
+        return True
+      else:
+        response_json = response.json()
+        print(f"[ERROR REQUEST LIKE] Status code: {response.status_code}. Error : {response_json['error']}")
+        return False
+
+    except Exception as e:
+      print(f"[ERROR REQUEST LIKE] Error occured in requesting action `like` to {post_id}: {e}")
+      return False
   
 
-  def request_comment(self, post_id: str, comment_message:str) -> None:
+  def request_comment(self, post_id: str, comment_message:str) -> bool:
     """
     Hit comment api in automation module
     """
-    path = "/comment"
-    url = f"{self.base_url}{path}"
-    # TODO 
+    try:
+      path = "/comment"
+      url = f"{self.base_url}{path}"
+      data = {
+          "media_id": post_id,
+          "comment": comment_message
+      }
 
-    return
+      # Check response
+      response = requests.post(url, json=data)
+      if (response.status_code == 200):
+        return True
+      else:
+        response_json = response.json()
+        print(f"[ERROR REQUEST COMMENT] Status code: {response.status_code}. Error : {response_json['error']}")
+        return False
+
+    except Exception as e:
+      print(f"[ERROR REQUEST COMMENT] Error occured in requesting action `comment` to {post_id}: {e}")
+      return False
   
 
   def request_post(self, img_url: str, caption_message:str) -> None:

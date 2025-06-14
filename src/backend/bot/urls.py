@@ -11,22 +11,23 @@ from .views import (
 )
 
 urlpatterns = [
+    # Setup
     path('login/', login_bot),
     path('posts/', get_posts),
     path('proxy-image/', proxy_image),
-
+    # Action
     path('like/', like_post),
     path('follow/', follow_user),
     path('comment/', comment_post),
     path('post/', post_photo),
     path('share/', share_post),
-
+    # Token
     path('token/', TokenObtainPairView.as_view(), name='token_obtain_pair'),
     path('token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
-
+    # Logging and Config
     path('config/', bot_configuration, name='bot_configuration'),
     path('logs/', action_logs, name='action_logs'),
-
+    # Automation
     path('automation/status/', automation_status, name='automation_status'),
     path('automation/stop/', stop_dm_automation, name='stop_dm_automation'),
     path('automation/start/', start_dm_automation, name='start_dm_automation'),
