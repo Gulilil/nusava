@@ -44,6 +44,39 @@ def json_to_string(data : dict, indent: int = 0) -> str:
   return result
 
 
+def text_to_document(text_list: list[str]) -> list[Document]:
+  """
+  Make string text to Document type of LlamaIndex
+  """
+  return [Document(text=text) for text in text_list]
+
+
+def parse_documents(document_list: list[Document]) -> list:
+  """
+  Parse documents using LlamaIndex parser
+  """
+  parser = SimpleNodeParser()
+  return parser.get_nodes_from_documents(document_list)
+
+
+def display_nested_list(nested_list:list, indent: int = 0) -> None:
+  """
+  Display nested list with indentation
+  """
+  for item in nested_list:
+    if isinstance(item, list):
+      display_nested_list(item, indent + 1)
+    else:
+      print((" " * 2 * indent) + item)
+      print("========================")
+
+
+def clean_quotation_string(text: str) -> str:
+  if ("\"" == text[0] and "\"" == text[-1]):
+    return text[1:-1]
+  else:
+    return text
+  
 def hotel_data_to_string_list(data: dict, max_limit_arr: int = 20) -> list[str]:
   """
   Convert hotel data to list of string
@@ -92,36 +125,46 @@ def hotel_data_to_string_list(data: dict, max_limit_arr: int = 20) -> list[str]:
   data_list = [info for info in data_list if info.strip() != ""]  # Remove empty strings
   return data_list
 
-
-def text_to_document(text_list: list[str]) -> list[Document]:
+def attraction_data_to_string_list(data: dict, max_limit_arr: int = 20) -> list[str]:
   """
-  Make string text to Document type of LlamaIndex
+  Convert hotel data to list of string
   """
-  return [Document(text=text) for text in text_list]
+  # Delete unnecessary columns
+  del data["_id"]
+  # Use title as id, assuming it is unique for all data
+  name = data["title"]
+  del data["title"]
 
+  # Define fields to be extracted
+  general_info_fields = ["locationText", "location", "url", "contact", "phoneNumberText", "description", "rating", "label"]
+  more_info_fields = ["moreInfo", "guide"]
+  data_list = ["" for _ in range(2)]
+  reviews_list = []
+  opening_hours_list = []
+  
+  data_list[0] = f"{name} Basic Information:\n"
+  for key, val in data.items():
+    if (key in general_info_fields):
+      data_list[0] += f"  {key}: {val}\n"
+    elif (key in more_info_fields):
+      if (isinstance(val, dict)):
+        data_list[1] += json_to_string(val, 1)
+      else:
+        data_list[1] += f"  {key}: {val}\n"
+    elif ((key == "reviews" or key == "allReviews") and len(val)> 0):
+      for i in range(min(len(val), max_limit_arr)):
+        review = val[i]
+        review_str = f"{name} Review {i+1}:\n"
+        review_str += json_to_string(review, 1)
+        reviews_list.append(review_str)
+    elif (key == "openingHours" and len(val) > 0):
+      for i in range(len(val)):
+        opening_hour = val[i]
+        opening_hour_str = json_to_string(opening_hour, 1)
+        opening_hours_list.append(opening_hour_str)
 
-def parse_documents(document_list: list[Document]) -> list:
-  """
-  Parse documents using LlamaIndex parser
-  """
-  parser = SimpleNodeParser()
-  return parser.get_nodes_from_documents(document_list)
-
-
-def display_nested_list(nested_list:list, indent: int = 0) -> None:
-  """
-  Display nested list with indentation
-  """
-  for item in nested_list:
-    if isinstance(item, list):
-      display_nested_list(item, indent + 1)
-    else:
-      print((" " * 2 * indent) + item)
-      print("========================")
-
-
-def clean_quotation_string(text: str) -> str:
-  if ("\"" == text[0] and "\"" == text[-1]):
-    return text[1:-1]
-  else:
-    return text
+  # Combine all information into a single list
+  data_list.extend(reviews_list)
+  data_list.extend(opening_hours_list)
+  data_list = [info for info in data_list if info.strip() != ""]  # Remove empty strings
+  return data_list

@@ -14,7 +14,7 @@ from gateway.output import OutputGateway
 from generator.prompt import PromptGenerator
 from generator.action import ActionGenerator
 from generator.schedule import ScheduleGenerator
-from utils.function import hotel_data_to_string_list, text_to_document, parse_documents, clean_quotation_string
+from utils.function import hotel_data_to_string_list, attraction_data_to_string_list, text_to_document, parse_documents, clean_quotation_string
 
 
 class Agent():
@@ -48,8 +48,9 @@ class Agent():
     print("[AGENT INITIALIZED] Generator component(s) initialized")
 
 
-
-  ######## SETUP PERSONA/ CONFIG ########
+  #######################
+  ######## SETUP ########
+  #######################
 
   async def set_user(self, user_id:str) -> None:
     """
@@ -91,7 +92,9 @@ class Agent():
     self.model_component.config(config_data)
 
 
-  ######## PUBLIC ########
+  #######################
+  ######## OTHER ########
+  #######################
 
   def run(self) -> None:
     """
@@ -154,10 +157,9 @@ class Agent():
       return False
 
 
-
-  ######## ACTION ########
-
+  #########################################
   ######## EXTERNAL TRIGGER ACTION ########
+  #########################################
 
   async def action_reply_chat(self, chat_message: str, sender_id: str) -> str:
     """
@@ -284,8 +286,10 @@ class Agent():
 
       return answer
 
-
+  #########################################
   ######## INTERNAL TRIGGER ACTION ########
+  #########################################
+
 
   def action_follow(self) -> None:
     """
@@ -590,7 +594,10 @@ class Agent():
       return answer
 
 
+  ##############################
   ######## PROCESS DATA ########
+  ##############################
+
   """
   Should only be run manually
   It is run to convert the data from Document type in Mongo to Vector in Pinecone
@@ -640,9 +647,9 @@ class Agent():
     mongo_collection_name = "communities"
     pinecone_namespace_name = "communities"
 
-    # Get hotel data from mongo
+    # Get data from mongo
     communities = self.mongo_connector_component.get_data(mongo_collection_name, {})
-    print(f"[FETCHED] Fetched {len(communities)} hotels")
+    print(f"[FETCHED] Fetched {len(communities)} communities")
 
     # Insert data as batch
     idx = 0
@@ -678,3 +685,90 @@ class Agent():
       # Increment idx
       idx += length_per_batch
 
+
+  def process_data_association_rule(self) -> None:
+    """
+    Process data association rule, "migrate" it from mongodb document to pinecone vector
+    """
+    mongo_collection_name = "association-rule"
+    pinecone_namespace_name = "association_rules"
+
+    # Get data from mongo
+    asso_rules = self.mongo_connector_component.get_data(mongo_collection_name, {})
+    print(f"[FETCHED] Fetched {len(asso_rules)} asso_rules")
+
+    asso_rule_string_list = []
+    # Iterate association rules
+    for asso_rule in asso_rules:
+      antecedents = asso_rule['antecedent']
+      consequents = asso_rule['consequent']
+
+      antecedents_string = "Antecedents:\n"
+      for i, antecedent in enumerate(antecedents):
+        antecedents_string += f"{i+1}. {antecedent['place']}\n"
+
+      consequents_string = "Consequents:\n"
+      for i, consequent in enumerate(consequents):
+        consequents_string += f"{i+1}. {consequent['place']}\n"
+
+      asso_rule_string =  "Here is an insight of recommendation from data mining process.\n" \
+                          "The data is about association rule of hotels." \
+                          "Therefore, this data can be used to link as a recommendation system for hotels.\n" \
+                          "The data consist of antecedents and consequents. If user talk about hotels in antecedents, you can recommend the hotels in consequents.\n"                   
+      asso_rule_string += antecedents_string
+      asso_rule_string += consequents_string
+
+      # Append to list
+      asso_rule_string_list.append(asso_rule_string)
+    
+    # Preprocess
+    asso_rule_docs_list = text_to_document(asso_rule_string)
+    asso_rule_parsed = parse_documents(asso_rule_docs_list)
+    
+    # Insert data to pinecone
+    _, storage_context = self.pinecone_connector_component.get_vector_store(pinecone_namespace_name)
+    self.pinecone_connector_component.store_data(asso_rule_parsed, storage_context, self.model_component.embed_model)      
+    print(f'[BATCH PROGRESS] Successfully inserted data')
+
+
+
+  def process_data_tourist_attraction(self) -> None:
+    """
+    Process data tourism places, "migrate" it from mongodb document to pinecone vector
+    """
+    mongo_collection_name = "objek-wisata"
+    pinecone_namespace_name = "tourist_attractions"
+
+    # Get attraction data from mongo
+    attractions = self.mongo_connector_component.get_data(mongo_collection_name, {})
+    print(f"[FETCHED] Fetched {len(attractions)} attractions")
+
+    idx = 0
+    n_batch = 20
+    length_per_batch = (len(attractions)//n_batch)+1
+    while (idx < len(attractions)):
+      # Set batch indices
+      attraction_docs = []
+      upper_idx = min(idx+length_per_batch, len(attractions))
+      curr_batch_attractions = attractions[idx : upper_idx]
+
+      # Iterate data in the current batch list
+      for attraction in curr_batch_attractions:
+        attraction_string_data = attraction_data_to_string_list(attraction)
+        documents_list = text_to_document(attraction_string_data)
+        attraction_docs.extend(documents_list)
+      
+      # Parse attraction data
+      attraction_data_parsed = parse_documents(attraction_docs)
+      # Insert to pinecone
+      _, storage_context = self.pinecone_connector_component.get_vector_store(pinecone_namespace_name)
+      self.pinecone_connector_component.store_data(attraction_data_parsed, storage_context, self.model_component.embed_model)      
+      print(f'[BATCH PROGRESS] Successfully inserted data idx {idx} to {upper_idx}')
+      
+      # Increment idx
+      idx += length_per_batch
+      
+
+
+
+      

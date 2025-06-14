@@ -7,13 +7,16 @@ async def test(nusava: Agent) -> None:
 
   # # Setup (IMPORTANT)
   user_id = 1
-  # user_id = 2
+  # user_id = 3
   await nusava.set_user(user_id)
 
 
   # # Test process data
   # nusava.process_data_hotel()
   # nusava.process_data_post()
+
+  nusava.process_data_association_rule()
+  nusava.process_data_tourist_attraction()
 
 
   # # Test action chat
@@ -42,7 +45,7 @@ async def test(nusava: Agent) -> None:
   # await nusava.action_schedule_post("", caption_message)
 
   # # Test decision maker
-  await nusava.decide_action()
+  # await nusava.decide_action()
 
 
 
