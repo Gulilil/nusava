@@ -21,6 +21,18 @@ class PostgresConnector():
           password=os.getenv("POSTGRES_PASSWORD")  
       )
     self.cursor = self.connection.cursor()
+
+
+  def get_session_info_data(self, user_id: str) -> tuple:
+    """
+    Get session_info data
+    """
+    table_name = "bot_user"
+    column_name = "session_info"
+    self.cursor.execute(f"SELECT {column_name} FROM {table_name} WHERE id={user_id}")
+    data = self.cursor.fetchone()[0]
+    return data
+
   
 
   def get_persona_data(self, user_id: str) -> tuple:

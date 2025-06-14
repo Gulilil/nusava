@@ -9,25 +9,28 @@ pip install -r requirements.txt
 
 ## For frontend
 ```bash
-cd src/frontend-v2
-npm install
-npm run dev
+# Setup
+npm src/frontend-v2/install
+
+# Run Client
+npm src/frontend-v2/run dev
 ```
 
 ## For backend
 ```bash
-cd src/backend
-python manage.py makemigrations bot
-python manage.py migrate
-python manage.py runserver
+# Setup
+python src/backend/manage.py makemigrations bot
+python src/backend/manage.py migrate
+
+# Run Server
+python src/backend/manage.py runserver
 ```
 
 ## For LLM 
 ```bash
-cd src/llm/src
-python main.py
-# or
+# Run LLM server
 python src/llm/src/main.py
 
-
+# Trigger LLM internal_action
+python src/llm/src/internal_action.py <user_id>
 ```
