@@ -25,6 +25,16 @@ export interface ConfigData {
   max_iteration: number;
 }
 
+export interface InstagramStats {
+  followers_count: number
+  posts_count: number
+  all_likes_count: number
+  all_comments_count: number
+  impressions: number
+  reach: number
+  engagement_rate: number
+}
+
 // Action Log Types
 export interface ActionLog {
   id: number;

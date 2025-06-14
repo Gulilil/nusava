@@ -279,26 +279,25 @@ def get_posts(request):
         return Response({"error": "Failed to fetch posts"}, status=500)
 
 @api_view(['POST'])
-@authentication_classes([JWTAuthentication])
-@permission_classes([IsAuthenticated])
+@permission_classes([AllowAny])
 def like_post(request):
     user = request.user
     media_id = request.data.get('media_id')
-    if not media_id:
-        return Response({"error": "media_id is required"}, status=400)
+    media_url = request.data.get('media_url')
+    if not media_id and not media_url:
+        return Response({"error": "media_id or media_url is required"}, status=400)
     bot = user_bots.get(user.id)
     if not bot:
         return Response({'error': 'Bot not initialized for this user'}, status=400)
     try:
-        bot.like_post(media_id)
+        bot.like_post(media_id, media_url)
         return Response({'status': 'success', 'message': 'Post liked'})
     except Exception as e:
         logger.error(f"Like post error: {e}")
         return Response({'error': 'Failed to like post'}, status=500)
 
 @api_view(['POST'])
-@authentication_classes([JWTAuthentication])
-@permission_classes([IsAuthenticated])
+@permission_classes([AllowAny])
 def follow_user(request):
     user = request.user
     target_username = request.data.get('target_username')
@@ -315,27 +314,26 @@ def follow_user(request):
         return Response({'error': 'Failed to follow user'}, status=500)
 
 @api_view(['POST'])
-@authentication_classes([JWTAuthentication])
-@permission_classes([IsAuthenticated])
+@permission_classes([AllowAny])
 def comment_post(request):
     user = request.user
     media_id = request.data.get('media_id')
+    media_url = request.data.get('media_url')
     comment = request.data.get('comment')
-    if not media_id or not comment:
-        return Response({"error": "media_id and comment are required"}, status=400)
+    if (not media_id and not media_url) or not comment:
+        return Response({"error": "media_id/media_url and comment are required"}, status=400)
     bot = user_bots.get(user.id)
     if not bot:
         return Response({'error': 'Bot not initialized for this user'}, status=400)
     try:
-        bot.comment_on_post(media_id, comment)
+        bot.comment_on_post(comment, media_id, media_url)
         return Response({'status': 'success', 'message': 'Comment posted'})
     except Exception as e:
         logger.error(f"Comment post error: {e}")
         return Response({'error': 'Failed to post comment'}, status=500)
 
 @api_view(['POST'])
-@authentication_classes([JWTAuthentication])
-@permission_classes([IsAuthenticated])
+@permission_classes([AllowAny])
 def post_photo(request):
     user = request.user
     image_path = request.data.get('image_path')
@@ -351,25 +349,6 @@ def post_photo(request):
     except Exception as e:
         logger.error(f"Post photo error: {e}")
         return Response({'error': 'Failed to post photo'}, status=500)
-
-@api_view(['POST'])
-@authentication_classes([JWTAuthentication])
-@permission_classes([IsAuthenticated])
-def share_post(request):
-    user = request.user
-    media_url = request.data.get('media_url')
-    target_usernames = request.data.get('target_usernames', [])
-    if not media_url or not target_usernames:
-        return Response({"error": "media_url and target_usernames are required"}, status=400)
-    bot = user_bots.get(user.id)
-    if not bot:
-        return Response({'error': 'Bot not initialized for this user'}, status=400)
-    try:
-        bot.share_post_dm(media_url, target_usernames)
-        return Response({'status': 'success', 'message': f'Post shared to {target_usernames}'})
-    except Exception as e:
-        logger.error(f"Share post error: {e}")
-        return Response({'error': 'Failed to share post'}, status=500)
     
 @api_view(['GET', 'POST'])
 @authentication_classes([JWTAuthentication])

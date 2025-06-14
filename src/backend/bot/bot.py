@@ -20,8 +20,11 @@ class InstagramBot:
             self.client.set_settings(session_settings)
 
         try:
-            self.client.login(self.username, self.password)
-            self.user_obj.session_json = self.client.get_settings()
+            if (self.user_obj.session_info):
+                self.client.login_by_sessionid(self.user_obj.session_info['authorization_data'].get('sessionid'))
+            else:
+                self.client.login(self.username, self.password)
+            self.user_obj.session_info = self.client.get_settings()
             self.user_obj.save()
         except Exception as e:
             raise e
@@ -35,9 +38,10 @@ class InstagramBot:
             message=message,
         )
 
-    def like_post(self, media_id: str):
+    def like_post(self, media_id: str, media_url: str = None):
         try:
-            # media_id = self.client.media_pk_from_url(media_url)
+            if media_url:
+                media_id = self.client.media_pk_from_url(media_url)
             self.client.media_like(media_id)
             self.log("like", media_id, "success", "Liked post")
         except Exception as e:
@@ -53,9 +57,10 @@ class InstagramBot:
             self.log("follow", target_username, "failed", str(e))
             raise e
 
-    def comment_on_post(self, media_id: str, comment: str):
+    def comment_on_post(self, comment: str, media_id: str, media_url: str = None):
         try:
-            # media_id = self.client.media_pk_from_url(media_url)
+            if media_url:
+                media_id = self.client.media_pk_from_url(media_url)
             self.client.media_comment(media_id, comment)
             self.log("comment", media_id, "success", f"Commented: {comment}")
         except Exception as e:
