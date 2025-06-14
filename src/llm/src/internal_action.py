@@ -17,7 +17,6 @@ if __name__ == "__main__":
   How to run:
     python internal_action.py <user_id>
   """
-
   try:
     # Read arguments
     args = sys.argv

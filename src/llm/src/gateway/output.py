@@ -7,11 +7,12 @@ class OutputGateway():
   """
   Output gateway to other module
   """
-  def __init__(self):
+  def __init__(self, agent):
     """
     Instantiate output gateway to call the API of other module
     """
     # TODO To be adjusted
+    self._agent_component = agent
     self.base_url = os.getenv("AUTOMATION_MODULE_URL")
     self.headers = {
       'Content-Type' : 'application/json'
@@ -26,7 +27,8 @@ class OutputGateway():
       path = "/api/follow/"
       url = f"{self.base_url}{path}"
       data = {
-          "target_username": username
+          "target_username": username,
+          "user_id": self._agent_component.user_id
       }
 
       # Check response
@@ -51,7 +53,8 @@ class OutputGateway():
       path = "/api/like/"
       url = f"{self.base_url}{path}"
       data = {
-          "media_id": post_id
+          "media_id": post_id,
+          "user_id": self._agent_component.user_id
       }
 
       # Check response
@@ -77,7 +80,8 @@ class OutputGateway():
       url = f"{self.base_url}{path}"
       data = {
           "media_id": post_id,
-          "comment": comment_message
+          "comment": comment_message,
+          "user_id": self._agent_component.user_id
       }
 
       # Check response

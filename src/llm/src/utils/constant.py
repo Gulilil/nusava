@@ -7,7 +7,6 @@ HMM_HIDDEN_STATES = [
 
 HMM_OBSERVATION_LIST = [
   # Engagement
-  "new_message",
   "new_comment",
   "new_follower",
   "post_liked", 

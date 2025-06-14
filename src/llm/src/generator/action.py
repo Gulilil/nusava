@@ -23,31 +23,26 @@ class ActionGenerator:
         """
         Function to observe statistics.
         Returns a list of observations based on the statistics.
+        Statistics -> "new_comments, new_followers, new_likes"
         """
+        
         observations = []
-        # TODO Check for engagement observations
-        # # Engagement based
-        # if (...):
-        #     observations.append("new_message")
-        # if (...):
-        #     observations.append("new_comment")
-        # if (...):
-        #     observations.append("new_follower")
-        # if (...):
-        #     observations.append("post_liked")
-        # # Time based
-        # hour = datetime.now().hour
-        # if 5 <= hour < 12:
-        #     observations.append("morning_time")
-        # elif 12 <= hour < 18:
-        #     observations.append("afternoon_time")
-        # else:
-        #     observations.append("night_time")
+        # Engagement based
+        if (statistics[0]):
+            observations.append("new_comment")
+        if (statistics[1]):
+            observations.append("new_follower")
+        if (statistics[2]):
+            observations.append("post_liked")
 
-        # TODO To Be Removed if the logic is implemented
-        n = random.randint(1, 4)
-        observations = random.sample(HMM_OBSERVATION_LIST[:4], n)
-        observations.append(random.choice(HMM_OBSERVATION_LIST[4:]))  # Add one time observation
+        # Time based
+        hour = datetime.now().hour
+        if 5 <= hour < 12:
+            observations.append("morning_time")
+        elif 12 <= hour < 18:
+            observations.append("afternoon_time")
+        else:
+            observations.append("night_time")
 
         return observations
 
@@ -68,7 +63,7 @@ class ActionGenerator:
           # Build and train the HMM
           model = CategoricalHMM(n_components=len(self.hidden_states), n_iter=100, random_state=42)
           # Define starting probability
-          model.startprob_ = np.array([0.40, 0.40, 0.2])
+          model.startprob_ = np.array([0.45, 0.45, 0.1])
 
           # Increase idle probability with iterations
           idle_addition_prob = (0.1 * iteration)  
@@ -81,10 +76,10 @@ class ActionGenerator:
           ])
           # Define emission probability
           model.emissionprob_ = np.array([
-                # new_msg, new_com, new_fol, liked, morning, afternoon, night
-                [0.1,     0.2,     0.3,     0.2,    0.05,    0.1,       0.05],   # growth
-                [0.2,     0.3,     0.1,     0.2,    0.1,     0.05,      0.05],   # engagement
-                [0.1,     0.1,     0.1,     0.1,    0.2,     0.2,       0.2],    # idle
+                # new_com, new_fol, liked, morning, afternoon, night
+                [0.2,     0.3,     0.2,    0.1,     0.1,       0.1],   # growth
+                [0.3,     0.2,     0.2,    0.1,     0.1,       0.1],   # engagement
+                [0.1,     0.1,     0.2,    0.2,     0.2,       0.2],    # idle
             ])
 
 
@@ -94,8 +89,8 @@ class ActionGenerator:
 
           # Define simplified action policies
           state_action_map = {
-              'growth': ['follow', 'like'],
-              'engagement': ['comment', 'like'],
+              'growth': ['follow', 'follow',  'like'],
+              'engagement': ['comment', 'comment', 'like'],
               'idle': ['like', None] 
           }
           possible_actions = state_action_map[current_state]

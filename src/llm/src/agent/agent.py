@@ -39,7 +39,7 @@ class Agent():
     print("[AGENT INITIALIZED] Evaluator component(s) initialized")
     # Instantiate Gateway
     self.input_gateway_component = InputGateway(self)
-    self.output_gateway_component = OutputGateway()
+    self.output_gateway_component = OutputGateway(self)
     print("[AGENT INITIALIZED] Gateway component(s) initialized")
     # Instantiate Generator
     self.prompt_generator_component = PromptGenerator(self.persona_component)
@@ -106,7 +106,7 @@ class Agent():
     Decide action based on the current conditions and statistics
     This is the main entry point for the agent to decide what to do next.
     """
-    statistics = []
+    statistics = self.postgres_connector_component.get_statistics_data(self.user_id)
     observations = self.action_generator_component.observe_statistics(statistics)
     print(f"[ACTION OBSERVATION] Acquired observations: {observations}")
 
@@ -124,6 +124,7 @@ class Agent():
       else:
         return
       
+      # Give time delay
       sleep_time = random.randint(5, 15)
       print(f"[ACTION TIME SLEEP] Delay for {sleep_time} seconds")
       time.sleep(sleep_time)
@@ -456,6 +457,7 @@ class Agent():
       
       # Make comment
       comment_message, _ = await self.model_component.answer(prompt, is_direct=True)
+      comment_message = clean_quotation_string(comment_message)
 
       # Request
       is_success = self.output_gateway_component.request_comment(post_id, comment_message)
