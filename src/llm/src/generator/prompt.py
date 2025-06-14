@@ -1,4 +1,5 @@
 from llama_index.core.prompts import PromptTemplate
+from datetime import datetime
 
 PROMPT_TEMPLATE = """Definition:
 {persona_subprompt}.
@@ -235,6 +236,50 @@ class PromptGenerator():
                                       previous_iteration_notes_subprompt=previous_iteration_notes_subprompt,
                                       query_str=query_str)
   
+
+  def generate_prompt_choose_schedule_post(self, caption_message: str) -> str:
+    """
+    Generate a prompt for choosing schedule for uploading a post
+    """
+    context_str =  f"You are about to upload a post in Instagram with this caption, \"{caption_message}\". You are expected to generate the ideal time to upload the post.\n" \
+                    "Later you are provided with tools using RAG to get some data about posts. " \
+                    "You might want to use the context from this tools as your references. " \
+                    "The post data will consist of: the post caption, the post created time, and the comments amount. "\
+                    "Focus on `Post Created Time` because this is the critical aspect one you need to examine. " \
+                    "If possible, choose post data you think similar or relevan to the post caption or has more comments amount. " \
+                    "\n\n" \
+                    "You don't need to be so strict with searching similar post caption." \
+                    "Lower your threshold. You can choos a post as a reference even if it is just a slightly similar." \
+
+    # Setup subprompts
+    current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    persona_subprompt = self.generate_subprompt_persona()
+    context_subprompt = self.generate_subprompt_context(context_str)
+    additional_subprompt =  "Please write your chosen schedule in this time format: (%Y-%m-%d %H:%M:%S). " \
+                            "Please also provide your reason on choosing the schedule time. " \
+                            "Return your answer in this JSON format: \n" \
+                            "{\"schedule_time\": str,\n"\
+                            "\"reason\" : str}\n"\
+                            f"Make sure to not return the schedule time earlier than current time. Current time is {current_time}. " \
+                            "\n\n" \
+                            "Here I provide you some methods if you cannot decide. This is ordered from the most prioritized to least prioritized: \n" \
+                            "1. If you think the provided data is not enough, please return the average time of the posts in the provided context \n" \
+                            "2. Identify on what time the post would be suitable uploaded. The ideal time would be listed as below: \n" \
+                            "   - In the morning is around breakfast time: 06.00 to 08.00 \n" \
+                            "   - In the afternoon it would be around lunch time : 12.00 to 13.00 \n" \
+                            "   - In the night it would be around the time people resting at their home 18:00 to 21:00\n" \
+                            "3. Choose one of these default values: [07.00, 12.30, 18.00] with the date of today or tomorrow. \n" \
+                            "Avoid not returning anything at any cost. "
+    previous_iteration_notes_subprompt = self.generate_subprompt_previous_iteration_notes([])
+    
+    # Setup query string
+    query_str = "Choose the best schedule to upload the post"
+
+    return self._prompt_template.format(persona_subprompt=persona_subprompt,
+                                      context_subprompt=context_subprompt,
+                                      additional_subprompt=additional_subprompt,
+                                      previous_iteration_notes_subprompt=previous_iteration_notes_subprompt,
+                                      query_str=query_str)
 
 
   

@@ -70,12 +70,10 @@ class Model():
     )
 
 
-  def _setup_tool(self, query_engine, topic, query) -> None:
+  def _setup_tool(self, query_engine, metadata_name, metadata_description) -> None:
     """
     Setup tools for agentic system and query engine
     """
-    metadata_name = f"rag_tools_for_{topic}"
-    metadata_description = f"Used to answering {topic}-related query of input: \"{query}\" based on retrieved documents"
     metadata = self._construct_metadata(metadata_name, metadata_description)
     tool = QueryEngineTool(
       query_engine=query_engine,
@@ -98,7 +96,7 @@ class Model():
     print(f"Max Iteration: {self._max_iteration}")
     
 
-  async def load_data(self,  vector_store, storage_context, topic, query) -> None:
+  async def load_data(self,  vector_store, storage_context, metadata_name, metadata_description) -> None:
       """
       Load data from pinecone based on the vector store and storage_context
       """
@@ -115,7 +113,7 @@ class Model():
         response_mode="compact",
         return_source_nodes=True
       )
-      self._setup_tool(query_engine, topic, query)
+      self._setup_tool(query_engine, metadata_name, metadata_description)
 
 
   async def answer(self, 
