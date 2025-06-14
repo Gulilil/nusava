@@ -2,10 +2,11 @@
 """Django's command-line utility for administrative tasks."""
 import os
 import sys
-
+import signal
 
 def main():
     """Run administrative tasks."""
+    signal.signal(signal.SIGINT, signal_handler)
     os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'config.settings')
     try:
         from django.core.management import execute_from_command_line
@@ -17,6 +18,9 @@ def main():
         ) from exc
     execute_from_command_line(sys.argv)
 
+def signal_handler(sig, frame):
+    print('\nGracefully shutting down...')
+    sys.exit(0)
 
 if __name__ == '__main__':
     main()

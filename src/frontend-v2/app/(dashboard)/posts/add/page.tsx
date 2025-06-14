@@ -68,6 +68,7 @@ export default function SchedulePostPage() {
                       <Image
                         src={imagePreview || "/placeholder.svg"}
                         alt="Preview"
+                        fill
                         className="w-full h-auto rounded-md max-h-[300px] object-contain"
                       />
                       <Button
