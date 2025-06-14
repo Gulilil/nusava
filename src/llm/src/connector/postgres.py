@@ -39,7 +39,6 @@ class PostgresConnector():
     Get persona data based on the user_id
     Make sure to not change the order of the data returned
     """
-    # TODO To be adjusted
     table_name = "bot_configuration"
     column_names = "temperature, top_k, max_token, max_iteration"
     self.cursor.execute(f"SELECT {column_names} FROM {table_name} WHERE user_id=\'{user_id}\'")

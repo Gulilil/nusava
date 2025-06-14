@@ -13,6 +13,7 @@ async def test(nusava: Agent) -> None:
 
   # # Test process data
   # nusava.process_data_hotel()
+  nusava.process_data_post()
 
 
   # # Test action chat
@@ -31,7 +32,7 @@ async def test(nusava: Agent) -> None:
   
 
   # # Test decision maker
-  await nusava.decide_action()
+  # await nusava.decide_action()
 
 
 

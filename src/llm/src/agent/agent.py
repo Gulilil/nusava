@@ -102,7 +102,7 @@ class Agent():
     Decide action based on the current conditions and statistics
     This is the main entry point for the agent to decide what to do next.
     """
-    statistics = self.output_gateway_component.request_statistics(self.user_id)
+    statistics = []
     observations = self.action_generator_component.observe_statistics(statistics)
     print(f"[ACTION OBSERVATION] Acquired observations: {observations}")
 
@@ -555,7 +555,6 @@ class Agent():
     hotels = self.mongo_connector_component.get_data(mongo_collection_name, {})
     print(f"[FETCHED] Fetched {len(hotels)} hotels")
 
-
     idx = 0
     n_batch = 20
     length_per_batch = (len(hotels)//n_batch)+1
@@ -580,3 +579,50 @@ class Agent():
       
       # Increment idx
       idx += length_per_batch
+
+
+  def process_data_post(self) -> None:
+    """
+    Process data communities, "migrate" it from mongodb document to pinecone vector
+    """
+    mongo_collection_name = "communities"
+    pinecone_namespace_name = "communities"
+
+    # Get hotel data from mongo
+    communities = self.mongo_connector_component.get_data(mongo_collection_name, {})
+    print(f"[FETCHED] Fetched {len(communities)} hotels")
+
+    # Insert data as batch
+    idx = 0
+    n_batch = 20
+    length_per_batch = (len(communities)//n_batch)+1
+    while (idx < len(communities)):
+      # Set batch indices
+      batch_post_data = []
+      upper_idx = min(idx+length_per_batch, len(communities))
+      curr_batch_communities = communities[idx : upper_idx]
+
+      # Iterate data in the current batch list
+      for community in curr_batch_communities:
+        community_id = community['community_id']
+        posts = community['posts']
+        # Iterate posts in community
+        for post in posts:
+          post_data = f"""Community ID: {community_id}\n""" \
+                      f"""Post Caption: \"{post['caption']}\"\n""" \
+                      f"""Post Created Time: {post['posted_at']}\n"""\
+                      f"""Comment Ammount: {len(post['comments'])}\n"""
+          batch_post_data.append(post_data)
+
+      # Preprocess
+      batch_post_docs = text_to_document(batch_post_data)
+      batch_post_parsed = parse_documents(batch_post_docs)
+      
+      # Insert data to pinecone
+      _, storage_context = self.pinecone_connector_component.get_vector_store(pinecone_namespace_name)
+      self.pinecone_connector_component.store_data(batch_post_parsed, storage_context, self.model_component.embed_model)      
+      print(f'[BATCH PROGRESS] Successfully inserted data idx {idx} to {upper_idx}')
+
+      # Increment idx
+      idx += length_per_batch
+
