@@ -281,12 +281,19 @@ def get_posts(request):
 @api_view(['POST'])
 @permission_classes([AllowAny])
 def like_post(request):
-    user = request.user
     media_id = request.data.get('media_id')
     media_url = request.data.get('media_url')
     if not media_id and not media_url:
         return Response({"error": "media_id or media_url is required"}, status=400)
-    bot = user_bots.get(user.id)
+    user_id = request.data.get('user_id')
+    if not user_id:
+        user = request.user
+        bot = user_bots.get(user.id)
+    else:
+        user = User.objects.filter(id=user_id).first()
+        if not user:
+            return Response({"error": "User not found"}, status=404)
+        bot = user_bots.get(user.id)
     if not bot:
         return Response({'error': 'Bot not initialized for this user'}, status=400)
     try:
@@ -299,11 +306,18 @@ def like_post(request):
 @api_view(['POST'])
 @permission_classes([AllowAny])
 def follow_user(request):
-    user = request.user
     target_username = request.data.get('target_username')
     if not target_username:
         return Response({"error": "target_username is required"}, status=400)
-    bot = user_bots.get(user.id)
+    user_id = request.data.get('user_id')
+    if not user_id:
+        user = request.user
+        bot = user_bots.get(user.id)
+    else:
+        user = User.objects.filter(id=user_id).first()
+        if not user:
+            return Response({"error": "User not found"}, status=404)
+        bot = user_bots.get(user.id)
     if not bot:
         return Response({'error': 'Bot not initialized for this user'}, status=400)
     try:
@@ -316,13 +330,20 @@ def follow_user(request):
 @api_view(['POST'])
 @permission_classes([AllowAny])
 def comment_post(request):
-    user = request.user
     media_id = request.data.get('media_id')
     media_url = request.data.get('media_url')
     comment = request.data.get('comment')
     if (not media_id and not media_url) or not comment:
         return Response({"error": "media_id/media_url and comment are required"}, status=400)
-    bot = user_bots.get(user.id)
+    user_id = request.data.get('user_id')
+    if not user_id:
+        user = request.user
+        bot = user_bots.get(user.id)
+    else:
+        user = User.objects.filter(id=user_id).first()
+        if not user:
+            return Response({"error": "User not found"}, status=404)
+        bot = user_bots.get(user.id)
     if not bot:
         return Response({'error': 'Bot not initialized for this user'}, status=400)
     try:
@@ -335,12 +356,19 @@ def comment_post(request):
 @api_view(['POST'])
 @permission_classes([AllowAny])
 def post_photo(request):
-    user = request.user
     image_path = request.data.get('image_path')
     caption = request.data.get('caption')
     if not image_path or not caption:
         return Response({"error": "image_path and caption are required"}, status=400)
-    bot = user_bots.get(user.id)
+    user_id = request.data.get('user_id')
+    if not user_id:
+        user = request.user
+        bot = user_bots.get(user.id)
+    else:
+        user = User.objects.filter(id=user_id).first()
+        if not user:
+            return Response({"error": "User not found"}, status=404)
+        bot = user_bots.get(user.id)
     if not bot:
         return Response({'error': 'Bot not initialized for this user'}, status=400)
     try:
