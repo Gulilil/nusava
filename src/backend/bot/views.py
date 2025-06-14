@@ -9,7 +9,7 @@ from django.http import HttpResponse
 import requests
 import environ
 
-from .models import User
+from .models import InstagramStatistics, User
 from .bot import InstagramBot
 from instagrapi import Client
 from rest_framework_simplejwt.tokens import RefreshToken
@@ -566,3 +566,52 @@ def user_persona(request):
                 'persona': persona
             }
         })
+
+@api_view(['GET'])
+@authentication_classes([JWTAuthentication])
+@permission_classes([IsAuthenticated])
+def get_instagram_statistics(request):
+    """Get Instagram statistics for the authenticated user"""
+    user = request.user
+    
+    try:
+        stats = InstagramStatistics.objects.get(user=user)
+        
+        # Serialize the statistics data
+        stats_data = {
+            'followers_count': stats.followers_count,
+            'following_count': stats.following_count,
+            'posts_count': stats.posts_count,
+            'all_likes_count': stats.all_likes_count,
+            'all_comments_count': stats.all_comments_count,
+            'profile_visits': stats.profile_visits,
+            'profile_visits_delta': stats.profile_visits_delta,
+            'website_visits': stats.website_visits,
+            'website_visits_delta': stats.website_visits_delta,
+            'impressions': stats.impressions,
+            'impressions_delta': stats.impressions_delta,
+            'reach': stats.reach,
+            'reach_delta': stats.reach_delta,
+            'new_followers': stats.new_followers,
+            'new_likes': stats.new_likes,
+            'new_comments': stats.new_comments,
+            'engagement_rate': stats.engagement_rate,
+            'created_at': stats.created_at,
+            'updated_at': stats.updated_at,
+        }
+        
+        return Response({
+            'status': 'success',
+            'data': stats_data
+        })
+        
+    except InstagramStatistics.DoesNotExist:
+        return Response({
+            'status': 'error',
+            'message': 'No statistics found for this user. Please run the update command first.'
+        }, status=404)
+    except Exception as e:
+        return Response({
+            'status': 'error',
+            'message': str(e)
+        }, status=500)

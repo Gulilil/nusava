@@ -8,7 +8,8 @@ from .views import (
     like_post, follow_user, comment_post, post_photo, share_post,
     bot_configuration, action_logs,
     user_persona,
-    automation_status, stop_dm_automation, start_dm_automation, admin_automation_overview
+    automation_status, stop_dm_automation, start_dm_automation, admin_automation_overview,
+    get_instagram_statistics
 )
 
 urlpatterns = [
@@ -36,5 +37,5 @@ urlpatterns = [
     path('automation/admin/', admin_automation_overview, name='admin_automation_overview'),
 
     path('persona/', user_persona, name='user_persona'),
-
+    path('stats/', get_instagram_statistics, name='get_instagram_statistics'),
 ]

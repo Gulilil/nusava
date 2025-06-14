@@ -83,7 +83,9 @@ class InstagramStatistics(models.Model):
     followers_count = models.IntegerField(default=0)
     following_count = models.IntegerField(default=0)
     posts_count = models.IntegerField(default=0)
-    
+    all_likes_count = models.IntegerField(default=0)
+    all_comments_count = models.IntegerField(default=0)
+
     # Account insights - Profile metrics
     profile_visits = models.IntegerField(default=0)
     profile_visits_delta = models.IntegerField(default=0)
@@ -95,7 +97,12 @@ class InstagramStatistics(models.Model):
     impressions_delta = models.IntegerField(default=0)
     reach = models.IntegerField(null=True, blank=True)
     reach_delta = models.IntegerField(null=True, blank=True)
-    
+
+    # boolean metrics
+    new_followers = models.BooleanField(default=False)
+    new_comments = models.BooleanField(default=False)
+    new_likes = models.BooleanField(default=False)
+
     # Metadata
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)

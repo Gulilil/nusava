@@ -9,7 +9,6 @@ from dotenv import load_dotenv
 load_dotenv()
 import os
 
-
 class InstagramBot:
     def __init__(self, user_obj: User, password: str, session_settings=None):
         self.username = user_obj.username
@@ -93,7 +92,6 @@ class InstagramBot:
     def get_recent_posts(self):
         try:
             medias = self.client.user_medias_v1(self.client.user_id, 10)
-            insight =self.client.insights_account
             return [
                 {
                     "id": str(m.pk),
@@ -277,4 +275,45 @@ class InstagramBot:
             return response_json['response']
         else:
             return None
-        
+    
+    # ============= STATISTICS ==============
+    def get_account_statistics(self):
+        """Get comprehensive account statistics using user_info_v1 and insights_account"""
+        try:
+            # Get basic account info
+            user_info = self.client.user_info_v1(self.client.user_id)
+            
+            # Get account insights
+            insights = self.client.insights_account()
+            
+            # Get all posts to calculate total likes and comments
+            all_medias = self.client.user_medias_v1(self.client.user_id, amount=0)  # 0 means all
+            
+            total_likes = sum(media.like_count for media in all_medias)
+            total_comments = sum(media.comment_count for media in all_medias)
+            
+            stats_data = {
+                'followers_count': user_info.follower_count,
+                'following_count': user_info.following_count,
+                'posts_count': user_info.media_count,
+                'all_likes_count': total_likes,
+                'all_comments_count': total_comments,
+                
+                # Account insights - Profile metrics
+                'profile_visits': insights.get('profile_visits', 0),
+                'profile_visits_delta': insights.get('profile_visits_delta', 0),
+                'website_visits': insights.get('website_visits', 0),
+                'website_visits_delta': insights.get('website_visits_delta', 0),
+                
+                # Content metrics
+                'impressions': insights.get('impressions', 0),
+                'impressions_delta': insights.get('impressions_delta', 0),
+                'reach': insights.get('reach'),
+                'reach_delta': insights.get('reach_delta'),
+            }
+            
+            return stats_data
+            
+        except Exception as e:
+            self.log("get_statistics", "", "failed", str(e))
+            raise e
