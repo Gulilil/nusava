@@ -265,7 +265,6 @@ class InstagramBot:
         """Generate travel response based on combined conversation context"""
         llm_module_url = os.getenv("LLM_MODULE_URL")
         api_url = f"{llm_module_url}/chat"
-
         data = {
             "chat_message": combined_message,
             "sender_id": username

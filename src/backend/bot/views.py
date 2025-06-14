@@ -231,14 +231,14 @@ def get_posts(request):
 @permission_classes([IsAuthenticated])
 def like_post(request):
     user = request.user
-    media_url = request.data.get('media_url')
-    if not media_url:
-        return Response({"error": "media_url is required"}, status=400)
+    media_id = request.data.get('media_id')
+    if not media_id:
+        return Response({"error": "media_id is required"}, status=400)
     bot = user_bots.get(user.id)
     if not bot:
         return Response({'error': 'Bot not initialized for this user'}, status=400)
     try:
-        bot.like_post(media_url)
+        bot.like_post(media_id)
         return Response({'status': 'success', 'message': 'Post liked'})
     except Exception as e:
         logger.error(f"Like post error: {e}")
@@ -267,15 +267,15 @@ def follow_user(request):
 @permission_classes([IsAuthenticated])
 def comment_post(request):
     user = request.user
-    media_url = request.data.get('media_url')
+    media_id = request.data.get('media_id')
     comment = request.data.get('comment')
-    if not media_url or not comment:
-        return Response({"error": "media_url and comment are required"}, status=400)
+    if not media_id or not comment:
+        return Response({"error": "media_id and comment are required"}, status=400)
     bot = user_bots.get(user.id)
     if not bot:
         return Response({'error': 'Bot not initialized for this user'}, status=400)
     try:
-        bot.comment_on_post(media_url, comment)
+        bot.comment_on_post(media_id, comment)
         return Response({'status': 'success', 'message': 'Comment posted'})
     except Exception as e:
         logger.error(f"Comment post error: {e}")
@@ -348,11 +348,34 @@ def bot_configuration(request):
         serializer = ConfigurationSerializer(config, data=request.data, partial=True)
         if serializer.is_valid():
             serializer.save()
-            return Response({
-                'status': 'success',
-                'message': 'Configuration updated successfully',
-                'data': serializer.data
-            })
+
+            # Hit LLM API after save to notify
+            # Try maximum tries 3 times
+            max_attempt = 3
+            attempt =1
+            is_success = False
+            while(attempt <= max_attempt and not is_success):
+              llm_module_url = os.getenv("LLM_MODULE_URL")
+              api_url = f"{llm_module_url}/config"
+              response = requests.post(api_url)
+              # Break if already success
+              if (response.status_code == 200):
+                is_success = True
+              attempt +=1
+
+            if (is_success):
+              return Response({
+                  'status': 'success',
+                  'message': 'Configuration updated successfully',
+                  'data': serializer.data
+              })
+            else:
+              return Response({
+                  'status': 'error',
+                  'message': f'Failed to notify LLM after {max_attempt} tries',
+                  'errors': serializer.errors
+              }, status=400)
+
         else:
             return Response({
                 'status': 'error',
