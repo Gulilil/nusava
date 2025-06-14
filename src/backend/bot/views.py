@@ -293,7 +293,7 @@ def like_post(request):
         user = User.objects.filter(id=user_id).first()
         if not user:
             return Response({"error": "User not found"}, status=404)
-        bot = user_bots.get(user.id)
+        bot = InstagramBot(user_obj=user, password=user.password, session_settings=user.session_info)
     if not bot:
         return Response({'error': 'Bot not initialized for this user'}, status=400)
     try:
@@ -317,7 +317,7 @@ def follow_user(request):
         user = User.objects.filter(id=user_id).first()
         if not user:
             return Response({"error": "User not found"}, status=404)
-        bot = user_bots.get(user.id)
+        bot = InstagramBot(user_obj=user, password=user.password, session_settings=user.session_info)
     if not bot:
         return Response({'error': 'Bot not initialized for this user'}, status=400)
     try:
@@ -343,7 +343,7 @@ def comment_post(request):
         user = User.objects.filter(id=user_id).first()
         if not user:
             return Response({"error": "User not found"}, status=404)
-        bot = user_bots.get(user.id)
+        bot = InstagramBot(user_obj=user, password=user.password, session_settings=user.session_info)
     if not bot:
         return Response({'error': 'Bot not initialized for this user'}, status=400)
     try:
@@ -368,7 +368,7 @@ def post_photo(request):
         user = User.objects.filter(id=user_id).first()
         if not user:
             return Response({"error": "User not found"}, status=404)
-        bot = user_bots.get(user.id)
+        bot = InstagramBot(user_obj=user, password=user.password, session_settings=user.session_info)
     if not bot:
         return Response({'error': 'Bot not initialized for this user'}, status=400)
     try:
