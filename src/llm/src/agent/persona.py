@@ -43,8 +43,10 @@ class Persona():
     """
     Display summary of persona data
     """
-    print(f"[PERSONA SUMMARY] Current persona is: {self._persona['age']} years old with the occupation of {self._persona['occupation']} and the characterstics to be {self._persona['style']}" 
-          + f" The name is {self._persona['name']}." if 'name' in self._persona else "")
+    persona_summary = f"[PERSONA SUMMARY] Current persona is: {self._persona['age']} years old with the occupation of {self._persona['occupation']} and the characterstics to be {self._persona['style']}"
+    if ('name' in self._persona):
+      persona_summary += f" The name is {self._persona['name']}."
+    print(persona_summary)
 
 
   def load_persona(self, persona_data: dict) -> None:

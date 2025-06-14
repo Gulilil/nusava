@@ -1,3 +1,7 @@
+import random
+import json
+import time
+
 from agent.memory import Memory
 from agent.model import Model
 from agent.persona import Persona
@@ -11,7 +15,7 @@ from generator.prompt import PromptGenerator
 from generator.action import ActionGenerator
 from generator.schedule import ScheduleGenerator
 from utils.function import hotel_data_to_string_list, text_to_document, parse_documents, clean_quotation_string
-import random
+
 
 class Agent():
   """
@@ -102,7 +106,7 @@ class Agent():
     Decide action based on the current conditions and statistics
     This is the main entry point for the agent to decide what to do next.
     """
-    statistics = self.output_gateway_component.request_statistics(self.user_id)
+    statistics = []
     observations = self.action_generator_component.observe_statistics(statistics)
     print(f"[ACTION OBSERVATION] Acquired observations: {observations}")
 
@@ -119,6 +123,10 @@ class Agent():
         await self.action_comment()
       else:
         return
+      
+      sleep_time = random.randint(5, 15)
+      print(f"[ACTION TIME SLEEP] Delay for {sleep_time} seconds")
+      time.sleep(sleep_time)
       
 
   async def summarize_and_store_memory(self, sender_id: str, memory_data: list[dict]) -> bool:
@@ -163,21 +171,25 @@ class Agent():
       # First hotel data
       pinecone_namespace_name = 'hotels'
       vector_store, storage_context = self.pinecone_connector_component.get_vector_store(pinecone_namespace_name)
+      metadata_name = f"rag_tools_for_{pinecone_namespace_name}_data"
+      metadata_description = f"Used to answering {pinecone_namespace_name}-related query of input: \"{chat_message}\" based on retrieved documents"
       await self.model_component.load_data(
         vector_store, 
         storage_context, 
-        pinecone_namespace_name,
-        chat_message)
+        metadata_name,
+        metadata_description)
             
       # Load the long-term memory from pinecone
       pinecone_namespace_name = f"chat_bot[{self.user_id}]_sender[{sender_id}]"
       if (self.pinecone_connector_component.is_namespace_exist(pinecone_namespace_name)):
         vector_store, storage_context = self.pinecone_connector_component.get_vector_store(pinecone_namespace_name)
+        metadata_name = f"rag_tools_for_memory_chat_with_{sender_id}"
+        metadata_description = f"Used to help answering question from {sender_id} based on previous occurences"
         await self.model_component.load_data(
           vector_store, 
           storage_context, 
-          pinecone_namespace_name,
-          chat_message)
+          metadata_name,
+          metadata_description)
         print(f"[LOADING MEMORY] Inserting long-term memory as tools for RAG")
 
       # Do iteration of action reply chat
@@ -197,8 +209,8 @@ class Agent():
         # Answer the query
         # Skip if the answer is None
         answer, contexts = await self.model_component.answer(prompt)
+        print(f"[ACTION REPLY CHAT] Attempt {attempt+1} of {max_attempts}. \nQuery: {chat_message} \nAnswer: {answer}")
         if (answer is not None):
-          print(f"[ACTION REPLY CHAT] Attempt {attempt+1} of {max_attempts}. \nQuery: {chat_message} \nAnswer: {answer}")
 
           # Display contexts (for printing only)
           for i, context  in enumerate(contexts):
@@ -457,12 +469,50 @@ class Agent():
       print(f"[ERROR ACTION COMMENT] Error occured in executing `comment`: {e}")
 
 
-  def action_schedule_post(self, img_url: str, caption_message: str) -> None:
+  async def action_schedule_post(self, img_url: str, caption_message: str) -> None:
     """
     Operate the action schedule post
     """
-    # TODO
-    return
+    try:
+      # Load posts in database pinecone
+      pinecone_namespace_name = 'communities'
+      vector_store, storage_context = self.pinecone_connector_component.get_vector_store(pinecone_namespace_name)
+      metadata_name = f"rag_tools_for_post"
+      metadata_description = f"Provide examples of posts from Influencers"
+      await self.model_component.load_data(
+        vector_store, 
+        storage_context, 
+        metadata_name,
+        metadata_description)
+      
+      max_attempts = 3 
+      attempt = 0
+      while (attempt <= max_attempts):
+        # Generate prompt
+        prompt = self.prompt_generator_component.generate_prompt_choose_schedule_post(caption_message)
+      
+        # Ask the LLM
+        answer, _ = await self.model_component.answer(prompt)
+        print(f"[ACTION SCHEDULE POST] Attempt {attempt+1} of {max_attempts}. \nCaption: {caption_message} \nAnswer: {answer}")
+
+
+        # If the answer is not None, stop iteration
+        if (answer is not None):
+          break
+
+        # Increment attempt
+        attempt += 1
+        if (attempt == max_attempts):
+          raise Exception(f"Model cannot choose the schedule time")
+      
+      # Process answer
+      json_answer = json.loads(answer)
+      schedule_time = json_answer['schedule_time']
+      reason = json_answer['reason']
+      print(schedule_time, reason)
+  
+    except Exception as e:
+      print(f"[ERROR ACTION SCHEDULE POST] Error occured in executing `schedule post`: {e}")
 
 
   async def action_generate_caption(self, 
@@ -491,9 +541,9 @@ class Agent():
         # Generate caption message
         # Skip is the caption message is None
         caption_message, _ = await self.model_component.answer(prompt, is_direct=True)
+        print(f"[ACTION POST CAPTION] Attempt {attempt+1} of {max_attempts}. \nCaption: {caption_message}")          
+        
         if (caption_message is not None):
-          print(f"[ACTION POST CAPTION] Attempt {attempt+1} of {max_attempts}. \nCaption: {caption_message}")
-
           # Prepare contexts for evaluation
           keywords_str = ", ".join(caption_keywords)
           contexts = [f"Here is the image description: {img_description}", f"Here are the keywords: {keywords_str}"]  
@@ -555,7 +605,6 @@ class Agent():
     hotels = self.mongo_connector_component.get_data(mongo_collection_name, {})
     print(f"[FETCHED] Fetched {len(hotels)} hotels")
 
-
     idx = 0
     n_batch = 20
     length_per_batch = (len(hotels)//n_batch)+1
@@ -580,3 +629,50 @@ class Agent():
       
       # Increment idx
       idx += length_per_batch
+
+
+  def process_data_post(self) -> None:
+    """
+    Process data communities, "migrate" it from mongodb document to pinecone vector
+    """
+    mongo_collection_name = "communities"
+    pinecone_namespace_name = "communities"
+
+    # Get hotel data from mongo
+    communities = self.mongo_connector_component.get_data(mongo_collection_name, {})
+    print(f"[FETCHED] Fetched {len(communities)} hotels")
+
+    # Insert data as batch
+    idx = 0
+    n_batch = 20
+    length_per_batch = (len(communities)//n_batch)+1
+    while (idx < len(communities)):
+      # Set batch indices
+      batch_post_data = []
+      upper_idx = min(idx+length_per_batch, len(communities))
+      curr_batch_communities = communities[idx : upper_idx]
+
+      # Iterate data in the current batch list
+      for community in curr_batch_communities:
+        community_id = community['community_id']
+        posts = community['posts']
+        # Iterate posts in community
+        for post in posts:
+          post_data = f"""Community ID: {community_id}\n""" \
+                      f"""Post Caption: \"{post['caption']}\"\n""" \
+                      f"""Post Created Time: {post['posted_at']}\n"""\
+                      f"""Comment Ammount: {len(post['comments'])}\n"""
+          batch_post_data.append(post_data)
+
+      # Preprocess
+      batch_post_docs = text_to_document(batch_post_data)
+      batch_post_parsed = parse_documents(batch_post_docs)
+      
+      # Insert data to pinecone
+      _, storage_context = self.pinecone_connector_component.get_vector_store(pinecone_namespace_name)
+      self.pinecone_connector_component.store_data(batch_post_parsed, storage_context, self.model_component.embed_model)      
+      print(f'[BATCH PROGRESS] Successfully inserted data idx {idx} to {upper_idx}')
+
+      # Increment idx
+      idx += length_per_batch
+

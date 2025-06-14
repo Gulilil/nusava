@@ -23,7 +23,7 @@ class OutputGateway():
     Hit follow api in automation module
     """
     try:
-      path = "/follow"
+      path = "/api/follow/"
       url = f"{self.base_url}{path}"
       data = {
           "target_username": username
@@ -48,7 +48,7 @@ class OutputGateway():
     Hit like api in automation module
     """
     try:
-      path = "/like"
+      path = "/api/like/"
       url = f"{self.base_url}{path}"
       data = {
           "media_id": post_id
@@ -73,7 +73,7 @@ class OutputGateway():
     Hit comment api in automation module
     """
     try:
-      path = "/comment"
+      path = "/api/comment/"
       url = f"{self.base_url}{path}"
       data = {
           "media_id": post_id,
@@ -98,8 +98,7 @@ class OutputGateway():
     """
     Hit comment api in automation module
     """
-    path = "/post"
+    path = "/api/post/"
     url = f"{self.base_url}{path}"
     # TODO 
-    
     return
