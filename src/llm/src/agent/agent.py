@@ -32,7 +32,7 @@ class Agent():
     # Instantiate Connector
     self.mongo_connector_component = MongoConnector()
     self.postgres_connector_component = PostgresConnector()
-    self.pinecone_connector_component = PineconeConnector(self.model_component.embed_model)
+    self.pinecone_connector_component = PineconeConnector(self.model_component)
     print("[AGENT INITIALIZED] Connector component(s) initialized")
     # Instantiate Evaluator
     self.evaluator_component = Evaluator(self.model_component.llm_model)
@@ -770,7 +770,6 @@ class Agent():
         communities = communities[:limit]
         print(f"Processing only first {limit} communities")
       
-      total_labeled = 0
       
       for community in communities: 
         community_id = community.get("community_id", "unknown")
@@ -807,8 +806,6 @@ class Agent():
         community_docs = text_to_document([community_str])
         community_parsed = parse_documents(community_docs)
         self.pinecone_connector_component.store_data(community_parsed, pinecone_namespace_name)    
-      
-      print(f"\nSummary: Successfully labeled {total_labeled}/{len(communities)} communities")
       
     except Exception as e: 
       print(f"Error in labelling_communities: {str(e)}")
