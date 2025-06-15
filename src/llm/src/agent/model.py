@@ -15,9 +15,6 @@ class Model():
   """
   _llm_model_name: str = "gpt-4o-mini"
   _embed_model_name: str = "text-embedding-3-small"
-  # Uncomment the following lines to use alternative models
-  # _llm_model_name: str = "llama3.2"
-  # _embed_model_name: str = "BAAI/bge-m3"
 
   """
   Mutable variable in the model. Can be changed through Configurator component
@@ -31,19 +28,20 @@ class Model():
   Constant variable in the model. Should not be changed when the model is operating
   """
   _tools: list = []
-  
+
 
   def __init__(self, 
                persona_component: object):
     """
     Initialization of the LLM and the embedding model
     """
+    self._persona_component = persona_component
     self.llm_model = OpenAI(model=self._llm_model_name,
                             api_key=os.getenv("OPENAI_API_KEY"),
                             temperature=self._temperature)
     self.embed_model  = OpenAIEmbedding(model=self._embed_model_name,
                                         api_key=os.getenv("OPENAI_API_KEY"))
-    self._persona_component = persona_component
+
     print(f"[MODEL INITIALIZED] Model is initialized with llm_model: {self._llm_model_name} and embed_model: {self._embed_model_name}")
 
   ######## SETUP ########
@@ -125,35 +123,29 @@ class Model():
     Answer the prompt using the llm_model or agentic system
     If is_direct is True, it will use the llm_model directly.
     """
-    system_prompt=(
+    system_prompt = (
         f"You are a user in Instagram who responds with clarity and purpose."
         f"You have a certain persona on which you should follow strictly."
         f"Here is the detaul of your persona:\n"
         f"{self._persona_component.get_persona_str()}\n\n"
     )
-
     try:
-      if (is_direct):
-         response = await self.llm_model.acomplete(prompt)
-         result = response.text
-         return result, None
-      else:
-
-        agent = ReActAgent.from_tools(
-          self._tools, 
-          llm = self.llm_model, 
-          verbose= verbose, 
-          max_iterations=self._max_iteration,
-          system_prompt = system_prompt
-        )
-        response = await agent.aquery(prompt)
-        result = response.response
-        contexts = [node.node.text for node in response.source_nodes]
-        return result, contexts
+      agent = ReActAgent.from_tools(
+        self._tools, 
+        llm = self.llm_model, 
+        verbose= verbose, 
+        max_iterations=self._max_iteration,
+        system_prompt=system_prompt
+      )
+      response = await agent.aquery(prompt)
+      result = response.response
+      contexts = [node.node.text for node in response.source_nodes]
+      print(f"[MODEL ANSWER] {result}")
+      return result, contexts
     
     except Exception as e:
-       print(f"[ERROR MODEL ANSWER] Error occured while processing answer: {e}")
-       return None, None
+      print(f"[ERROR MODEL ANSWER] Error occured while processing answer: {e}")
+      return None, None
   
 
   def refresh_tools(self) -> None:

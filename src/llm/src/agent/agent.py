@@ -140,7 +140,7 @@ class Agent():
     # Make the summary
     try:
       prompt = self.prompt_generator_component.generate_prompt_summarize_memory(memory_data)
-      summary, _ = await self.model_component.answer(prompt, is_direct=True)
+      summary, _ = await self.model_component.answer(prompt)
       
       # Prepare to insert
       pinecone_namespace_name = f"chat_bot[{self.user_id}]_sender[{sender_id}]"
@@ -155,6 +155,19 @@ class Agent():
     except Exception as e:
       print(f"[ERROR SUMMARIZE AND STORE MEMORY] {e}")
       return False
+    
+
+  async def _load_tools_rag(self, pinecone_namespace_name : str, metadata_name: str, metadata_description: str):
+    """
+    Load tools to be inserted to array of tools and later be used by ReAct
+    """
+    vector_store, storage_context = self.pinecone_connector_component.get_vector_store(pinecone_namespace_name)
+    await self.model_component.load_data(
+      vector_store, 
+      storage_context, 
+      metadata_name,
+      metadata_description)
+    print(f"[LOADING TOOLS] Inserting tools for RAG: {pinecone_namespace_name}")
 
 
   #########################################
@@ -172,28 +185,16 @@ class Agent():
     try:
       # Load the data from pinecone
       # First hotel data
-      pinecone_namespace_name = 'hotels'
-      vector_store, storage_context = self.pinecone_connector_component.get_vector_store(pinecone_namespace_name)
-      metadata_name = f"rag_tools_for_{pinecone_namespace_name}_data"
-      metadata_description = f"Used to answering {pinecone_namespace_name}-related query of input: \"{chat_message}\" based on retrieved documents"
-      await self.model_component.load_data(
-        vector_store, 
-        storage_context, 
-        metadata_name,
-        metadata_description)
+      await self._load_tools_rag("hotels", "rag_tools_for_hotels_data", "Used to answer hotels-related query based on retrieved documents")
+      # Then asso-rules
+      await self._load_tools_rag("association_rules", "rag_tools_for_association_rules_data", "Used to recommend system for hotel based on its antecedent-consequent relation based on retrieved documents")
+      # Then tourist attractions
+      await self._load_tools_rag("tourist_attractions", "rag_tools_for_tourist_attractions_data", "Used to answer tourist-attractions-related query based on retrieved documents")
             
       # Load the long-term memory from pinecone
-      pinecone_namespace_name = f"chat_bot[{self.user_id}]_sender[{sender_id}]"
-      if (self.pinecone_connector_component.is_namespace_exist(pinecone_namespace_name)):
-        vector_store, storage_context = self.pinecone_connector_component.get_vector_store(pinecone_namespace_name)
-        metadata_name = f"rag_tools_for_memory_chat_with_{sender_id}"
-        metadata_description = f"Used to help answering question from {sender_id} based on previous occurences"
-        await self.model_component.load_data(
-          vector_store, 
-          storage_context, 
-          metadata_name,
-          metadata_description)
-        print(f"[LOADING MEMORY] Inserting long-term memory as tools for RAG")
+      chat_memory_namespace_name = f"chat_bot[{self.user_id}]_sender[{sender_id}]"
+      if (self.pinecone_connector_component.is_namespace_exist(chat_memory_namespace_name)):
+        await self._load_tools_rag(chat_memory_namespace_name, f"rag_tools_for_memory_chat_with_{sender_id}", f"Used to help answering question from {sender_id} based on previous occurences")
 
       # Do iteration of action reply chat
       # While the thresholds are not satisfied, do the iteration
@@ -217,8 +218,8 @@ class Agent():
 
           # Display contexts (for printing only)
           for i, context  in enumerate(contexts):
-            context_topic = context.split('\n', 1)[0]
-            print(f"[ACTION REPLY CHAT CONTEXT #{i+1}] : {context_topic}")
+            print(f"[ACTION REPLY CHAT CONTEXT #{i+1}]: \n"\
+                  f"{context}")
           
           # Evaluate the answer
           correctness_evaluation = await self.evaluator_component.evaluate_correctness(chat_message, answer, contexts)
@@ -265,7 +266,6 @@ class Agent():
               "evaluator": "relevancy",
               "reason_of_rejection": relevancy_evaluation['reason']
             })
-      # Return the answer
       answer = clean_quotation_string(answer)
 
       # Store in bot's reply memory
@@ -278,7 +278,7 @@ class Agent():
 
       # LLM should explain to user
       error_prompt = self.prompt_generator_component.generate_prompt_error(user_query=chat_message)
-      answer, _ = await self.model_component.answer(error_prompt, is_direct=True)
+      answer, _ = await self.model_component.answer(error_prompt)
       answer = clean_quotation_string(answer)
 
       # Store in bot's reply memory
@@ -343,6 +343,7 @@ class Agent():
       
     except Exception as e:
       print(f"[ERROR ACTION FOLLOW] Error occured in executing `follow`: {e}")
+
 
   def action_like(self) -> None:
     """
@@ -460,7 +461,7 @@ class Agent():
       prompt = self.prompt_generator_component.generate_prompt_comment(post_caption, selected_comments_str)
       
       # Make comment
-      comment_message, _ = await self.model_component.answer(prompt, is_direct=True)
+      comment_message, _ = await self.model_component.answer(prompt)
       comment_message = clean_quotation_string(comment_message)
 
       # Request
@@ -481,16 +482,9 @@ class Agent():
     """
     try:
       # Load posts in database pinecone
-      pinecone_namespace_name = 'communities'
-      vector_store, storage_context = self.pinecone_connector_component.get_vector_store(pinecone_namespace_name)
-      metadata_name = f"rag_tools_for_post"
-      metadata_description = f"Provide examples of posts from Influencers"
-      await self.model_component.load_data(
-        vector_store, 
-        storage_context, 
-        metadata_name,
-        metadata_description)
+      await self._load_tools_rag("communities", "rag_tools_for_post_data", "Used to provide examples of posts from Influencers")
       
+      # Initiate attempts
       max_attempts = 3 
       attempt = 0
       while (attempt <= max_attempts):
@@ -546,7 +540,7 @@ class Agent():
 
         # Generate caption message
         # Skip is the caption message is None
-        caption_message, _ = await self.model_component.answer(prompt, is_direct=True)
+        caption_message, _ = await self.model_component.answer(prompt)
         print(f"[ACTION POST CAPTION] Attempt {attempt+1} of {max_attempts}. \nCaption: {caption_message}")          
         
         if (caption_message is not None):
@@ -589,7 +583,7 @@ class Agent():
       print(f"[ERROR ACTION POST] Error occured while processing action post caption: {e}")
       user_query = f"Make a post caption with image description: {img_description}, keywords: {caption_keywords}, additional context: {additional_context}"
       error_prompt = self.prompt_generator_component.generate_prompt_error(user_query=user_query)
-      answer, _ = await self.model_component.answer(error_prompt, is_direct=True)
+      answer, _ = await self.model_component.answer(error_prompt)
       answer = clean_quotation_string(answer)
       return answer
 
@@ -729,7 +723,6 @@ class Agent():
     _, storage_context = self.pinecone_connector_component.get_vector_store(pinecone_namespace_name)
     self.pinecone_connector_component.store_data(asso_rule_parsed, storage_context, self.model_component.embed_model)      
     print(f'[BATCH PROGRESS] Successfully inserted data')
-
 
 
   def process_data_tourist_attraction(self) -> None:

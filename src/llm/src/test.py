@@ -15,8 +15,8 @@ async def test(nusava: Agent) -> None:
   # nusava.process_data_hotel()
   # nusava.process_data_post()
 
-  nusava.process_data_association_rule()
-  nusava.process_data_tourist_attraction()
+  # nusava.process_data_association_rule()
+  # nusava.process_data_tourist_attraction()
 
 
   # # Test action chat
@@ -26,10 +26,12 @@ async def test(nusava: Agent) -> None:
   # print(await nusava.action_reply_chat("Tell me the location of Tanto Hotel", "nusava_test"))
   # print(await nusava.action_reply_chat("Summarize me some reviews of Tanto Hotel. State the ratings and the description of some of the reviews too.", "nusava_test"))
   # print(await nusava.action_reply_chat("Tell me the check-in and check-out time of Siola Hotel", "nusava_test"))
+  # print(await nusava.action_reply_chat("I would like to go to Nusa Tenggara in a near future. Can you recommend me any tourist attraction?", "nusava_test"))
+  # print(await nusava.action_reply_chat("It seems La Boheme Bajo Hostel and Sahid T-MORE Kupang are some good hotels. Can you give recommendation of any other hotels like those two?", "nusava_test"))
 
 
   # # Test action post
-  # caption_message = await nusava.action_generate_caption("Image of Kuta beach in Bali when sunset", ["beach", "holiday", "beautiful", "nature", "pretty", "sunkissed"], "Make it short and simple. Do not use hashtags.")
+  caption_message = await nusava.action_generate_caption("Image of Kuta beach in Bali when sunset", ["beach", "holiday", "beautiful", "nature", "pretty", "sunkissed"], "Make it short and simple. Do not use hashtags.")
   # await nusava.action_schedule_post("", caption_message)
   # caption_message = await nusava.action_generate_caption("Images of destination places in Singapore consists of Universal Studio, Merlion, and Orchard Road", ["holiday", "fun", "friends", "urban travel", "city"])
   # await nusava.action_schedule_post("", caption_message)
