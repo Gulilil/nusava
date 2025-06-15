@@ -761,6 +761,7 @@ class Agent():
       # Increment idx
       idx += length_per_batch
     
+
   def labelling_communities(self, limit=None) -> None:
     """"
       Give label to all communities based on influencers' bios, posts' tags, captions, and comments
@@ -807,6 +808,7 @@ class Agent():
       import traceback
       traceback.print_exc()
 
+
   def _generate_community_label(self, influencers: list, posts: list) -> str:
     """
     Generate a community label based on influencers' biographies, posts' tags, captions, and comments
@@ -844,7 +846,7 @@ class Agent():
           post_context += "\n"
       
       # Generate prompt for community labeling
-      prompt = self._generate_community_labeling_prompt(influencer_context, post_context)
+      prompt = self.prompt_generator_component.generate_community_labeling_prompt(influencer_context, post_context)
       
       # Get response from LLM
       response = self.model_component.llm_model.complete(prompt)
@@ -855,33 +857,3 @@ class Agent():
       print(f"Error generating community label: {str(e)}")
       return ""
 
-  def _generate_community_labeling_prompt(self, influencer_context: str, post_context: str) -> str:
-    """
-    Generate a prompt for community labeling
-    """
-    context_str = "You are analyzing a social media community to generate an appropriate label/category for it.\n"
-    context_str += "Based on the influencers' biographies and posts' content (captions, tags, comments), you need to determine what this community is about.\n\n"
-    
-    if influencer_context:
-      context_str += influencer_context + "\n"
-    
-    if post_context:
-      context_str += post_context + "\n"
-    
-    # Setup subprompts
-    persona_subprompt = self.prompt_generator_component.generate_subprompt_persona()
-    context_subprompt = self.prompt_generator_component.generate_subprompt_context(context_str)
-    additional_subprompt = ("Generate a short, descriptive label (1-3 words) that best represents what this community is about. "
-                           "Focus on the main theme, topic, or niche of the community. "
-                           "Examples of good labels: 'Travel', 'Food & Cooking', 'Fashion', 'Fitness', 'Technology', 'Art & Design', etc. "
-                           "Return only the label without any explanation or additional text.")
-    previous_iteration_notes_subprompt = ""
-    query_str = "What is the most appropriate label for this community based on the provided information?"
-
-    return self.prompt_generator_component._prompt_template.format(
-      persona_subprompt=persona_subprompt,
-      context_subprompt=context_subprompt,
-      additional_subprompt=additional_subprompt,
-      previous_iteration_notes_subprompt=previous_iteration_notes_subprompt,
-      query_str=query_str
-    )

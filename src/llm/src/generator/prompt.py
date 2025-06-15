@@ -95,8 +95,9 @@ class PromptGenerator():
     
     return previous_iteration_notes_subprompt
 
-  # GENERATE PROMPT
-  ##############################
+  ###############################
+  ####### GENERATE PROMPT #######
+  ###############################
 
   ######## SUPPORTING PROMPT ########
 
@@ -147,6 +148,39 @@ class PromptGenerator():
                                   additional_subprompt=additional_subprompt,
                                   previous_iteration_notes_subprompt=previous_iteration_notes_subprompt,
                                   query_str=query_str)
+
+
+  def generate_community_labeling_prompt(self, influencer_context: str, post_context: str) -> str:
+    """
+    Generate a prompt for community labeling
+    """
+    context_str = "You are analyzing a social media community to generate an appropriate label/category for it.\n"
+    context_str += "Based on the influencers' biographies and posts' content (captions, tags, comments), you need to determine what this community is about.\n\n"
+    
+    if influencer_context:
+      context_str += influencer_context + "\n"
+    
+    if post_context:
+      context_str += post_context + "\n"
+    
+    # Setup subprompts
+    persona_subprompt = self.generate_subprompt_persona()
+    context_subprompt = self.generate_subprompt_context(context_str)
+    additional_subprompt = ("Generate a short, descriptive label (1-3 words) that best represents what this community is about. "
+                           "Focus on the main theme, topic, or niche of the community. "
+                           "Examples of good labels: 'Travel', 'Food & Cooking', 'Fashion', 'Fitness', 'Technology', 'Art & Design', etc. "
+                           "Return only the label without any explanation or additional text.")
+    previous_iteration_notes_subprompt = ""
+    query_str = "What is the most appropriate label for this community based on the provided information?"
+
+    return self._prompt_template.format(
+      persona_subprompt=persona_subprompt,
+      context_subprompt=context_subprompt,
+      additional_subprompt=additional_subprompt,
+      previous_iteration_notes_subprompt=previous_iteration_notes_subprompt,
+      query_str=query_str
+    )
+
 
 
   ######## ACTION PROMPT ########
@@ -280,6 +314,3 @@ class PromptGenerator():
                                       additional_subprompt=additional_subprompt,
                                       previous_iteration_notes_subprompt=previous_iteration_notes_subprompt,
                                       query_str=query_str)
-
-
-  

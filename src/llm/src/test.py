@@ -31,7 +31,7 @@ async def test(nusava: Agent) -> None:
 
 
   # # Test action post
-  caption_message = await nusava.action_generate_caption("Image of Kuta beach in Bali when sunset", ["beach", "holiday", "beautiful", "nature", "pretty", "sunkissed"], "Make it short and simple. Do not use hashtags.")
+  # caption_message = await nusava.action_generate_caption("Image of Kuta beach in Bali when sunset", ["beach", "holiday", "beautiful", "nature", "pretty", "sunkissed"], "Make it short and simple. Do not use hashtags.")
   # await nusava.action_schedule_post("", caption_message)
   # caption_message = await nusava.action_generate_caption("Images of destination places in Singapore consists of Universal Studio, Merlion, and Orchard Road", ["holiday", "fun", "friends", "urban travel", "city"])
   # await nusava.action_schedule_post("", caption_message)
@@ -48,6 +48,8 @@ async def test(nusava: Agent) -> None:
 
   # # Test decision maker
   # await nusava.decide_action()
+
+  nusava.labelling_communities()
 
 
 
