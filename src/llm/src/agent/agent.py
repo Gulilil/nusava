@@ -760,8 +760,128 @@ class Agent():
       
       # Increment idx
       idx += length_per_batch
+    
+  def labelling_communities(self, limit=None) -> None:
+    """"
+      Give label to all communities based on influencers' bios, posts' tags, captions, and comments
+    """
+    try:
+      mongo_collection_name = "communities"
+      communities = self.mongo_connector_component.get_data(mongo_collection_name, {})
       
-
-
-
+      if limit:
+        communities = communities[:limit]
+        print(f"Processing only first {limit} communities")
       
+      total_labeled = 0
+      
+      for community in communities: 
+        community_id = community.get("community_id", "unknown")
+        influencers = community.get("influencers", [])
+        posts = community.get("posts", [])
+        
+        # Skip if no data to analyze
+        if not influencers and not posts:
+          print(f"Community {community_id} has no influencers or posts, skipping...")
+          continue
+        
+        # Generate label using LLM
+        label = self._generate_community_label(influencers, posts)
+        
+        if label:
+          # Update community with generated label
+          self.mongo_connector_component.update_one_data(
+            mongo_collection_name,
+            {"community_id": community_id},
+            {"label": label}
+          )
+          total_labeled += 1
+          print(f"Labeled community {community_id}: {label}")
+        else:
+          print(f"Failed to generate label for community {community_id}")
+      
+      print(f"\nSummary: Successfully labeled {total_labeled}/{len(communities)} communities")
+      
+    except Exception as e: 
+      print(f"Error in labelling_communities: {str(e)}")
+      import traceback
+      traceback.print_exc()
+
+  def _generate_community_label(self, influencers: list, posts: list) -> str:
+    """
+    Generate a community label based on influencers' biographies, posts' tags, captions, and comments
+    """
+    try:
+      # Prepare context from influencers
+      influencer_context = ""
+      if influencers:
+        influencer_context = "Influencers in this community:\n"
+        for i, influencer in enumerate(influencers[:5]):  # Limit to 5 influencers to avoid too long context
+          username = influencer.get("username", "unknown")
+          biography = influencer.get("biography", "")
+          if biography:
+            influencer_context += f"- {username}: {biography}\n"
+          else:
+            influencer_context += f"- {username}: (no biography)\n"
+      
+      # Prepare context from posts
+      post_context = ""
+      if posts:
+        post_context = "Posts in this community:\n"
+        for i, post in enumerate(posts[:10]):  # Limit to 10 posts to avoid too long context
+          caption = post.get("caption", "")[:200]  # Limit caption length
+          tags = post.get("tags", [])
+          comments = post.get("comments", [])
+          
+          post_context += f"Post {i+1}:\n"
+          if caption:
+            post_context += f"  Caption: {caption}...\n"
+          if tags:
+            post_context += f"  Tags: {', '.join(tags[:10])}\n"  # Limit to 10 tags
+          if comments:
+            comment_preview = ', '.join([comment.get("text", "")[:50] for comment in comments[:3]])  # First 3 comments
+            post_context += f"  Sample Comments: {comment_preview}...\n"
+          post_context += "\n"
+      
+      # Generate prompt for community labeling
+      prompt = self._generate_community_labeling_prompt(influencer_context, post_context)
+      
+      # Get response from LLM
+      response = self.model_component.llm_model.complete(prompt)
+      
+      return response.text.strip()
+      
+    except Exception as e:
+      print(f"Error generating community label: {str(e)}")
+      return ""
+
+  def _generate_community_labeling_prompt(self, influencer_context: str, post_context: str) -> str:
+    """
+    Generate a prompt for community labeling
+    """
+    context_str = "You are analyzing a social media community to generate an appropriate label/category for it.\n"
+    context_str += "Based on the influencers' biographies and posts' content (captions, tags, comments), you need to determine what this community is about.\n\n"
+    
+    if influencer_context:
+      context_str += influencer_context + "\n"
+    
+    if post_context:
+      context_str += post_context + "\n"
+    
+    # Setup subprompts
+    persona_subprompt = self.prompt_generator_component.generate_subprompt_persona()
+    context_subprompt = self.prompt_generator_component.generate_subprompt_context(context_str)
+    additional_subprompt = ("Generate a short, descriptive label (1-3 words) that best represents what this community is about. "
+                           "Focus on the main theme, topic, or niche of the community. "
+                           "Examples of good labels: 'Travel', 'Food & Cooking', 'Fashion', 'Fitness', 'Technology', 'Art & Design', etc. "
+                           "Return only the label without any explanation or additional text.")
+    previous_iteration_notes_subprompt = ""
+    query_str = "What is the most appropriate label for this community based on the provided information?"
+
+    return self.prompt_generator_component._prompt_template.format(
+      persona_subprompt=persona_subprompt,
+      context_subprompt=context_subprompt,
+      additional_subprompt=additional_subprompt,
+      previous_iteration_notes_subprompt=previous_iteration_notes_subprompt,
+      query_str=query_str
+    )
