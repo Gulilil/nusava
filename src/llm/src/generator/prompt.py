@@ -166,12 +166,19 @@ class PromptGenerator():
     # Setup subprompts
     persona_subprompt = self.generate_subprompt_persona()
     context_subprompt = self.generate_subprompt_context(context_str)
-    additional_subprompt = ("Generate a short, descriptive label (1-3 words) that best represents what this community is about. "
-                           "Focus on the main theme, topic, or niche of the community. "
-                           "Examples of good labels: 'Travel', 'Food & Cooking', 'Fashion', 'Fitness', 'Technology', 'Art & Design', etc. "
-                           "Return only the label without any explanation or additional text.")
+    additional_subprompt = ("Generate a short, descriptive label (1-3 words) that best represents what this community is about. " \
+                           "Focus on the main theme, topic, or niche of the community. " \
+                           "Examples of good labels: 'Travel', 'Food & Cooking', 'Fashion', 'Fitness', 'Technology', 'Art & Design', etc. \n" \
+                           "Aside from the label, also summarize the community and describe. Store the your summary in a description that describes the community."
+                           "1-2 sentences are enough for the description as long as you think it is the most suitable way to describe the community.\n"
+                           "Return your answer in this JSON format: \n" \
+                           "{\n"
+                           "\"label\": str,\n"\
+                           "\"description\" : str\n"
+                           "}\n"
+                           "Do not add any other string, word, or character outside the format that has been stated.")
     previous_iteration_notes_subprompt = ""
-    query_str = "What is the most appropriate label for this community based on the provided information?"
+    query_str = "What is the most appropriate label and dsecription for this community based on the provided information?"
 
     return self._prompt_template.format(
       persona_subprompt=persona_subprompt,
@@ -292,8 +299,10 @@ class PromptGenerator():
     additional_subprompt =  "Please write your chosen schedule in this time format: (%Y-%m-%d %H:%M:%S). " \
                             "Please also provide your reason on choosing the schedule time. " \
                             "Return your answer in this JSON format: \n" \
-                            "{\"schedule_time\": str,\n"\
-                            "\"reason\" : str}\n"\
+                            "{\n" \
+                            "\"schedule_time\": str,\n"\
+                            "\"reason\" : str\n" \
+                            "}\n"\
                             f"Make sure to not return the schedule time earlier than current time. Current time is {current_time}. " \
                             "\n\n" \
                             "Here I provide you some methods if you cannot decide. This is ordered from the most prioritized to least prioritized: \n" \

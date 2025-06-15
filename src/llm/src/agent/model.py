@@ -130,19 +130,23 @@ class Model():
         f"{self._persona_component.get_persona_str()}\n\n"
     )
     try:
-      agent = ReActAgent.from_tools(
-        self._tools, 
-        llm = self.llm_model, 
-        verbose= verbose, 
-        max_iterations=self._max_iteration,
-        system_prompt=system_prompt
-      )
-      response = await agent.aquery(prompt)
-      result = response.response
-      contexts = [node.node.text for node in response.source_nodes]
-      print(f"[MODEL ANSWER] {result}")
-      return result, contexts
-    
+      if (is_direct):
+         response = await self.llm_model.acomplete(prompt)
+         result = response.text
+         return result, None
+      else:
+        agent = ReActAgent.from_tools(
+          self._tools, 
+          llm = self.llm_model, 
+          verbose= verbose, 
+          max_iterations=self._max_iteration,
+          system_prompt=system_prompt
+        )
+        response = await agent.aquery(prompt)
+        result = response.response
+        contexts = [node.node.text for node in response.source_nodes]
+        print(f"[MODEL ANSWER] {result}")
+        return result, contexts
     except Exception as e:
       print(f"[ERROR MODEL ANSWER] Error occured while processing answer: {e}")
       return None, None

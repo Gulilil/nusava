@@ -30,9 +30,9 @@ class Agent():
     self.model_component = Model(self.persona_component)
     print("[AGENT INITIALIZED] Agent component(s) initialized")
     # Instantiate Connector
-    self.pinecone_connector_component = PineconeConnector()
     self.mongo_connector_component = MongoConnector()
     self.postgres_connector_component = PostgresConnector()
+    self.pinecone_connector_component = PineconeConnector(self.model_component.embed_model)
     print("[AGENT INITIALIZED] Connector component(s) initialized")
     # Instantiate Evaluator
     self.evaluator_component = Evaluator(self.model_component.llm_model)
@@ -140,7 +140,7 @@ class Agent():
     # Make the summary
     try:
       prompt = self.prompt_generator_component.generate_prompt_summarize_memory(memory_data)
-      summary, _ = await self.model_component.answer(prompt)
+      summary, _ = await self.model_component.answer(prompt, is_direct=True)
       
       # Prepare to insert
       pinecone_namespace_name = f"chat_bot[{self.user_id}]_sender[{sender_id}]"
@@ -278,7 +278,7 @@ class Agent():
 
       # LLM should explain to user
       error_prompt = self.prompt_generator_component.generate_prompt_error(user_query=chat_message)
-      answer, _ = await self.model_component.answer(error_prompt)
+      answer, _ = await self.model_component.answer(error_prompt, is_direct=True)
       answer = clean_quotation_string(answer)
 
       # Store in bot's reply memory
@@ -461,7 +461,7 @@ class Agent():
       prompt = self.prompt_generator_component.generate_prompt_comment(post_caption, selected_comments_str)
       
       # Make comment
-      comment_message, _ = await self.model_component.answer(prompt)
+      comment_message, _ = await self.model_component.answer(prompt, is_direct=True)
       comment_message = clean_quotation_string(comment_message)
 
       # Request
@@ -482,7 +482,7 @@ class Agent():
     """
     try:
       # Load posts in database pinecone
-      await self._load_tools_rag("communities", "rag_tools_for_post_data", "Used to provide examples of posts from Influencers")
+      await self._load_tools_rag("posts", "rag_tools_for_post_data", "Used to provide examples of posts from Influencers")
       
       # Initiate attempts
       max_attempts = 3 
@@ -492,7 +492,7 @@ class Agent():
         prompt = self.prompt_generator_component.generate_prompt_choose_schedule_post(caption_message)
       
         # Ask the LLM
-        answer, _ = await self.model_component.answer(prompt)
+        answer, _ = await self.model_component.answer(prompt, is_direct=True)
         print(f"[ACTION SCHEDULE POST] Attempt {attempt+1} of {max_attempts}. \nCaption: {caption_message} \nAnswer: {answer}")
 
 
@@ -540,7 +540,7 @@ class Agent():
 
         # Generate caption message
         # Skip is the caption message is None
-        caption_message, _ = await self.model_component.answer(prompt)
+        caption_message, _ = await self.model_component.answer(prompt, is_direct=True)
         print(f"[ACTION POST CAPTION] Attempt {attempt+1} of {max_attempts}. \nCaption: {caption_message}")          
         
         if (caption_message is not None):
@@ -583,7 +583,7 @@ class Agent():
       print(f"[ERROR ACTION POST] Error occured while processing action post caption: {e}")
       user_query = f"Make a post caption with image description: {img_description}, keywords: {caption_keywords}, additional context: {additional_context}"
       error_prompt = self.prompt_generator_component.generate_prompt_error(user_query=user_query)
-      answer, _ = await self.model_component.answer(error_prompt)
+      answer, _ = await self.model_component.answer(error_prompt, is_direct=True)
       answer = clean_quotation_string(answer)
       return answer
 
@@ -626,8 +626,7 @@ class Agent():
       # Parse hotel data
       hotel_data_parsed = parse_documents(hotel_docs)
       # Insert to pinecone
-      _, storage_context = self.pinecone_connector_component.get_vector_store(pinecone_namespace_name)
-      self.pinecone_connector_component.store_data(hotel_data_parsed, storage_context, self.model_component.embed_model)      
+      self.pinecone_connector_component.store_data(hotel_data_parsed, pinecone_namespace_name)        
       print(f'[BATCH PROGRESS] Successfully inserted data idx {idx} to {upper_idx}')
       
       # Increment idx
@@ -639,7 +638,7 @@ class Agent():
     Process data communities, "migrate" it from mongodb document to pinecone vector
     """
     mongo_collection_name = "communities"
-    pinecone_namespace_name = "communities"
+    pinecone_namespace_name = "posts"
 
     # Get data from mongo
     communities = self.mongo_connector_component.get_data(mongo_collection_name, {})
@@ -672,8 +671,7 @@ class Agent():
       batch_post_parsed = parse_documents(batch_post_docs)
       
       # Insert data to pinecone
-      _, storage_context = self.pinecone_connector_component.get_vector_store(pinecone_namespace_name)
-      self.pinecone_connector_component.store_data(batch_post_parsed, storage_context, self.model_component.embed_model)      
+      self.pinecone_connector_component.store_data(batch_post_parsed, pinecone_namespace_name)        
       print(f'[BATCH PROGRESS] Successfully inserted data idx {idx} to {upper_idx}')
 
       # Increment idx
@@ -720,8 +718,7 @@ class Agent():
     asso_rule_parsed = parse_documents(asso_rule_docs_list)
     
     # Insert data to pinecone
-    _, storage_context = self.pinecone_connector_component.get_vector_store(pinecone_namespace_name)
-    self.pinecone_connector_component.store_data(asso_rule_parsed, storage_context, self.model_component.embed_model)      
+    self.pinecone_connector_component.store_data(asso_rule_parsed, pinecone_namespace_name)        
     print(f'[BATCH PROGRESS] Successfully inserted data')
 
 
@@ -754,15 +751,14 @@ class Agent():
       # Parse attraction data
       attraction_data_parsed = parse_documents(attraction_docs)
       # Insert to pinecone
-      _, storage_context = self.pinecone_connector_component.get_vector_store(pinecone_namespace_name)
-      self.pinecone_connector_component.store_data(attraction_data_parsed, storage_context, self.model_component.embed_model)      
+      self.pinecone_connector_component.store_data(attraction_data_parsed, pinecone_namespace_name)         
       print(f'[BATCH PROGRESS] Successfully inserted data idx {idx} to {upper_idx}')
       
       # Increment idx
       idx += length_per_batch
     
 
-  def labelling_communities(self, limit=None) -> None:
+  async def process_labelling_communities(self, limit=None) -> None:
     """"
       Give label to all communities based on influencers' bios, posts' tags, captions, and comments
     """
@@ -787,19 +783,30 @@ class Agent():
           continue
         
         # Generate label using LLM
-        label = self._generate_community_label(influencers, posts)
+        label, description = await self._generate_community_label(influencers, posts)
+        print(label, description)
         
-        if label:
+        # Store to Mongo DB
+        if label and description:
           # Update community with generated label
           self.mongo_connector_component.update_one_data(
             mongo_collection_name,
             {"community_id": community_id},
-            {"label": label}
+            {"label": label, "description": description}
           )
-          total_labeled += 1
-          print(f"Labeled community {community_id}: {label}")
+          print(f"Labeled community {community_id}: {label} with description :{description}")
         else:
           print(f"Failed to generate label for community {community_id}")
+
+        
+        # Also store to pinecone
+        pinecone_namespace_name = "communities"
+        community_str = f"community_id: {community_id}\n" \
+                        f"label: {label}\n" \
+                        f"description: {description}\n"
+        community_docs = text_to_document([community_str])
+        community_parsed = parse_documents(community_docs)
+        self.pinecone_connector_component.store_data(community_parsed, pinecone_namespace_name)    
       
       print(f"\nSummary: Successfully labeled {total_labeled}/{len(communities)} communities")
       
@@ -809,7 +816,7 @@ class Agent():
       traceback.print_exc()
 
 
-  def _generate_community_label(self, influencers: list, posts: list) -> str:
+  async def _generate_community_label(self, influencers: list, posts: list) -> tuple[str]:
     """
     Generate a community label based on influencers' biographies, posts' tags, captions, and comments
     """
@@ -849,11 +856,14 @@ class Agent():
       prompt = self.prompt_generator_component.generate_community_labeling_prompt(influencer_context, post_context)
       
       # Get response from LLM
-      response = self.model_component.llm_model.complete(prompt)
+      response, _ = await self.model_component.answer(prompt, is_direct=True)
+      response_json = json.loads(response)
+      label = response_json['label']
+      description = response_json['description']
       
-      return response.text.strip()
+      return (label.strip(), description.strip())
       
     except Exception as e:
       print(f"Error generating community label: {str(e)}")
-      return ""
+      return "", ""
 

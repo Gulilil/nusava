@@ -13,10 +13,11 @@ class PineconeConnector():
   """
   Connecting component to Pinecone : VectorDB for LLM and RAG
   """
-  def __init__(self): 
+  def __init__(self, model_component): 
     """
     Instantiate the database client
     """
+    self._model_component = model_component
     self.client = Pinecone(api_key=(os.getenv("PINECONE_API_KEY")))
     self.index = self.client.Index(os.getenv("PINECONE_INDEX"))
 
@@ -30,11 +31,14 @@ class PineconeConnector():
     return vector_store, storage_context
 
 
-  def store_data(self, nodes, storage_context, embed_model) -> None:
+  def store_data(self, nodes, namespace_name: str) -> None:
     """
     Store processed data to certain storage_context
     """
-    VectorStoreIndex(nodes, storage_context=storage_context, embed_model=embed_model)
+    _, storage_context = self.get_vector_store(namespace_name)
+    VectorStoreIndex(nodes, 
+                     storage_context=storage_context, 
+                     embed_model=self._model_component.embed_model)
 
 
   def get_index_stats(self) -> None:
