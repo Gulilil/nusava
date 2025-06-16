@@ -27,7 +27,7 @@ class Model():
   """
   Constant variable in the model. Should not be changed when the model is operating
   """
-  _tools: list = []
+  _tools: dict[list] 
 
 
   def __init__(self, 
@@ -68,7 +68,17 @@ class Model():
     )
 
 
-  def _setup_tool(self, query_engine, metadata_name, metadata_description) -> None:
+  def _add_tool(self, tool_user_id: str, tool) -> None:
+    """
+    Add tool component to dictionary
+    """
+    if (tool_user_id in self._tools):
+      self._tools[tool_user_id].append(tool)
+    else:
+      self._tools[tool_user_id] = [tool]
+  
+
+  def _setup_tool(self, query_engine, metadata_name, metadata_description, tool_user_id: str) -> None:
     """
     Setup tools for agentic system and query engine
     """
@@ -77,9 +87,32 @@ class Model():
       query_engine=query_engine,
       metadata=metadata
     )
-    self._tools.append(tool)
+    self._add_tool(tool_user_id, tool)
+
 
   ######## PUBLIC ########
+
+
+  def refresh_tools(self, tool_user_id : str,  is_all: bool = False) -> None:
+    """
+    Reset tools that has been constructed before
+    """
+    if (is_all):
+      self._tools = {}
+    else:
+      if(tool_user_id in self._tools):
+        del self._tools[tool_user_id]
+        print(f"[REFRESH TOOLS] Tools list has been refreshed for {tool_user_id}")
+
+
+  def display_tools_count(self) -> None:
+    """
+    Display all tools
+    """
+    print("[REGISTERED TOOLS]")
+    for tool_user_id, tools in self._tools:
+      print(f"{tool_user_id}: {len(tools)}")
+
 
   def display_config(self) -> None:
     """
@@ -94,7 +127,7 @@ class Model():
     print(f"Max Iteration: {self._max_iteration}")
     
 
-  async def load_data(self,  vector_store, storage_context, metadata_name, metadata_description) -> None:
+  async def load_data(self,  vector_store, storage_context, metadata_name, metadata_description, tool_user_id: str) -> None:
       """
       Load data from pinecone based on the vector store and storage_context
       """
@@ -111,13 +144,14 @@ class Model():
         response_mode="compact",
         return_source_nodes=True
       )
-      self._setup_tool(query_engine, metadata_name, metadata_description)
+      self._setup_tool(query_engine, metadata_name, metadata_description, tool_user_id)
 
 
   async def answer(self, 
                    prompt: str, 
                    is_direct: bool = False, 
-                   verbose: bool = True
+                   verbose: bool = True,
+                   tool_user_id: str = "",
                   ) -> Tuple[Optional[str], Optional[list]]:
     """
     Answer the prompt using the llm_model or agentic system
@@ -136,7 +170,7 @@ class Model():
          return result, None
       else:
         agent = ReActAgent.from_tools(
-          self._tools, 
+          self._tools[tool_user_id], 
           llm = self.llm_model, 
           verbose= verbose, 
           max_iterations=self._max_iteration,
@@ -145,18 +179,10 @@ class Model():
         response = await agent.aquery(prompt)
         result = response.response
         contexts = [node.node.text for node in response.source_nodes]
-        # Refresh tools after use
-        self.refresh_tools()
         return result, contexts
     except Exception as e:
       print(f"[ERROR MODEL ANSWER] Error occured while processing answer: {e}")
       return None, None
-  
-
-  def refresh_tools(self) -> None:
-    """
-    Reset tools that has been constructed before
-    """
-    self._tools = []
+    
 
 

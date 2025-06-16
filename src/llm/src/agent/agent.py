@@ -70,11 +70,12 @@ class Agent():
     self.user_id = user_id
 
     # Reset model tools
-    self.model_component.refresh_tools()
+    self.model_component.refresh_tools("", is_all=True)
 
     # Setup components
     self.set_config()
     self.set_persona()
+
 
   def set_persona(self) -> None:
     """
@@ -128,7 +129,7 @@ class Agent():
         return
       
       # Give time delay
-      sleep_time = random.randint(5, 15)
+      sleep_time = random.randint(60, 90)
       print(f"[ACTION TIME SLEEP] Delay for {sleep_time} seconds")
       time.sleep(sleep_time)
       
@@ -157,7 +158,7 @@ class Agent():
       return False
     
 
-  async def _load_tools_rag(self, pinecone_namespace_name : str, metadata_name: str, metadata_description: str):
+  async def _load_tools_rag(self, pinecone_namespace_name : str, metadata_name: str, metadata_description: str, tool_user_id: str):
     """
     Load tools to be inserted to array of tools and later be used by ReAct
     """
@@ -166,7 +167,8 @@ class Agent():
       vector_store, 
       storage_context, 
       metadata_name,
-      metadata_description)
+      metadata_description,
+      tool_user_id)
     print(f"[LOADING TOOLS] Inserting tools for RAG: {pinecone_namespace_name}")
 
 
@@ -185,16 +187,16 @@ class Agent():
     try:
       # Load the data from pinecone
       # First hotel data
-      await self._load_tools_rag("hotels", "rag_tools_for_hotels_data", "Used to answer hotels-related query based on retrieved documents")
+      await self._load_tools_rag("hotels", "rag_tools_for_hotels_data", "Used to answer hotels-related query based on retrieved documents", sender_id)
       # Then asso-rules
-      await self._load_tools_rag("association_rules", "rag_tools_for_association_rules_data", "Used to recommend system for hotel based on its antecedent-consequent relation based on retrieved documents")
+      await self._load_tools_rag("association_rules", "rag_tools_for_association_rules_data", "Used to recommend system for hotel based on its antecedent-consequent relation based on retrieved documents", sender_id)
       # Then tourist attractions
-      await self._load_tools_rag("tourist_attractions", "rag_tools_for_tourist_attractions_data", "Used to answer tourist-attractions-related query based on retrieved documents")
+      await self._load_tools_rag("tourist_attractions", "rag_tools_for_tourist_attractions_data", "Used to answer tourist-attractions-related query based on retrieved documents", sender_id)
             
       # Load the long-term memory from pinecone
       chat_memory_namespace_name = f"chat_bot[{self.user_id}]_sender[{sender_id}]"
       if (self.pinecone_connector_component.is_namespace_exist(chat_memory_namespace_name)):
-        await self._load_tools_rag(chat_memory_namespace_name, f"rag_tools_for_memory_chat_with_{sender_id}", f"Used to help answering question from {sender_id} based on previous occurences")
+        await self._load_tools_rag(chat_memory_namespace_name, f"rag_tools_for_memory_chat_with_{sender_id}", f"Used to help answering question from {sender_id} based on previous occurences", sender_id)
 
       # Do iteration of action reply chat
       # While the thresholds are not satisfied, do the iteration
@@ -211,7 +213,7 @@ class Agent():
       
         # Answer the query
         # Skip if the answer is None
-        answer, contexts = await self.model_component.answer(prompt)
+        answer, contexts = await self.model_component.answer(prompt, tool_user_id=sender_id)
         print(f"[ACTION REPLY CHAT] Attempt {attempt+1} of {max_attempts}. \nQuery: {chat_message} \nAnswer: {answer}")
 
         if (answer is None):
@@ -236,33 +238,32 @@ class Agent():
           evaluation_passing = evaluation_result['evaluation_passing']
           print(f"[EVALUATION RESULT] {evaluation_result}")
 
+          # Add notes if it does not pass
+          if (not evaluation_passing):
+            previous_iteration_notes.append(evaluation_result)
+
         # Increment attempt
         attempt += 1
         if (not evaluation_passing):
           if (attempt >= max_attempts):
             raise Exception(f"Model cannot answer this query after {max_attempts} attempts. The evaluations thresholds are not satisfied.")
-          previous_iteration_notes.append(evaluation_result)
-
-      # Clean answer
-      answer = clean_quotation_string(answer)
-
-      # Store in bot's reply memory
-      await self.memory_component.store(sender_id, {"role": "bot", "content" : answer})
-
-      return answer
     
     except Exception as e:
       print(f"[ERROR ACTION REPLY CHAT] Error occured while processing action reply chat: {e}")
-
-      # LLM should explain to user
+      # LLM should explain to user about the error
       error_prompt = self.prompt_generator_component.generate_prompt_error(user_query=chat_message)
       answer, _ = await self.model_component.answer(error_prompt, is_direct=True)
+    
+    finally:
+      # Clean answer
       answer = clean_quotation_string(answer)
-
       # Store in bot's reply memory
       await self.memory_component.store(sender_id, {"role": "bot", "content" : answer})
-
+      # Refresh tools after use
+      self.model_component.refresh_tools(sender_id)
+      # Return answer
       return answer
+
 
   #########################################
   ######## INTERNAL TRIGGER ACTION ########
@@ -388,7 +389,6 @@ class Agent():
       print(f"[ERROR ACTION LIKE] Error occured in executing `like`: {e}")
 
 
-
   async def action_comment(self) -> None:
     """
     Operate the action comment
@@ -463,45 +463,6 @@ class Agent():
       print(f"[ERROR ACTION COMMENT] Error occured in executing `comment`: {e}")
 
 
-  async def action_schedule_post(self, img_url: str, caption_message: str) -> None:
-    """
-    Operate the action schedule post
-    """
-    try:
-      # Load posts in database pinecone
-      await self._load_tools_rag("posts", "rag_tools_for_post_data", "Used to provide examples of posts from Influencers")
-      
-      # Initiate attempts
-      max_attempts = 3 
-      attempt = 0
-      while (attempt <= max_attempts):
-        # Generate prompt
-        prompt = self.prompt_generator_component.generate_prompt_choose_schedule_post(caption_message)
-      
-        # Ask the LLM
-        answer, _ = await self.model_component.answer(prompt, is_direct=True)
-        print(f"[ACTION SCHEDULE POST] Attempt {attempt+1} of {max_attempts}. \nCaption: {caption_message} \nAnswer: {answer}")
-
-
-        # If the answer is not None, stop iteration
-        if (answer is not None):
-          break
-
-        # Increment attempt
-        attempt += 1
-        if (attempt == max_attempts):
-          raise Exception(f"Model cannot choose the schedule time")
-      
-      # Process answer
-      json_answer = json.loads(answer)
-      schedule_time = json_answer['schedule_time']
-      reason = json_answer['reason']
-      print(schedule_time, reason)
-  
-    except Exception as e:
-      print(f"[ERROR ACTION SCHEDULE POST] Error occured in executing `schedule post`: {e}")
-
-
   async def action_generate_caption(self, 
                   img_description: str, 
                   caption_keywords: list[str],
@@ -545,28 +506,79 @@ class Agent():
           contexts = [f"Here is the image description: {img_description}", f"Here are the keywords: {keywords_str}"]  
           
           # Evaluate the answer
-          evaluation_result = await self.evaluator_component.evaluate_response("Create a caption for an Instagram post", caption_message, contexts)  
-          evaluation_passing = evaluation_result['passing']
+          evaluation_result = await self.evaluator_component.evaluate_response("Create a caption for an Instagram post", caption_message, contexts, ["relevancy"])  
+          evaluation_passing = evaluation_result['evaluation_passing']
           print(f"[EVALUATION RESULT] {evaluation_result}")
+          
+          # Add note if does not pass
+          if (not evaluation_passing):
+            previous_iteration_notes.append(evaluation_result)
 
         # Increment attempt
         attempt += 1
         if (not evaluation_passing):
           if (attempt >= max_attempts):
             raise Exception(f"Model cannot answer this query after {max_attempts} attempts. The evaluations thresholds are not satisfied.")
-          previous_iteration_notes.append(evaluation_result)
         
-      # Return the generated caption
-      answer = clean_quotation_string(caption_message)
-      return answer
-
     except Exception as e:
       print(f"[ERROR ACTION POST] Error occured while processing action post caption: {e}")
       user_query = f"Make a post caption with image description: {img_description}, keywords: {caption_keywords}, additional context: {additional_context}"
       error_prompt = self.prompt_generator_component.generate_prompt_error(user_query=user_query)
       answer, _ = await self.model_component.answer(error_prompt, is_direct=True)
-      answer = clean_quotation_string(answer)
+    
+    finally:
+      # Return answer regardless the condition
+      answer = clean_quotation_string(caption_message)
       return answer
+
+
+  async def action_schedule_post(self, img_url: str, caption_message: str) -> None:
+    """
+    Operate the action schedule post
+    """
+    try:
+      # Load posts in database pinecone
+      await self._load_tools_rag("posts", "rag_tools_for_post_data", "Used to provide examples of posts from Influencers", "self")
+      
+      # Initiate attempts
+      max_attempts = 3 
+      attempt = 0
+      while (attempt <= max_attempts):
+        # Generate prompt
+        prompt = self.prompt_generator_component.generate_prompt_choose_schedule_post(caption_message)
+      
+        # Ask the LLM
+        answer, contexts = await self.model_component.answer(prompt, tool_user_id="self")
+        print(f"[ACTION SCHEDULE POST] Attempt {attempt+1} of {max_attempts}. \nCaption: {caption_message} \nAnswer: {answer}")
+
+
+        # If the answer is not None, stop iteration
+        if (answer is not None):
+          for i, context  in enumerate(contexts):
+            context = context.replace("\n", " ")
+            if (len(context) <= 80):  context_to_display = context
+            else:   context_to_display = f"{context[:40]}...{context[-40:]}"
+            print(f"[ACTION SCHEDULE POST CONTEXT #{i+1}]: {context_to_display}")
+          break
+
+        # Increment attempt
+        attempt += 1
+        if (attempt == max_attempts):
+          raise Exception(f"Model cannot choose the schedule time")
+      
+      # Process answer
+      json_answer = json.loads(answer)
+      schedule_time = json_answer['schedule_time']
+      reason = json_answer['reason']
+
+      # TODO
+      print(schedule_time, reason)
+
+      # Refresh tools
+      self.model_component.refresh_tools("self")
+  
+    except Exception as e:
+      print(f"[ERROR ACTION SCHEDULE POST] Error occured in executing `schedule post`: {e}")
 
 
   ##############################
