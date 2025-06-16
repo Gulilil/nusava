@@ -54,7 +54,6 @@ class PromptGenerator():
         example_subprompt += f"Query {i+1}. {example['question']}"
         example_subprompt += "\n"
         example_subprompt += f"Answer {i+1}. {example['answer']}"
-
     return example_subprompt
   
 
@@ -74,12 +73,6 @@ class PromptGenerator():
   def generate_subprompt_previous_iteration_notes(self, previous_iteration_notes: list[dict]) -> str:
     """
     Prepare the previous iteration notes part of the prompt
-    Format of examples:
-    [
-      {"iteration" : x, "your_answer": "...", "evaluator": "...", "reason_of_rejection" : ...},
-      ..., 
-      {"iteration" : x, "your_answer": "...", "evaluator": "...", "reason_of_rejection" : ...},
-    ]
     """
     previous_iteration_notes_subprompt = "Previous Iteration Notes:\n"
     if (previous_iteration_notes is not None and len(previous_iteration_notes) > 0):
@@ -212,7 +205,11 @@ class PromptGenerator():
     persona_subprompt = self.generate_subprompt_persona()
     context_subprompt = self.generate_subprompt_context(context)
     # Chat does not need to have examples. It can be vary depending on the topic/ message
-    additional_subprompt = ""
+    additional_subprompt =  "In answering the context, please add a little of your explaination. " \
+                            "Use your persona data to add a little characteristics to your answer. \n" \
+                            "The correctness and relevancy to the query is important. " \
+                            "However, the style and characteristics of your answer is equally important. \n" \
+                            "Please stay true and faithful to your persona."
     previous_iteration_notes_subprompt = self.generate_subprompt_previous_iteration_notes(previous_iteration_notes)
     return self._prompt_template.format(persona_subprompt=persona_subprompt,
                                   context_subprompt=context_subprompt,

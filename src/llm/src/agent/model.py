@@ -145,7 +145,8 @@ class Model():
         response = await agent.aquery(prompt)
         result = response.response
         contexts = [node.node.text for node in response.source_nodes]
-        print(f"[MODEL ANSWER] {result}")
+        # Refresh tools after use
+        self.refresh_tools()
         return result, contexts
     except Exception as e:
       print(f"[ERROR MODEL ANSWER] Error occured while processing answer: {e}")

@@ -200,10 +200,9 @@ class Agent():
       # While the thresholds are not satisfied, do the iteration
       max_attempts = 3 
       attempt = 0
-      correctness_pass, faithfulness_pass, relevancy_pass = False, False, False
+      evaluation_passing = False
       previous_iteration_notes = []
-      while (not correctness_pass or not faithfulness_pass or not relevancy_pass):
-        
+      while (not evaluation_passing):
         # Generate prompt
         prompt = self.prompt_generator_component.generate_prompt_reply_chat(
           new_message=chat_message,
@@ -214,28 +213,7 @@ class Agent():
         # Skip if the answer is None
         answer, contexts = await self.model_component.answer(prompt)
         print(f"[ACTION REPLY CHAT] Attempt {attempt+1} of {max_attempts}. \nQuery: {chat_message} \nAnswer: {answer}")
-        if (answer is not None):
 
-          # Display contexts (for printing only)
-          for i, context  in enumerate(contexts):
-            print(f"[ACTION REPLY CHAT CONTEXT #{i+1}]: \n"\
-                  f"{context}")
-          
-          # Evaluate the answer
-          correctness_evaluation = await self.evaluator_component.evaluate_correctness(chat_message, answer, contexts)
-          correctness_pass = correctness_evaluation["passing"]
-          faithfulness_evaluation = await self.evaluator_component.evaluate_faithfulness(chat_message, answer, contexts)
-          faithfulness_pass = faithfulness_evaluation["passing"]
-          relevancy_evaluation = await self.evaluator_component.evaluate_relevancy(chat_message, answer, contexts)  
-          relevancy_pass = relevancy_evaluation["passing"]
-          print(f"[EVALUATION RESULT] \nCorrectness: {correctness_evaluation} \nFaithfulness: {faithfulness_evaluation} \nRelevancy: {relevancy_evaluation}")
-
-        # Increment attempt
-        attempt += 1
-        if (attempt >= max_attempts):
-          raise Exception(f"Model cannot answer this query after {max_attempts} attempts. The evaluations thresholds are not satisfied.")
-        
-        # Add notes for failing evaluation
         if (answer is None):
           previous_iteration_notes.append({
             "iteration": attempt,
@@ -244,28 +222,28 @@ class Agent():
             "evaluation_score": None,
             "reason_of_rejection": "Model cannot answer this query."
           })
+        # Answer is not None
         else:
-          if (not correctness_pass):
-            previous_iteration_notes.append({
-              "iteration": attempt,
-              "your_answer" : answer,
-              "evaluator": "correctness",
-              "reason_of_rejection": correctness_evaluation['reason']
-            })
-          if (not faithfulness_pass):
-            previous_iteration_notes.append({
-              "iteration": attempt,
-              "your_answer" : answer,
-              "evaluator": "faithfulness",
-              "reason_of_rejection": faithfulness_evaluation['reason']
-            })
-          if (not relevancy_pass):
-            previous_iteration_notes.append({
-              "iteration": attempt,
-              "your_answer" : answer,
-              "evaluator": "relevancy",
-              "reason_of_rejection": relevancy_evaluation['reason']
-            })
+          # Display contexts
+          for i, context  in enumerate(contexts):
+            context = context.replace("\n", " ")
+            if (len(context) <= 80):  context_to_display = context
+            else:   context_to_display = f"{context[:40]}...{context[-40:]}"
+            print(f"[ACTION REPLY CHAT CONTEXT #{i+1}]: {context_to_display}")
+          
+          # Evaluate the answer
+          evaluation_result = await self.evaluator_component.evaluate_response(chat_message, answer, contexts, ["correctness", "faithfulness", "relevancy"])
+          evaluation_passing = evaluation_result['evaluation_passing']
+          print(f"[EVALUATION RESULT] {evaluation_result}")
+
+        # Increment attempt
+        attempt += 1
+        if (not evaluation_passing):
+          if (attempt >= max_attempts):
+            raise Exception(f"Model cannot answer this query after {max_attempts} attempts. The evaluations thresholds are not satisfied.")
+          previous_iteration_notes.append(evaluation_result)
+
+      # Clean answer
       answer = clean_quotation_string(answer)
 
       # Store in bot's reply memory
@@ -527,9 +505,9 @@ class Agent():
       # While the thresholds are not satisfied, do the iteration
       max_attempts = 3 
       attempt = 0
-      relevancy_pass = False
+      evaluation_passing = False
       previous_iteration_notes = []
-      while (not relevancy_pass):
+      while (not evaluation_passing):
         # Generate prompt
         prompt = self.prompt_generator_component.generate_prompt_post_caption(
           img_description=img_description,
@@ -543,24 +521,6 @@ class Agent():
         caption_message, _ = await self.model_component.answer(prompt, is_direct=True)
         print(f"[ACTION POST CAPTION] Attempt {attempt+1} of {max_attempts}. \nCaption: {caption_message}")          
         
-        if (caption_message is not None):
-          # Prepare contexts for evaluation
-          keywords_str = ", ".join(caption_keywords)
-          contexts = [f"Here is the image description: {img_description}", f"Here are the keywords: {keywords_str}"]  
-          
-          # Evaluate the answer
-          relevancy_evaluation = await self.evaluator_component.evaluate_relevancy("Create a caption for an Instagram post", caption_message, contexts)  
-          relevancy_pass = relevancy_evaluation['passing']
-          print(f"[EVALUATION RESULT] \nRelevancy: {relevancy_evaluation}")
-        else:
-          print(f"[FAILED ACTION POST CAPTION] Attempt {attempt+1} of {max_attempts}. Model cannot generate caption.")
-
-        # Increment attempt
-        attempt += 1
-        if (attempt >= max_attempts):
-          raise Exception(f"Model cannot answer this query after {max_attempts} attempts. The evaluation threshold is not satisfied.")
-        
-        # Add notes for failing evaluation
         if (caption_message is None):
           previous_iteration_notes.append({
             "iteration": attempt,
@@ -568,13 +528,25 @@ class Agent():
             "evaluator": "model",
             "reason_of_rejection": "Model cannot generate caption."
           })
-        elif (caption_message and not relevancy_pass):
-          previous_iteration_notes.append({
-            "iteration": attempt,
-            "your_answer" : caption_message,
-            "evaluator": "relevancy",
-            "reason_of_rejection": relevancy_evaluation['reason']
-          })
+
+        # Condition caption_message is not None
+        else:
+          # Prepare contexts for evaluation
+          keywords_str = ", ".join(caption_keywords)
+          contexts = [f"Here is the image description: {img_description}", f"Here are the keywords: {keywords_str}"]  
+          
+          # Evaluate the answer
+          evaluation_result = await self.evaluator_component.evaluate_response("Create a caption for an Instagram post", caption_message, contexts)  
+          evaluation_passing = evaluation_result['passing']
+          print(f"[EVALUATION RESULT] {evaluation_result}")
+
+        # Increment attempt
+        attempt += 1
+        if (not evaluation_passing):
+          if (attempt >= max_attempts):
+            raise Exception(f"Model cannot answer this query after {max_attempts} attempts. The evaluations thresholds are not satisfied.")
+          previous_iteration_notes.append(evaluation_result)
+        
       # Return the generated caption
       answer = clean_quotation_string(caption_message)
       return answer
@@ -704,9 +676,9 @@ class Agent():
         consequents_string += f"{i+1}. {consequent['place']}\n"
 
       asso_rule_string =  "Here is an insight of recommendation from data mining process.\n" \
-                          "The data is about association rule of hotels." \
+                          "The data is about association rule of hotels. " \
                           "Therefore, this data can be used to link as a recommendation system for hotels.\n" \
-                          "The data consist of antecedents and consequents. If user talk about hotels in antecedents, you can recommend the hotels in consequents.\n"                   
+                          "The data consist of antecedents and consequents. If user ask or talk about hotels in antecedents, you can recommend the hotels in consequents.\n"                   
       asso_rule_string += antecedents_string
       asso_rule_string += consequents_string
 
@@ -714,7 +686,7 @@ class Agent():
       asso_rule_string_list.append(asso_rule_string)
     
     # Preprocess
-    asso_rule_docs_list = text_to_document(asso_rule_string)
+    asso_rule_docs_list = text_to_document(asso_rule_string_list)
     asso_rule_parsed = parse_documents(asso_rule_docs_list)
     
     # Insert data to pinecone
