@@ -16,7 +16,7 @@ async def test(nusava: Agent) -> None:
   # print(await nusava.action_reply_chat("Hi There!", "Gulilii"))
   # # Hotels
   # print(await nusava.action_reply_chat("Give me general informations of Tanto hotel.", "Gulilii"))
-  print(await nusava.action_reply_chat("Give me your 5 recommended Hotels in Nusa Tenggara. Please list it down along the name of the hotels", "Gulilii"))
+  # print(await nusava.action_reply_chat("Give me your 5 recommended Hotels in Nusa Tenggara. Please list it down along the name of the hotels", "Gulilii"))
   # print(await nusava.action_reply_chat("Tell me the location of Tanto Hotel", "Gulilii"))
   # print(await nusava.action_reply_chat("Summarize me some reviews of Tanto Hotel. State the ratings and the description of some of the reviews too.", "Gulilii"))
   # print(await nusava.action_reply_chat("Tell me the check-in and check-out time of Siola Hotel", "Gulilii"))
@@ -24,6 +24,7 @@ async def test(nusava: Agent) -> None:
   # print(await nusava.action_reply_chat("I would like to go to Nusa Tenggara in a near future. Can you recommend me any tourist attraction?", "Gulilii"))
   # # Association rule
   # print(await nusava.action_reply_chat("It seems La Boheme Bajo Hostel and Sahid T-MORE Kupang are some good hotels. Can you give recommendation of any other hotels like those two?", "Gulilii"))
+
 
   # # Test action post
   # caption_message = await nusava.action_generate_caption("Image of Kuta beach in Bali when sunset", ["beach", "holiday", "beautiful", "nature", "pretty", "sunkissed"], "Make it short and simple. Do not use hashtags.")
@@ -36,13 +37,18 @@ async def test(nusava: Agent) -> None:
   # await nusava.action_schedule_post("", caption_message)
   # caption_message = await nusava.action_generate_caption("Image of tourists hiking to a viewpoint overlooking a Norwegian fjord", ["Norway", "fjord", "hike", "nature", "fresh", "breathtaking"], "Make it invigorating and scenic.")
   # await nusava.action_schedule_post("", caption_message)
-  caption_message = await nusava.action_generate_caption("Image of the Great Wall of China stretching across green hills", ["China", "GreatWall", "heritage", "travel", "epic", "history"], "Capture the scale and legacy.")
-  await nusava.action_schedule_post("", caption_message)
+  # caption_message = await nusava.action_generate_caption("Image of the Great Wall of China stretching across green hills", ["China", "GreatWall", "heritage", "travel", "epic", "history"], "Capture the scale and legacy.")
+  # await nusava.action_schedule_post("", caption_message)
   # caption_message = await nusava.action_generate_caption("Image of Machu Picchu ruins with misty mountains in the background", ["Peru", "MachuPicchu", "history", "nature", "hiking", "awe"], "Make it reflective and respectful.")
   # await nusava.action_schedule_post("", caption_message)
 
+
+  # Test choose community
+  # await nusava.choose_community()
+
+
   # Test decision maker, include like, follow, post
-  # await nusava.decide_action()
+  await nusava.decide_action()
 
 
 

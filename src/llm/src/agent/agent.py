@@ -30,7 +30,7 @@ class Agent():
     self.model_component = Model(self.persona_component)
     print("[AGENT INITIALIZED] Agent component(s) initialized")
     # Instantiate Connector
-    # self.mongo_connector_component = MongoConnector() # TODO
+    self.mongo_connector_component = MongoConnector() 
     self.postgres_connector_component = PostgresConnector()
     self.pinecone_connector_component = PineconeConnector(self.model_component)
     print("[AGENT INITIALIZED] Connector component(s) initialized")
@@ -103,35 +103,6 @@ class Agent():
     """
     print("[AGENT RUN] Agent is running...")
     self.input_gateway_component.run()
-
-
-  async def decide_action(self) -> None:
-    """
-    Decide action based on the current conditions and statistics
-    This is the main entry point for the agent to decide what to do next.
-    """
-    statistics = self.postgres_connector_component.get_statistics_data(self.user_id)
-    observations = self.action_generator_component.observe_statistics(statistics)
-    print(f"[ACTION OBSERVATION] Acquired observations: {observations}")
-
-    # Max 5 times of action decision
-    for itr in range(5):
-      action, state = self.action_generator_component.decide_action(observations, itr)
-      print(f"[ACTION DECISION] {itr+1}.  action \"{action}\" in state \"{state}\"")
-
-      if (action == "like"):
-        self.action_like()
-      elif (action == "follow"):
-        self.action_follow()
-      elif (action == "comment"):
-        await self.action_comment()
-      else:
-        return
-      
-      # Give time delay
-      sleep_time = random.randint(60, 90)
-      print(f"[ACTION TIME SLEEP] Delay for {sleep_time} seconds")
-      time.sleep(sleep_time)
       
 
   async def summarize_and_store_memory(self, sender_id: str, memory_data: list[dict]) -> bool:
@@ -163,14 +134,22 @@ class Agent():
     Load tools to be inserted to array of tools and later be used by ReAct
     """
     vector_store, storage_context = self.pinecone_connector_component.get_vector_store(pinecone_namespace_name)
-    await self.model_component.load_data(
-      vector_store, 
-      storage_context, 
-      metadata_name,
-      metadata_description,
-      tool_user_id)
+    await self.model_component.load_data(vector_store, 
+                                          storage_context, 
+                                          metadata_name,
+                                          metadata_description,
+                                          tool_user_id)
     print(f"[LOADING TOOLS] Inserting tools for RAG: {pinecone_namespace_name}")
 
+  
+  def _construct_retrieval_system (self, pinecone_namespace_name : str, top_k: int =10):
+    """
+    Return query engine as retrieval system
+    """
+    vector_store, storage_context = self.pinecone_connector_component.get_vector_store(pinecone_namespace_name)
+    return self.model_component.construct_retrieval_system(vector_store, storage_context, top_k)
+
+  
 
   #########################################
   ######## EXTERNAL TRIGGER ACTION ########
@@ -210,7 +189,6 @@ class Agent():
           new_message=chat_message,
           previous_messages=self.memory_component.retrieve(sender_id),
           previous_iteration_notes=previous_iteration_notes)  
-      
         # Answer the query
         # Skip if the answer is None
         answer, contexts = await self.model_component.answer(prompt, tool_user_id=sender_id)
@@ -265,9 +243,189 @@ class Agent():
       return answer
 
 
+  async def action_generate_caption(self, 
+                  img_description: str, 
+                  caption_keywords: list[str],
+                  additional_context: str = None) -> str:
+    """
+    Operate the action generate caption
+    """
+    try:
+      # Do iteration of action generate caption
+      # While the thresholds are not satisfied, do the iteration
+      max_attempts = 3 
+      attempt = 0
+      evaluation_passing = False
+      previous_iteration_notes = []
+      while (not evaluation_passing):
+        # Generate prompt
+        prompt = self.prompt_generator_component.generate_prompt_post_caption(
+          img_description=img_description,
+          keywords=caption_keywords,
+          additional_context=additional_context,
+          previous_iteration_notes=previous_iteration_notes
+          )
+
+        # Generate caption message
+        # Skip is the caption message is None
+        caption_message, _ = await self.model_component.answer(prompt, is_direct=True)
+        print(f"[ACTION POST CAPTION] Attempt {attempt+1} of {max_attempts}. \nCaption: {caption_message}")          
+        
+        if (caption_message is None):
+          previous_iteration_notes.append({
+            "iteration": attempt,
+            "your_answer" : None,
+            "evaluator": "model",
+            "reason_of_rejection": "Model cannot generate caption."
+          })
+
+        # Condition caption_message is not None
+        else:
+          # Prepare contexts for evaluation
+          keywords_str = ", ".join(caption_keywords)
+          contexts = [f"Here is the image description: {img_description}", f"Here are the keywords: {keywords_str}"]  
+          
+          # Evaluate the answer
+          evaluation_result = await self.evaluator_component.evaluate_response("Create a caption for an Instagram post", caption_message, contexts, ["relevancy"])  
+          evaluation_passing = evaluation_result['evaluation_passing']
+          print(f"[EVALUATION RESULT] {evaluation_result}")
+          
+          # Add note if does not pass
+          if (not evaluation_passing):
+            previous_iteration_notes.append(evaluation_result)
+
+        # Increment attempt
+        attempt += 1
+        if (not evaluation_passing):
+          if (attempt >= max_attempts):
+            raise Exception(f"Model cannot answer this query after {max_attempts} attempts. The evaluations thresholds are not satisfied.")
+        
+    except Exception as e:
+      print(f"[ERROR ACTION POST] Error occured while processing action post caption: {e}")
+      user_query = f"Make a post caption with image description: {img_description}, keywords: {caption_keywords}, additional context: {additional_context}"
+      error_prompt = self.prompt_generator_component.generate_prompt_error(user_query=user_query)
+      answer, _ = await self.model_component.answer(error_prompt, is_direct=True)
+    
+    finally:
+      # Return answer regardless the condition
+      answer = clean_quotation_string(caption_message)
+      return answer
+
+
+  async def action_schedule_post(self, img_url: str, caption_message: str) -> None:
+    """
+    Operate the action schedule post
+    """
+    try:
+      # Load posts in database pinecone
+      await self._load_tools_rag("posts", "rag_tools_for_post_data", "Used to provide examples of posts from Influencers", "self")
+      
+      # Initiate attempts
+      max_attempts = 3 
+      attempt = 0
+      while (attempt <= max_attempts):
+        # Generate prompt
+        prompt = self.prompt_generator_component.generate_prompt_choose_schedule_post(caption_message)
+      
+        # Ask the LLM
+        answer, contexts = await self.model_component.answer(prompt, tool_user_id="self")
+        print(f"[ACTION SCHEDULE POST] Attempt {attempt+1} of {max_attempts}. \nCaption: {caption_message} \nAnswer: {answer}")
+
+
+        # If the answer is not None, stop iteration
+        if (answer is not None):
+          for i, context  in enumerate(contexts):
+            context = context.replace("\n", " ")
+            if (len(context) <= 80):  context_to_display = context
+            else:   context_to_display = f"{context[:40]}...{context[-40:]}"
+            print(f"[ACTION SCHEDULE POST CONTEXT #{i+1}]: {context_to_display}")
+          break
+
+        # Increment attempt
+        attempt += 1
+        if (attempt == max_attempts):
+          raise Exception(f"Model cannot choose the schedule time")
+      
+      # Process answer
+      json_answer = json.loads(answer)
+      schedule_time = json_answer['schedule_time']
+      reason = json_answer['reason']
+
+      # TODO
+      print(schedule_time, reason)
+
+      # Refresh tools
+      self.model_component.refresh_tools("self")
+  
+    except Exception as e:
+      print(f"[ERROR ACTION SCHEDULE POST] Error occured in executing `schedule post`: {e}")
+
+
   #########################################
   ######## INTERNAL TRIGGER ACTION ########
   #########################################
+
+  async def decide_action(self) -> None:
+    """
+    Decide action based on the current conditions and statistics
+    This is the main entry point for the agent to decide what to do next.
+    """
+    statistics = self.postgres_connector_component.get_statistics_data(self.user_id)
+    observations = self.action_generator_component.observe_statistics(statistics)
+    print(f"[ACTION OBSERVATION] Acquired observations: {observations}")
+
+    # Max 5 times of action decision
+    for itr in range(5):
+      action, state = self.action_generator_component.decide_action(observations, itr)
+      print(f"[ACTION DECISION] {itr+1}.  action \"{action}\" in state \"{state}\"")
+
+      if (action == "like"):
+        self.action_like()
+      elif (action == "follow"):
+        self.action_follow()
+      elif (action == "comment"):
+        await self.action_comment()
+      else:
+        return
+      
+      # Give time delay
+      sleep_time = random.randint(60, 90)
+      print(f"[ACTION TIME SLEEP] Delay for {sleep_time} seconds")
+      time.sleep(sleep_time)
+
+  
+  async def choose_community(self) -> dict:
+    """
+    LLM decide which community it wants to got into for actions like, follow, and comment
+    """
+    try:
+      # Load the data
+      query_engine = self._construct_retrieval_system("communities", 20)
+
+      # Prepare to generate prompt
+      persona_str = self.persona_component.get_persona_str()
+      # prompt = self.prompt_generator_component.generate_prompt_choose_community(persona_str)
+      prompt = f"Choose the most suitable community out of this persona: \n {persona_str}"
+      
+      # Retrieve data
+      nodes = query_engine.retriever.retrieve(prompt)
+      community_str = ""
+      for i, node in enumerate(nodes):
+          community_str += ""
+          print(f"Score: {node.score:.4f}")
+          print(f"Text: {node.text}")
+
+      community_id = clean_quotation_string(community_id)
+      print(community_id)
+
+      # TODO
+      # Get to mongodb, return the list
+
+      # Refresh tools
+      self.model_component.refresh_tools("self")
+
+    except Exception as e:
+      print(f"[ERROR CHOOSE COMMUNITY] Error occured in executing `choose community`: {e}")
 
 
   def action_follow(self) -> None:
@@ -463,122 +621,7 @@ class Agent():
       print(f"[ERROR ACTION COMMENT] Error occured in executing `comment`: {e}")
 
 
-  async def action_generate_caption(self, 
-                  img_description: str, 
-                  caption_keywords: list[str],
-                  additional_context: str = None) -> str:
-    """
-    Operate the action generate caption
-    """
-    try:
-      # Do iteration of action generate caption
-      # While the thresholds are not satisfied, do the iteration
-      max_attempts = 3 
-      attempt = 0
-      evaluation_passing = False
-      previous_iteration_notes = []
-      while (not evaluation_passing):
-        # Generate prompt
-        prompt = self.prompt_generator_component.generate_prompt_post_caption(
-          img_description=img_description,
-          keywords=caption_keywords,
-          additional_context=additional_context,
-          previous_iteration_notes=previous_iteration_notes
-          )
-
-        # Generate caption message
-        # Skip is the caption message is None
-        caption_message, _ = await self.model_component.answer(prompt, is_direct=True)
-        print(f"[ACTION POST CAPTION] Attempt {attempt+1} of {max_attempts}. \nCaption: {caption_message}")          
-        
-        if (caption_message is None):
-          previous_iteration_notes.append({
-            "iteration": attempt,
-            "your_answer" : None,
-            "evaluator": "model",
-            "reason_of_rejection": "Model cannot generate caption."
-          })
-
-        # Condition caption_message is not None
-        else:
-          # Prepare contexts for evaluation
-          keywords_str = ", ".join(caption_keywords)
-          contexts = [f"Here is the image description: {img_description}", f"Here are the keywords: {keywords_str}"]  
-          
-          # Evaluate the answer
-          evaluation_result = await self.evaluator_component.evaluate_response("Create a caption for an Instagram post", caption_message, contexts, ["relevancy"])  
-          evaluation_passing = evaluation_result['evaluation_passing']
-          print(f"[EVALUATION RESULT] {evaluation_result}")
-          
-          # Add note if does not pass
-          if (not evaluation_passing):
-            previous_iteration_notes.append(evaluation_result)
-
-        # Increment attempt
-        attempt += 1
-        if (not evaluation_passing):
-          if (attempt >= max_attempts):
-            raise Exception(f"Model cannot answer this query after {max_attempts} attempts. The evaluations thresholds are not satisfied.")
-        
-    except Exception as e:
-      print(f"[ERROR ACTION POST] Error occured while processing action post caption: {e}")
-      user_query = f"Make a post caption with image description: {img_description}, keywords: {caption_keywords}, additional context: {additional_context}"
-      error_prompt = self.prompt_generator_component.generate_prompt_error(user_query=user_query)
-      answer, _ = await self.model_component.answer(error_prompt, is_direct=True)
-    
-    finally:
-      # Return answer regardless the condition
-      answer = clean_quotation_string(caption_message)
-      return answer
-
-
-  async def action_schedule_post(self, img_url: str, caption_message: str) -> None:
-    """
-    Operate the action schedule post
-    """
-    try:
-      # Load posts in database pinecone
-      await self._load_tools_rag("posts", "rag_tools_for_post_data", "Used to provide examples of posts from Influencers", "self")
-      
-      # Initiate attempts
-      max_attempts = 3 
-      attempt = 0
-      while (attempt <= max_attempts):
-        # Generate prompt
-        prompt = self.prompt_generator_component.generate_prompt_choose_schedule_post(caption_message)
-      
-        # Ask the LLM
-        answer, contexts = await self.model_component.answer(prompt, tool_user_id="self")
-        print(f"[ACTION SCHEDULE POST] Attempt {attempt+1} of {max_attempts}. \nCaption: {caption_message} \nAnswer: {answer}")
-
-
-        # If the answer is not None, stop iteration
-        if (answer is not None):
-          for i, context  in enumerate(contexts):
-            context = context.replace("\n", " ")
-            if (len(context) <= 80):  context_to_display = context
-            else:   context_to_display = f"{context[:40]}...{context[-40:]}"
-            print(f"[ACTION SCHEDULE POST CONTEXT #{i+1}]: {context_to_display}")
-          break
-
-        # Increment attempt
-        attempt += 1
-        if (attempt == max_attempts):
-          raise Exception(f"Model cannot choose the schedule time")
-      
-      # Process answer
-      json_answer = json.loads(answer)
-      schedule_time = json_answer['schedule_time']
-      reason = json_answer['reason']
-
-      # TODO
-      print(schedule_time, reason)
-
-      # Refresh tools
-      self.model_component.refresh_tools("self")
-  
-    except Exception as e:
-      print(f"[ERROR ACTION SCHEDULE POST] Error occured in executing `schedule post`: {e}")
+ 
 
 
   ##############################

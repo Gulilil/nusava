@@ -2,8 +2,7 @@ from llama_index.embeddings.openai import OpenAIEmbedding
 from llama_index.llms.openai import OpenAI
 from llama_index.core import  VectorStoreIndex
 from llama_index.core.agent import ReActAgent
-from llama_index.core.callbacks import CallbackManager, TokenCountingHandler
-from llama_index.core.tools import QueryEngineTool, ToolMetadata, FunctionTool
+from llama_index.core.tools import QueryEngineTool, ToolMetadata
 from typing import Tuple, Optional
 from dotenv import load_dotenv
 load_dotenv()
@@ -27,7 +26,7 @@ class Model():
   """
   Constant variable in the model. Should not be changed when the model is operating
   """
-  _tools: dict[list] 
+  _tools: dict[list] = {}
 
 
   def __init__(self, 
@@ -125,11 +124,14 @@ class Model():
     print(f"Top K: {self._top_k}")
     print(f"Max Token: {self._max_token}")
     print(f"Max Iteration: {self._max_iteration}")
-    
 
-  async def load_data(self,  vector_store, storage_context, metadata_name, metadata_description, tool_user_id: str) -> None:
+
+  def construct_retrieval_system( self, 
+                                  vector_store, 
+                                  storage_context,
+                                  top_k : int):
       """
-      Load data from pinecone based on the vector store and storage_context
+      Returns query engine as retrieval system
       """
       vector_index = VectorStoreIndex.from_vector_store(
         vector_store=vector_store, 
@@ -139,11 +141,24 @@ class Model():
       query_engine = vector_index.as_query_engine(
         llm=self.llm_model,
         embed_model=self.embed_model,
-        similarity_top_k=self._top_k,
+        similarity_top_k=top_k,
         llm_kwargs={"max_tokens": self._max_token},
         response_mode="compact",
         return_source_nodes=True
       )
+      return query_engine
+    
+
+  async def load_data(self, 
+                      vector_store, 
+                      storage_context, 
+                      metadata_name, 
+                      metadata_description, 
+                      tool_user_id: str):
+      """
+      Load data from pinecone based on the vector store and storage_context
+      """
+      query_engine = self.construct_retrieval_system(vector_store, storage_context, self._top_k)
       self._setup_tool(query_engine, metadata_name, metadata_description, tool_user_id)
 
 

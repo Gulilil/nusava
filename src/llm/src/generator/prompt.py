@@ -182,6 +182,40 @@ class PromptGenerator():
     )
 
 
+  # ######## CHOOSE COMMUNITY ########
+
+  # def generate_prompt_choose_community(self, persona_str: str) -> str:
+  #   """
+  #   Generate a prompt for choosing community for internal trigger action
+  #   """
+  #   context_str =  f"You are about to do an action such as like, follow, or comment in Instagram. You are expected to choose which community you want to get into. \n" \
+  #                   "Later you are provided with tools using RAG to get some data about community. " \
+  #                   "You might want to use the context from this tools as your references. " \
+  #                   "This community data has been processed by Data Mining module so you can assume that the data is valid." \
+  #                   "The community data will consist of: the community id, the community label, and the community description. "\
+  #                   "Focus on community `Label` and `Description` because this is the critical aspect you need to examine. \n" \
+  #                   "You also have a certain persona that is set by the stakeholders. Here is the details of your persona: " \
+  #                   "\n" \
+  #                   f"{persona_str}" \
+  #                   "\n" \
+
+  #   # Setup subprompts
+  #   persona_subprompt = self.generate_subprompt_persona()
+  #   context_subprompt = self.generate_subprompt_context(context_str)
+  #   additional_subprompt =  "You have to choose which community is the most suitable with your persona. " \
+  #                           "Your end goal is to decide the community that you want to be into so it will increase the awareness of Instagram users about you." \
+  #                           "Return only the id of the community. Do not add any words, strings, or characters aside from community id. \n" 
+  #   previous_iteration_notes_subprompt = self.generate_subprompt_previous_iteration_notes([])
+    
+  #   # Setup query string
+  #   query_str = "Choose the most suitable community for your persona"
+
+  #   return self._prompt_template.format(persona_subprompt=persona_subprompt,
+  #                                     context_subprompt=context_subprompt,
+  #                                     additional_subprompt=additional_subprompt,
+  #                                     previous_iteration_notes_subprompt=previous_iteration_notes_subprompt,
+  #                                     query_str=query_str)
+
 
   ######## ACTION PROMPT ########
 
@@ -276,6 +310,7 @@ class PromptGenerator():
   
 
   def generate_prompt_choose_schedule_post(self, caption_message: str) -> str:
+    
     """
     Generate a prompt for choosing schedule for uploading a post
     """
@@ -283,7 +318,7 @@ class PromptGenerator():
                     "Later you are provided with tools using RAG to get some data about posts. " \
                     "You might want to use the context from this tools as your references. " \
                     "The post data will consist of: the post caption, the post created time, and the comments amount. "\
-                    "Focus on `Post Created Time` because this is the critical aspect one you need to examine. " \
+                    "Focus on `Post Created Time` because this is the critical aspect you need to examine. " \
                     "If possible, choose post data you think similar or relevan to the post caption or has more comments amount. " \
                     "\n\n" \
                     "You don't need to be so strict with searching similar post caption." \
@@ -320,3 +355,5 @@ class PromptGenerator():
                                       additional_subprompt=additional_subprompt,
                                       previous_iteration_notes_subprompt=previous_iteration_notes_subprompt,
                                       query_str=query_str)
+  
+
