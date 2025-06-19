@@ -270,7 +270,7 @@ class PromptGenerator():
     previous_iteration_notes_subprompt = self.generate_subprompt_previous_iteration_notes([])
     
     # Setup query string
-    query_str = "Make a comment for Instagram post based on the context"
+    query_str = "Make a comment for Instagram post based on the context. Do not use any hashtags in making the comment."
 
     return self._prompt_template.format(persona_subprompt=persona_subprompt,
                                   context_subprompt=context_subprompt,
