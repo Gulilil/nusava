@@ -354,9 +354,9 @@ class Agent():
       # TODO Scheduler
       # Write here
 
-      # # TODO To be removed
-      # # Do immediate post
-      # self.output_gateway_component.request_post(img_url, caption_message, schedule_time, reason)
+      # TODO To be removed
+      # Do immediate post
+      self.output_gateway_component.request_post(img_url, caption_message, schedule_time, reason)
 
       # Refresh tools
       self.model_component.refresh_tools("self")
