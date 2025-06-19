@@ -350,19 +350,17 @@ class Agent():
       json_answer = json.loads(answer)
       schedule_time = json_answer['schedule_time']
       reason = json_answer['reason']
-      print(f"[CHOSEN SCHEDULE TIME] {schedule_time} with reason: {reason}")
 
       # TODO Scheduler
       # Write here
-      
 
-      # TODO To be removed
-      # Do immediate post
-      self.output_gateway_component.request_post(img_url, caption_message)
-
+      # # TODO To be removed
+      # # Do immediate post
+      # self.output_gateway_component.request_post(img_url, caption_message, schedule_time, reason)
 
       # Refresh tools
       self.model_component.refresh_tools("self")
+      return schedule_time, reason
   
     except Exception as e:
       print(f"[ERROR ACTION SCHEDULE POST] Error occured in executing `schedule post`: {e}")

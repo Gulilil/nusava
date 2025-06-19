@@ -139,9 +139,9 @@ class InputGateway():
         img_url = data['image_url']
         caption_message= data['caption_message']
         # Process and schedule the post
-        await self._agent_component.action_schedule_post(img_url, caption_message)
+        schedule_time, reason = await self._agent_component.action_schedule_post(img_url, caption_message)
 
-        return jsonify({"response": True}), 200
+        return jsonify({"scheduled_time": schedule_time, "reason": reason}), 200
       except Exception as error: 
         return jsonify({"error": str(error)}), 400
 
