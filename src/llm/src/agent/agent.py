@@ -350,9 +350,16 @@ class Agent():
       json_answer = json.loads(answer)
       schedule_time = json_answer['schedule_time']
       reason = json_answer['reason']
+      print(f"[CHOSEN SCHEDULE TIME] {schedule_time} with reason: {reason}")
 
-      # TODO
-      print(schedule_time, reason)
+      # TODO Scheduler
+      # Write here
+      
+
+      # TODO To be removed
+      # Do immediate post
+      self.output_gateway_component.request_post(img_url, caption_message)
+
 
       # Refresh tools
       self.model_component.refresh_tools("self")
@@ -392,7 +399,7 @@ class Agent():
         return
       
       # Give time delay
-      sleep_time = random.randint(60, 90)
+      sleep_time = random.randint(60, 180)
       print(f"[ACTION TIME SLEEP] Delay for {sleep_time} seconds")
       time.sleep(sleep_time)
 
