@@ -23,6 +23,7 @@ llama_index==0.12.40
 llama-index-vector-stores-postgres==0.12.40
 llama-index-vector-stores-pinecone==0.12.40
 Flask==3.1.1
+flask-cors==6.0.1
 hmmlearn==0.3.3
 
 # Mongodb

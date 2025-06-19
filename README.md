@@ -32,6 +32,6 @@ python src/backend/manage.py runserver
 # Run LLM server
 python src/llm/src/main.py
 
-# Trigger LLM internal_action
-python src/llm/src/internal_action.py <user_id>
+# Trigger LLM action
+python src/llm/src/action.py <user_id>
 ```
