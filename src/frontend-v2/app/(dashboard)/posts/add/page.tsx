@@ -108,24 +108,24 @@ export default function SchedulePostPage() {
 
     setIsScheduling(true)
     try {
-      // const requestBody = {
-      //   image_url: uploadedImageUrl,
-      //   caption_message: generatedCaption,
-      // }
       const requestBody = {
-        image_path: uploadedImageUrl,
-        caption: generatedCaption,
+        image_url: uploadedImageUrl,
+        caption_message: generatedCaption,
       }
-      const token = localStorage.getItem("jwtToken");
-      if (!token) {
-        return
-      }
+      // const requestBody = {
+      //   image_path: uploadedImageUrl,
+      //   caption: generatedCaption,
+      // }
+      // const token = localStorage.getItem("jwtToken");
+      // if (!token) {
+      //   return
+      // }
 
-      const response = await fetch(`${API}/post/`, {
+      const response = await fetch(`${LLM_API}/post`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: token ? `Bearer ${token}` : ""
+          // Authorization: token ? `Bearer ${token}` : ""
         },
         body: JSON.stringify(requestBody),
       })

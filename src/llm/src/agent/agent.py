@@ -356,7 +356,7 @@ class Agent():
 
       # TODO To be removed
       # Do immediate post
-      self.output_gateway_component.request_post(img_url, caption_message, schedule_time, reason)
+      self.output_gateway_component.request_post(img_url, caption_message)
 
       # Refresh tools
       self.model_component.refresh_tools("self")
