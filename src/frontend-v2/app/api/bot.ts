@@ -61,11 +61,3 @@ export const postPhoto = async (image_path: string, caption: string) => {
     { headers: { Authorization: token ? `Bearer ${token}` : "" } }
   );
 };
-
-export const sharePost = async (media_url: string, target_usernames: string[]) => {
-  return axios.post(
-    `${API}/share/`,
-    { media_url, target_usernames },
-    { headers: { Authorization: token ? `Bearer ${token}` : "" } }
-  );
-};

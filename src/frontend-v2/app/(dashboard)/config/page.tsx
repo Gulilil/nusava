@@ -7,10 +7,13 @@ import { Button } from "@/components/ui/button"
 import { Slider } from "@/components/ui/slider"
 import { toast } from "sonner"
 import { ConfigData } from "@/types/types"
+import { useRouter } from "next/navigation"
+import Cookies from "js-cookie"
 
 const API = process.env.NEXT_PUBLIC_API_BASE_URL;
 
 export default function ConfigPage() {
+  const router = useRouter()
   const [temperature, setTemperature] = useState<number>(0.3)
   const [topK, setTopK] = useState<number>(10)
   const [maxToken, setMaxToken] = useState<number>(4096)
@@ -27,6 +30,7 @@ export default function ConfigPage() {
       const token = localStorage.getItem('jwtToken')
       if (!token) {
         toast.error("Please login first")
+        router.push('/login')
         return
       }
 
@@ -37,6 +41,15 @@ export default function ConfigPage() {
         },
       })
       console.log('Response status:', response)
+
+      if (response.status === 401) {
+        toast.error("Unauthorized access. Please login again.")
+        localStorage.removeItem('jwtToken')
+        localStorage.removeItem("jwtRefresh")
+        Cookies.remove("jwtToken")
+        router.push('/login')
+        return
+      }
 
       if (response.ok) {
         const result = await response.json()

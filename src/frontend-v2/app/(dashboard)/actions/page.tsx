@@ -13,8 +13,7 @@ import { toast } from 'sonner';
 
 import { Heart, UserPlus, MessageCircle, ImageIcon, Share2, Search, Send } from "lucide-react";
 
-import { likePost, followUser, commentPost, postPhoto, sharePost } from "@/app/api/bot";
-import Image from "next/image";
+import { likePost, followUser, commentPost, postPhoto } from "@/app/api/bot";
 
 export default function ActionsPage() {
   // Like
@@ -30,15 +29,10 @@ export default function ActionsPage() {
   const [commentText, setCommentText] = useState("");
   const [commentLoading, setCommentLoading] = useState(false);
 
-  // Post
-  const [postImage, setPostImage] = useState<File | null>(null);
-  const [postCaption, setPostCaption] = useState("");const [postLoading, setPostLoading] = useState(false);
-  const [previewUrl, setPreviewUrl] = useState("");
-
-  // Share
-  const [shareUrl, setShareUrl] = useState("");
-  const [shareTo, setShareTo] = useState("");
-  const [shareLoading, setShareLoading] = useState(false);
+  // // Post
+  // const [postImage, setPostImage] = useState<File | null>(null);
+  // const [postCaption, setPostCaption] = useState("");const [postLoading, setPostLoading] = useState(false);
+  // const [previewUrl, setPreviewUrl] = useState("");
 
   // --- Handlers ---
   const handleLike = async () => {
@@ -74,50 +68,17 @@ export default function ActionsPage() {
     setCommentLoading(false);
   };
 
-  const handlePost = async () => {
-    if (!postImage) return toast.error("Please upload an image!");
-    setPostLoading(true); 
-    try {
-      const res = await postPhoto(previewUrl, postCaption);
-      toast.success(res.data.message || "Post created!");
-    } catch (e: any) {
-      toast.success(e.response?.data?.error || "Error occurred.");
-    }
-    setPostLoading(false);
-  };
-
-  const handleShare = async () => {
-    setShareLoading(true);
-    const usernames = shareTo.split(",").map((u) => u.trim().replace(/^@/, "")).filter(Boolean);
-    try {
-      const res = await sharePost(shareUrl, usernames);
-      toast.success(res.data.message || "Post shared!");
-    } catch (e: any) {
-      toast.error(e.response?.data?.error || "Error occurred.");
-    }
-    setShareLoading(false);
-  };
-
-  // --- File preview for Post tab ---
-  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files[0]) {
-      setPostImage(e.target.files[0]);
-      setPreviewUrl(URL.createObjectURL(e.target.files[0]));
-    }
-  };
-
   // --- UI ---
   return (
     <div className="flex flex-col min-h-screen">
       <Navbar title="Manual Actions" />
       <main className="flex-1 p-6 space-y-6">
         <Tabs defaultValue="like" className="space-y-4">
-          <TabsList className="grid w-full grid-cols-5">
+          <TabsList className="grid w-full grid-cols-3">
             <TabsTrigger value="like"><Heart className="h-4 w-4" /> Like</TabsTrigger>
             <TabsTrigger value="follow"><UserPlus className="h-4 w-4" /> Follow</TabsTrigger>
             <TabsTrigger value="comment"><MessageCircle className="h-4 w-4" /> Comment</TabsTrigger>
-            <TabsTrigger value="post"><ImageIcon className="h-4 w-4" /> Post</TabsTrigger>
-            <TabsTrigger value="share"><Share2 className="h-4 w-4" /> Share</TabsTrigger>
+            {/* <TabsTrigger value="post"><ImageIcon className="h-4 w-4" /> Post</TabsTrigger> */}
           </TabsList>
 
           {/* Like */}
@@ -183,7 +144,7 @@ export default function ActionsPage() {
           </TabsContent>
 
           {/* Post */}
-          <TabsContent value="post">
+          {/* <TabsContent value="post">
             <Card>
               <CardHeader>
                 <CardTitle>Create a Post</CardTitle>
@@ -203,39 +164,17 @@ export default function ActionsPage() {
                 </Button>
               </CardFooter>
             </Card>
-          </TabsContent>
+          </TabsContent> */}
 
-          {/* Share */}
-          <TabsContent value="share">
-            <Card>
-              <CardHeader>
-                <CardTitle>Share a Post</CardTitle>
-                <CardDescription>Manually share an Instagram post</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <Label htmlFor="share-url">Media URL to Share</Label>
-                <Input id="share-url" value={shareUrl} onChange={e => setShareUrl(e.target.value)} placeholder="https://www.instagram.com/p/..." />
-                <Label htmlFor="share-to" className="mt-2">Accounts to Share With (comma separated)</Label>
-                <Input id="share-to" value={shareTo} onChange={e => setShareTo(e.target.value)} placeholder="@user1, @user2" />
-              </CardContent>
-              <CardFooter>
-                <Button className="ml-auto" onClick={handleShare} disabled={shareLoading || !shareUrl || !shareTo}>
-                  <Share2 className="mr-2 h-4 w-4" />
-                  {shareLoading ? "Sharing..." : "Share Post"}
-                </Button>
-              </CardFooter>
-            </Card>
-          </TabsContent>
         </Tabs>
          {/* Direct Messages Section */}
-        <Card className="mt-6">
+        {/* <Card className="mt-6">
           <CardHeader>
             <CardTitle>Direct Messages</CardTitle>
             <CardDescription>Send and read direct messages</CardDescription>
           </CardHeader>
           <CardContent>
             <div className="grid grid-cols-3 gap-4">
-              {/* Message List */}
               <div className="col-span-1 border rounded-lg">
                 <div className="p-3 border-b">
                   <div className="relative">
@@ -274,7 +213,6 @@ export default function ActionsPage() {
                 </div>
               </div>
 
-              {/* Message Content */}
               <div className="col-span-2 border rounded-lg flex flex-col">
                 <div className="p-3 border-b">
                   <div className="flex items-center gap-3">
@@ -317,7 +255,7 @@ export default function ActionsPage() {
               </div>
             </div>
           </CardContent>
-        </Card>
+        </Card> */}
       </main>
     </div>
   );

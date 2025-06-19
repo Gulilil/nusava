@@ -7,33 +7,24 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { Label } from "@/components/ui/label"
 import { toast } from "sonner"
 import { Upload } from "lucide-react"
 import Image from "next/image"
 
+const LLM_API = process.env.NEXT_PUBLIC_LLM_API_BASE_URL
+const API = process.env.NEXT_PUBLIC_API_BASE_URL
+
 export default function SchedulePostPage() {
   const [imagePreview, setImagePreview] = useState<string | null>(null)
   const [isUploading, setIsUploading] = useState(false)
-  const [textType, setTextType] = useState<"keywords" | "caption">("keywords")
-  const [text, setText] = useState<string>("")
+  const [uploadedImageUrl, setUploadedImageUrl] = useState<string | null>(null)
+  const [keywords, setKeywords] = useState<string>("")
+  const [imageDescription, setImageDescription] = useState<string>("")
+  const [additionalContext, setAdditionalContext] = useState<string>("")
   const [generatedCaption, setGeneratedCaption] = useState<string>("")
   const [isGenerating, setIsGenerating] = useState(false)
-
-  const caption_url = "http://localhost:7000/caption"
-      // Field format for caption JSON body: 
-      // {
-      //   image_description: str, 
-      //   caption_keywords : list[str],
-      //   additional_context: str (optional)
-      // }
-  const schedule_post_url = "http://localhost:7000/post"
-      //  Field format for post JSON body: 
-      // {
-      //   image_url: str, 
-      //   caption_message: str, 
-      // }
+  const [isScheduling, setIsScheduling] = useState(false)
 
   const handleImageChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
@@ -59,9 +50,10 @@ export default function SchedulePostPage() {
       }
 
       const data = await response.json()
-      console.log(data.url)
-      console.log(data.url && "/uploads/test.png")
+      console.log('Local path:', data.localPath)
+      
       setImagePreview(data.url)
+      setUploadedImageUrl(data.localPath)
       toast.success("Image uploaded successfully")
     } catch (error) {
       console.error('Upload error:', error)
@@ -74,24 +66,26 @@ export default function SchedulePostPage() {
   const handleGenerateCaption = async () => {
     setIsGenerating(true)
     try {
-      // TODO: Replace with your actual backend endpoint for caption generation
-      // const response = await fetch('/api/generate-caption', {
-      //   method: 'POST',
-      //   headers: {
-      //     'Content-Type': 'application/json',
-      //   },
-      //   body: JSON.stringify({
-      //     image_url: uploadedImageUrl,
-      //     text_type: textType,
-      //     text: text
-      //   }),
-      // })
-      // const data = await response.json()
-      // setGeneratedCaption(data.caption)
+      const requestBody = {
+        image_description: imageDescription,
+        caption_keywords: keywords.split(',').map(keyword => keyword.trim()).filter(keyword => keyword),
+        additional_context: additionalContext
+      }
 
-      // For now, simulate caption generation
-      await new Promise(resolve => setTimeout(resolve, 2000)) // Simulate API call
-      setGeneratedCaption(`Generated caption based on ${textType}: ${text}`)
+      const response = await fetch(`${LLM_API}/caption`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(requestBody),
+      })
+
+      if (!response.ok) {
+        throw new Error(`Caption generation failed: ${response.statusText}`)
+      }
+
+      const data = await response.json()
+      setGeneratedCaption(data.response)
       toast.success("Caption generated successfully")
     } catch (error) {
       console.error('Generation error:', error)
@@ -102,7 +96,7 @@ export default function SchedulePostPage() {
   }
 
   const handleSchedulePost = async () => {
-    if (!imagePreview) {
+    if (!uploadedImageUrl) {
       toast.error("Please upload an image")
       return
     }
@@ -112,30 +106,56 @@ export default function SchedulePostPage() {
       return
     }
 
+    setIsScheduling(true)
     try {
-      // TODO: Send to your Django backend for scheduling
-      // const response = await fetch('/api/schedule-post', {
-      //   method: 'POST',
-      //   headers: {
-      //     'Content-Type': 'application/json',
-      //   },
-      //   body: JSON.stringify({
-      //     image_url: uploadedImageUrl,
-      //     caption: generatedCaption,
-      //     text_type: textType,
-      //     original_text: text
-      //   }),
-      // })
+      // const requestBody = {
+      //   image_url: uploadedImageUrl,
+      //   caption_message: generatedCaption,
+      // }
+      const requestBody = {
+        image_path: uploadedImageUrl,
+        caption: generatedCaption,
+      }
+      const token = localStorage.getItem("jwtToken");
+      if (!token) {
+        return
+      }
 
+      const response = await fetch(`${API}/post/`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: token ? `Bearer ${token}` : ""
+        },
+        body: JSON.stringify(requestBody),
+      })
+
+      if (!response.ok) {
+        throw new Error(`Post scheduling failed: ${response.statusText}`)
+      }
+
+      const data = await response.json()
       toast.success("Post scheduled successfully")
+      
+      // Reset form after successful scheduling
+      setImagePreview(null)
+      setUploadedImageUrl(null)
+      setKeywords("")
+      setImageDescription("")
+      setAdditionalContext("")
+      setGeneratedCaption("")
+      
     } catch (error) {
       console.error('Schedule error:', error)
       toast.error("Failed to schedule post")
+    } finally {
+      setIsScheduling(false)
     }
   }
 
   const handleRemoveImage = () => {
     setImagePreview(null)
+    setUploadedImageUrl(null)
     setGeneratedCaption("")
   }
 
@@ -212,43 +232,40 @@ export default function SchedulePostPage() {
           </CardHeader>
           <CardContent>
             <div className="grid gap-6">
-              <RadioGroup
-                defaultValue="keywords"
-                className="flex gap-4"
-                onValueChange={(value) => setTextType(value as "keywords" | "caption")}
-              >
-                <div className="flex items-center space-x-2">
-                  <RadioGroupItem value="keywords" id="keywords" />
-                  <Label htmlFor="keywords">Keywords</Label>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <RadioGroupItem value="caption" id="caption" />
-                  <Label htmlFor="caption">Image Description</Label>
-                </div>
-              </RadioGroup>
+              <div className="space-y-2">
+                <Label htmlFor="keywords-input">Keywords <span className="text-red-500">*</span></Label>
+                <Input
+                  id="keywords-input"
+                  placeholder="travel, beach, sunset, vacation"
+                  value={keywords}
+                  onChange={(e) => setKeywords(e.target.value)}
+                />
+                <p className="text-sm text-muted-foreground">Enter keywords separated by commas</p>
+              </div>
 
-              {textType === "keywords" ? (
-                <div className="space-y-2">
-                  <Label htmlFor="keywords-input">Enter Keywords (comma separated)</Label>
-                  <Input
-                    id="keywords-input"
-                    placeholder="travel, beach, sunset, vacation"
-                    value={text}
-                    onChange={(e) => setText(e.target.value)}
-                  />
-                </div>
-              ) : (
-                <div className="space-y-2">
-                  <Label htmlFor="caption-input">Enter Image Description</Label>
-                  <Textarea
-                    id="caption-input"
-                    placeholder="Write your image description here..."
-                    className="min-h-[150px]"
-                    value={text}
-                    onChange={(e) => setText(e.target.value)}
-                  />
-                </div>
-              )}
+              <div className="space-y-2">
+                <Label htmlFor="image-description-input">Image Description <span className="text-red-500">*</span></Label>
+                <Textarea
+                  id="image-description-input"
+                  placeholder="Describe what's in the image..."
+                  className="min-h-[120px]"
+                  value={imageDescription}
+                  onChange={(e) => setImageDescription(e.target.value)}
+                />
+                <p className="text-sm text-muted-foreground">Provide a detailed description of the image content</p>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="additional-context-input">Additional Context</Label>
+                <Textarea
+                  id="additional-context-input"
+                  placeholder="Any additional context or information..."
+                  className="min-h-[80px]"
+                  value={additionalContext}
+                  onChange={(e) => setAdditionalContext(e.target.value)}
+                />
+                <p className="text-sm text-muted-foreground">Optional: Add any extra context to help generate better captions</p>
+              </div>
 
               {generatedCaption && (
                 <div className="space-y-2">
@@ -260,6 +277,7 @@ export default function SchedulePostPage() {
                     className="min-h-[100px]"
                     placeholder="Generated caption will appear here..."
                   />
+                  <p className="text-sm text-muted-foreground">You can edit the generated caption before scheduling</p>
                 </div>
               )}
             </div>
@@ -268,7 +286,7 @@ export default function SchedulePostPage() {
             <Button 
               onClick={handleGenerateCaption} 
               className="ml-auto"
-              disabled={isGenerating || isUploading}
+              disabled={isGenerating || isUploading || !keywords.trim() || !imageDescription.trim()}
             >
               {isGenerating ? "Generating..." : "Generate Caption"}
             </Button>
@@ -280,9 +298,9 @@ export default function SchedulePostPage() {
           <Button 
             onClick={handleSchedulePost} 
             size="lg"
-            disabled={!imagePreview || !generatedCaption.trim()}
+            disabled={!uploadedImageUrl || !generatedCaption.trim() || isScheduling}
           >
-            Schedule Post
+            {isScheduling ? "Scheduling..." : "Schedule Post"}
           </Button>
         </div>
       </div>

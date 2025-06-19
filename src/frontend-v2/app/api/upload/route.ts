@@ -13,21 +13,25 @@ export const POST = async (req: Request) => {
 
     const buffer = Buffer.from(await file.arrayBuffer());
     const filename = Date.now() + "_" + file.name.replaceAll(" ", "_");
+    const projectRoot = path.join(process.cwd(), '..', '..')
+    const sharedUploadsDir = path.join(projectRoot, 'src/shared-uploads')
     
-    // Ensure uploads directory exists
-    const uploadsDir = path.join(process.cwd(), "public/uploads");
-    try {
-      await mkdir(uploadsDir, { recursive: true });
-    } catch (error) {
-      // Directory might already exist
-    }
+    // Ensure directory exists
+    await mkdir(sharedUploadsDir, { recursive: true })
+    // Save to shared directory
+    const sharedPath = path.join(sharedUploadsDir, filename)
+    await writeFile(sharedPath, buffer)
 
-    const filepath = path.join(uploadsDir, filename);
-    await writeFile(filepath, buffer);
-    
+    // Also save to public for frontend preview
+    const publicDir = path.join(process.cwd(), 'public', 'uploads')
+    await mkdir(publicDir, { recursive: true })
+    const publicPath = path.join(publicDir, filename)
+    await writeFile(publicPath, buffer)
+
     return NextResponse.json({ 
       message: "Success", 
       filename: filename,
+      localPath: sharedPath,
       url: `/uploads/${filename}`
     }, { status: 201 });
   } catch (error) {
