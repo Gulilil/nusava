@@ -1,6 +1,8 @@
 from flask import Flask, request, jsonify
 import asyncio
 import os
+from flask_cors import CORS
+
 from dotenv import load_dotenv
 load_dotenv()
 
@@ -17,6 +19,7 @@ class InputGateway():
     Instantiate Flask as the framework for the API and the gateway
     """
     self.app = Flask(__name__)
+    CORS(self.app, origins=[os.getenv("FRONTEND_URL")])
     self._agent_component = agent_component
     self.host = host
     self.port = port
