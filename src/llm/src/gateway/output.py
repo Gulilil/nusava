@@ -102,7 +102,26 @@ class OutputGateway():
     """
     Hit comment api in automation module
     """
-    path = "/api/post/"
-    url = f"{self.base_url}{path}"
     # TODO 
-    return
+
+    try:
+      path = "/api/post/"
+      url = f"{self.base_url}{path}"
+      data = {
+          "image_path": img_url,
+          "caption": caption_message,
+          "user_id": self._agent_component.user_id
+      }
+
+      # Check response
+      response = requests.post(url, json=data)
+      if (response.status_code == 200):
+        return True
+      else:
+        response_json = response.json()
+        print(f"[ERROR REQUEST POST] Status code: {response.status_code}. Error : {response_json['error']}")
+        return False
+
+    except Exception as e:
+      print(f"[ERROR REQUEST POST] Error occured in requesting action `post`: {e}")
+      return False

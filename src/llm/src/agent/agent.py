@@ -351,11 +351,16 @@ class Agent():
       schedule_time = json_answer['schedule_time']
       reason = json_answer['reason']
 
-      # TODO
-      print(schedule_time, reason)
+      # TODO Scheduler
+      # Write here
+
+      # # TODO To be removed
+      # # Do immediate post
+      # self.output_gateway_component.request_post(img_url, caption_message, schedule_time, reason)
 
       # Refresh tools
       self.model_component.refresh_tools("self")
+      return schedule_time, reason
   
     except Exception as e:
       print(f"[ERROR ACTION SCHEDULE POST] Error occured in executing `schedule post`: {e}")
@@ -392,7 +397,7 @@ class Agent():
         return
       
       # Give time delay
-      sleep_time = random.randint(60, 90)
+      sleep_time = random.randint(60, 180)
       print(f"[ACTION TIME SLEEP] Delay for {sleep_time} seconds")
       time.sleep(sleep_time)
 
