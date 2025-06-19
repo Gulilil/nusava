@@ -63,7 +63,7 @@ class ActionGenerator:
           # Build and train the HMM
           model = CategoricalHMM(n_components=len(self.hidden_states), n_iter=100, random_state=42)
           # Define starting probability
-          model.startprob_ = np.array([0.45, 0.45, 0.1])
+          model.startprob_ = np.array([0.40, 0.40, 0.2])
 
           # Increase idle probability with iterations
           idle_addition_prob = (0.1 * iteration)  
@@ -77,9 +77,9 @@ class ActionGenerator:
           # Define emission probability
           model.emissionprob_ = np.array([
                 # new_com, new_fol, liked, morning, afternoon, night
-                [0.2,     0.3,     0.2,    0.1,     0.1,       0.1],   # growth
-                [0.3,     0.2,     0.2,    0.1,     0.1,       0.1],   # engagement
-                [0.1,     0.1,     0.2,    0.2,     0.2,       0.2],    # idle
+                [0.2,     0.3,     0.2,    0.12,     0.1,        0.08],   # growth
+                [0.3,     0.2,     0.2,    0.08,     0.12,       0.1],   # engagement
+                [0.1,     0.1,     0.2,    0.2,      0.2,        0.2],    # idle
             ])
 
 
@@ -89,8 +89,8 @@ class ActionGenerator:
 
           # Define simplified action policies
           state_action_map = {
-              'growth': ['follow', 'follow',  'like'],
-              'engagement': ['comment', 'comment', 'like'],
+              'growth': ['follow',  'like'],
+              'engagement': ['comment', 'like'],
               'idle': ['like', None] 
           }
           possible_actions = state_action_map[current_state]

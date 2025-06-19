@@ -374,17 +374,20 @@ class Agent():
     observations = self.action_generator_component.observe_statistics(statistics)
     print(f"[ACTION OBSERVATION] Acquired observations: {observations}")
 
+    # Get the community
+    communities = await self.choose_community()
+
     # Max 5 times of action decision
     for itr in range(5):
       action, state = self.action_generator_component.decide_action(observations, itr)
       print(f"[ACTION DECISION] {itr+1}.  action \"{action}\" in state \"{state}\"")
 
       if (action == "like"):
-        self.action_like()
+        await self.action_like(communities)
       elif (action == "follow"):
-        self.action_follow()
+        await self.action_follow(communities)
       elif (action == "comment"):
-        await self.action_comment()
+        await self.action_comment(communities)
       else:
         return
       
@@ -416,8 +419,8 @@ class Agent():
           similarity_score = round(node.score, 4)
           print(f"[CHOOSE COMMUNITY {i+1}] Score: {similarity_score}")
           community_str = node.text
-          community_id = community_str.split("\n")[0].split(":")[1]
-          community_label = community_str.split("\n")[1].split(":")[1]
+          community_id = int(community_str.split("\n")[0].split(":")[1].strip())
+          community_label = community_str.split("\n")[1].split(":")[1].strip()
           print(f"[CHOOSE COMMUNITY {i+1}] ID | Label: {community_id} | {community_label}")
           if(similarity_score > threshold):
             community_id_list.append(community_id)
@@ -425,20 +428,19 @@ class Agent():
       # Get from mongodb
       get_filter_using_id = {"community_id": {"$in": community_id_list}}
       community_data = self.mongo_connector_component.get_data("communities", get_filter_using_id)
-      print(f"[CHOOSE COMMUNITY] Fetched {len(community_id_list)} similiar communities")
+      print(f"[CHOOSE COMMUNITY] Fetched {len(community_data)} similiar communities")
       return community_data
 
     except Exception as e:
       print(f"[ERROR CHOOSE COMMUNITY] Error occured in executing `choose community`: {e}")
 
 
-  def action_follow(self) -> None:
+  async def action_follow(self, communities: list[dict]) -> None:
     """
     Operate the action follow
     """
     try:
       mongo_collection_name = "communities"
-      communities = self.choose_community()
       
       found = False
       chosen_influencer = None
@@ -457,9 +459,8 @@ class Agent():
         if (found):
           break
       # Handle if not found
-      if (not found and chosen_influencer is None):
-        print(f"[NO AVAILABLE DATA] All similar data has been marked")
-        raise Exception("All fetched data has been marked")
+      if (not found):
+        raise Exception("All fetched similar data has been marked")
 
       # Get Influencer
       influencer_id = chosen_influencer['id']
@@ -480,13 +481,12 @@ class Agent():
       print(f"[ERROR ACTION FOLLOW] Error occured in executing `follow`: {e}")
 
 
-  def action_like(self) -> None:
+  async def action_like(self, communities: list[dict]) -> None:
     """
     Operate the action like
     """
     try:
       mongo_collection_name = "communities"
-      communities = self.choose_community()
       
       found = False
       chosen_post = None
@@ -505,9 +505,8 @@ class Agent():
         if (found):
           break
       # Handle if not found
-      if (not found and chosen_post is None):
-        print(f"[NO AVAILABLE DATA] All similar data has been marked")
-        raise Exception("All fetched data has been marked")
+      if (not found):
+        raise Exception("All fetched similar data has been marked")
 
       # Get Influencer
       post_id = chosen_post['id']
@@ -527,13 +526,12 @@ class Agent():
       print(f"[ERROR ACTION LIKE] Error occured in executing `like`: {e}")
 
 
-  async def action_comment(self) -> None:
+  async def action_comment(self, communities: list[dict]) -> None:
     """
     Operate the action comment
     """
     try:
       mongo_collection_name = "communities"
-      communities = self.choose_community()
       
       found = False
       chosen_post = None
@@ -552,9 +550,8 @@ class Agent():
         if (found):
           break
       # Handle if not found
-      if (not found and chosen_post is None):
-        print(f"[NO AVAILABLE DATA] All similar data has been marked")
-        raise Exception("All fetched data has been marked")
+      if (not found):
+        raise Exception("All fetched similar data has been marked")
 
       # Get Influencer
       post_id = chosen_post['id']
