@@ -143,6 +143,9 @@ class InputGateway():
         caption_message= data['caption_message']
         # Process and schedule the post
         schedule_time, reason = await self._agent_component.action_schedule_post(img_url, caption_message)
+        # Handle if none
+        if (schedule_time is None or reason is None):
+          raise Exception("None scheduled time")
 
         return jsonify({"scheduled_time": schedule_time, "reason": reason}), 200
       except Exception as error: 

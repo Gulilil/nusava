@@ -364,6 +364,7 @@ class Agent():
   
     except Exception as e:
       print(f"[ERROR ACTION SCHEDULE POST] Error occured in executing `schedule post`: {e}")
+      return None, None
 
 
   #########################################
