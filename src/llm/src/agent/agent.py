@@ -398,7 +398,7 @@ class Agent():
         return
       
       # Give time delay
-      sleep_time = random.randint(60, 180)
+      sleep_time = random.randint(6, 18)
       print(f"[ACTION TIME SLEEP] Delay for {sleep_time} seconds")
       time.sleep(sleep_time)
 
@@ -457,12 +457,12 @@ class Agent():
         influencers = community['influencers']
         # Traverse the influencer
         for influencer in influencers:
-          if (not "marked_follow" in influencer):
+          if (not "mark_follow" in influencer):
             found = True
             chosen_influencer = influencer
             break
-          # Case marked_follow list already in post
-          elif (self.user_id not in influencer['marked_follow']):
+          # Case mark_follow list already in post
+          elif (self.user_id not in influencer['mark_follow'] and str(self.user_id) not in influencer['mark_follow']):
             found = True
             chosen_influencer = influencer
             break
@@ -510,12 +510,12 @@ class Agent():
         posts = community['posts']
         # Traverse the post
         for post in posts:
-          if (not "marked_like" in post):
+          if (not "mark_like" in post):
             found = True
             chosen_post = post
             break
-          # Case marked_like list already in post
-          elif (self.user_id not in post['marked_like']):
+          # Case mark_like list already in post
+          elif (self.user_id not in post['mark_like'] and str(self.user_id) not in post['mark_like']):
             found = True
             chosen_post = post
             break
@@ -562,12 +562,13 @@ class Agent():
         posts = community['posts']
         # Traverse the post
         for post in posts:
-          if ((not "marked_comment" in post)):
+          if (not "mark_comment" in post):
             found = True
             chosen_post = post
             break
           # Case marked_comment list already in post
-          elif (self.user_id not in post['marked_comment']):
+          elif (self.user_id not in post['mark_comment'] and str(self.user_id) not in post['mark_comment']):
+            print("yang ini")
             found = True
             chosen_post = post
             break
