@@ -394,13 +394,15 @@ class Agent():
       time.sleep(sleep_time)
 
   
-  async def choose_community(self) -> dict:
+  async def choose_community(self, 
+                             top_k: int = 20, 
+                             threshold: float = 0.5) -> list[dict]:
     """
     LLM decide which community it wants to got into for actions like, follow, and comment
     """
     try:
       # Load the data
-      query_engine = self._construct_retrieval_system("communities", 20)
+      query_engine = self._construct_retrieval_system("communities", top_k)
 
       # Prepare to generate prompt
       persona_str = self.persona_component.get_persona_str()
@@ -408,21 +410,23 @@ class Agent():
       prompt = f"Choose the most suitable community out of this persona: \n {persona_str}"
       
       # Retrieve data
+      community_id_list = []
       nodes = query_engine.retriever.retrieve(prompt)
-      community_str = ""
       for i, node in enumerate(nodes):
-          community_str += ""
-          print(f"Score: {node.score:.4f}")
-          print(f"Text: {node.text}")
+          similarity_score = round(node.score, 4)
+          print(f"[CHOOSE COMMUNITY {i+1}] Score: {similarity_score}")
+          community_str = node.text
+          community_id = community_str.split("\n")[0].split(":")[1]
+          community_label = community_str.split("\n")[1].split(":")[1]
+          print(f"[CHOOSE COMMUNITY {i+1}] ID | Label: {community_id} | {community_label}")
+          if(similarity_score > threshold):
+            community_id_list.append(community_id)
 
-      community_id = clean_quotation_string(community_id)
-      print(community_id)
-
-      # TODO
-      # Get to mongodb, return the list
-
-      # Refresh tools
-      self.model_component.refresh_tools("self")
+      # Get from mongodb
+      get_filter_using_id = {"community_id": {"$in": community_id_list}}
+      community_data = self.mongo_connector_component.get_data("communities", get_filter_using_id)
+      print(f"[CHOOSE COMMUNITY] Fetched {len(community_id_list)} similiar communities")
+      return community_data
 
     except Exception as e:
       print(f"[ERROR CHOOSE COMMUNITY] Error occured in executing `choose community`: {e}")
@@ -434,21 +438,13 @@ class Agent():
     """
     try:
       mongo_collection_name = "communities"
-      communities = self.mongo_connector_component.get_data(mongo_collection_name, {})
+      communities = self.choose_community()
       
       found = False
       chosen_influencer = None
-      visited_communities_id = []
       # Pick certain influencer
-      while (not found):
-        # Randomly pick community
-        community = random.choice(communities)
+      for community in communities:
         community_id = community['community_id']
-        while (community_id in visited_communities_id):
-          # If the community has been visited
-          community = random.choice(communities)
-          community_id = community['community_id']
-
         # Get influencer
         influencers = community['influencers']
         # Traverse the influencer
@@ -457,14 +453,13 @@ class Agent():
             found = True
             chosen_influencer = influencer
             break
-        
-        # For context if all the influencer is already been marked
-        if (not found):
-          # Append community_id to visited_communities_list
-          if (community_id not in visited_communities_id):
-            visited_communities_id.append(community_id)
-          if (len(visited_communities_id) == len(communities)):
-            print(f"[NO AVAILABLE DATA] All data has been marked")
+        # Get out of loop if it is found
+        if (found):
+          break
+      # Handle if not found
+      if (not found and chosen_influencer is None):
+        print(f"[NO AVAILABLE DATA] All similar data has been marked")
+        raise Exception("All fetched data has been marked")
 
       # Get Influencer
       influencer_id = chosen_influencer['id']
@@ -491,43 +486,28 @@ class Agent():
     """
     try:
       mongo_collection_name = "communities"
-      communities = self.mongo_connector_component.get_data(mongo_collection_name, {})
-
+      communities = self.choose_community()
+      
       found = False
       chosen_post = None
-      visited_communities_id = []
       # Pick certain post
-      while (not found):
-        # Randomly pick community
-        community = random.choice(communities)
+      for community in communities:
         community_id = community['community_id']
-        if (len(community['posts']) == 0 and community_id not in visited_communities_id):
-          visited_communities_id.append(community_id)
-        # Iterate until find the correct one
-        while (community_id in visited_communities_id):
-          # If the community has been visited
-          community = random.choice(communities)
-          community_id = community['community_id']
-          if (len(community['posts']) == 0 and community_id not in visited_communities_id):
-            visited_communities_id.append(community_id)
-
         # Get post
         posts = community['posts']
-        sorted_posts = sorted(posts, key=lambda p: len(p['comments']), reverse=True)
-        # Traverse the posts
-        for post in sorted_posts:
+        # Traverse the post
+        for post in posts:
           if ((not "marked_like" in post) or (self.user_id not in post['marked_like'])):
             found = True
             chosen_post = post
             break
-        
-        # For context if all the influencer is already been marked
-        if (not found):
-          # Append community_id to visited_communities_list
-          if (community_id not in visited_communities_id):
-            visited_communities_id.append(community_id)
-          if (len(visited_communities_id) == len(communities)):
-            print(f"[NO AVAILABLE DATA] All data has been marked")
+        # Get out of loop if it is found
+        if (found):
+          break
+      # Handle if not found
+      if (not found and chosen_post is None):
+        print(f"[NO AVAILABLE DATA] All similar data has been marked")
+        raise Exception("All fetched data has been marked")
 
       # Get Influencer
       post_id = chosen_post['id']
@@ -553,43 +533,28 @@ class Agent():
     """
     try:
       mongo_collection_name = "communities"
-      communities = self.mongo_connector_component.get_data(mongo_collection_name, {})
-
+      communities = self.choose_community()
+      
       found = False
       chosen_post = None
-      visited_communities_id = []
       # Pick certain post
-      while (not found):
-        # Randomly pick community
-        community = random.choice(communities)
+      for community in communities:
         community_id = community['community_id']
-        if (len(community['posts']) == 0 and community_id not in visited_communities_id):
-          visited_communities_id.append(community_id)
-        # Iterate until find the correct one
-        while (community_id in visited_communities_id):
-          # If the community has been visited
-          community = random.choice(communities)
-          community_id = community['community_id']
-          if (len(community['posts']) == 0 and community_id not in visited_communities_id):
-            visited_communities_id.append(community_id)
-
         # Get post
         posts = community['posts']
-        sorted_posts = sorted(posts, key=lambda p: len(p['comments']), reverse=True)
-        # Traverse the posts
-        for post in sorted_posts:
+        # Traverse the post
+        for post in posts:
           if ((not "marked_comment" in post) or (self.user_id not in post['marked_comment'])):
             found = True
             chosen_post = post
             break
-        
-        # For context if all the influencer is already been marked
-        if (not found):
-          # Append community_id to visited_communities_list
-          if (community_id not in visited_communities_id):
-            visited_communities_id.append(community_id)
-          if (len(visited_communities_id) == len(communities)):
-            print(f"[NO AVAILABLE DATA] All data has been marked")
+        # Get out of loop if it is found
+        if (found):
+          break
+      # Handle if not found
+      if (not found and chosen_post is None):
+        print(f"[NO AVAILABLE DATA] All similar data has been marked")
+        raise Exception("All fetched data has been marked")
 
       # Get Influencer
       post_id = chosen_post['id']

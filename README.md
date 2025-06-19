@@ -10,10 +10,11 @@ pip install -r requirements.txt
 ## For frontend
 ```bash
 # Setup
-npm src/frontend-v2/install
+cd src/frontend-v2
+npm install
 
 # Run Client
-npm src/frontend-v2/run dev
+npm run dev
 ```
 
 ## For backend

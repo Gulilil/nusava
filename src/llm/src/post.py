@@ -8,14 +8,6 @@ async def process(nusava: Agent) -> None:
   user_id = 1
   await nusava.set_user(user_id)
 
-  # # Run process data
-  nusava.process_data_hotel()
-  nusava.process_data_post()
-  nusava.process_data_association_rule()
-  nusava.process_data_tourist_attraction()
-  await nusava.process_labelling_communities()
-
-
 
 if __name__ == "__main__":
   """
