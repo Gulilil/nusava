@@ -21,6 +21,20 @@ export default function SchedulePostPage() {
   const [generatedCaption, setGeneratedCaption] = useState<string>("")
   const [isGenerating, setIsGenerating] = useState(false)
 
+  const caption_url = "http://localhost:7000/caption"
+      // Field format for caption JSON body: 
+      // {
+      //   image_description: str, 
+      //   caption_keywords : list[str],
+      //   additional_context: str (optional)
+      // }
+  const schedule_post_url = "http://localhost:7000/post"
+      //  Field format for post JSON body: 
+      // {
+      //   image_url: str, 
+      //   caption_message: str, 
+      // }
+
   const handleImageChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (file) {
