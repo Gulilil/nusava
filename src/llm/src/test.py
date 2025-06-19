@@ -13,7 +13,7 @@ async def test(nusava: Agent) -> None:
 
   # # Test action chat
   # # General
-  print(await nusava.action_reply_chat("Hi There!", "Gulilii"))
+  # print(await nusava.action_reply_chat("Hi There!", "Gulilii"))
   # # Hotels
   # print(await nusava.action_reply_chat("Give me general informations of Tanto hotel.", "Gulilii"))
   # print(await nusava.action_reply_chat("Give me your 5 recommended Hotels in Nusa Tenggara. Please list it down along the name of the hotels", "Gulilii"))
@@ -30,7 +30,7 @@ async def test(nusava: Agent) -> None:
 
   # # Test action post
   # caption_message = await nusava.action_generate_caption("Image of Kuta beach in Bali when sunset", ["beach", "holiday", "beautiful", "nature", "pretty", "sunkissed"], "Make it short and simple. Do not use hashtags.")
-  # await nusava.action_schedule_post("", caption_message)
+  # await nusava.action_schedule_post("https://www.balimagictour.com/wp-content/uploads/kuta-beach.jpg", caption_message)
   # caption_message = await nusava.action_generate_caption("Images of destination places in Singapore consists of Universal Studio, Merlion, and Orchard Road", ["holiday", "fun", "friends", "urban travel", "city"])
   # await nusava.action_schedule_post("", caption_message)
   # caption_message = await nusava.action_generate_caption("Image of the Eiffel Tower during golden hour", ["Paris", "Eiffel", "romantic", "city", "travel", "light"], "Simple and charming. Avoid clichés.")
