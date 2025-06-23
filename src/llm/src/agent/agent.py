@@ -13,7 +13,7 @@ from gateway.input import InputGateway
 from gateway.output import OutputGateway
 from generator.prompt import PromptGenerator
 from generator.action import ActionGenerator
-from utils.function import hotel_data_to_string_list, attraction_data_to_string_list, text_to_document, parse_documents, clean_quotation_string
+from utils.function import hotel_data_to_string_list, attraction_data_to_string_list, text_to_document, parse_documents, clean_quotation_string, sanitize_text_to_list
 
 
 class Agent():
@@ -235,8 +235,8 @@ class Agent():
           previous_iteration_notes=previous_iteration_notes)  
         # Answer the query
         # Skip if the answer is None
-        answer, contexts = await self.model_component.answer(prompt, tool_user_id=sender_id)
-        print(f"[ACTION REPLY CHAT] Attempt {attempt+1} of {max_attempts}. \nQuery: {chat_message} \nAnswer: {answer}")
+        answer, rag_contexts = await self.model_component.answer(prompt, tool_user_id=sender_id)
+        print(f"[ACTION REPLY CHAT] Attempt {attempt+1} of {max_attempts}.")
 
         if (answer is None):
           previous_iteration_notes.append({
@@ -248,17 +248,37 @@ class Agent():
           })
         # Answer is not None
         else:
-          # Display contexts
-          for i, context  in enumerate(contexts):
-            context = context.replace("\n", " ")
-            if (len(context) <= 80):  context_to_display = context
-            else:   context_to_display = f"{context[:40]}...{context[-40:]}"
-            print(f"[ACTION REPLY CHAT CONTEXT #{i+1}]: {context_to_display}")
-          
-          # Evaluate the answer
-          evaluation_result = await self.evaluator_component.evaluate_response(chat_message, answer, contexts, ["correctness", "faithfulness", "relevancy"])
-          evaluation_passing = evaluation_result['evaluation_passing']
-          print(f"[EVALUATION RESULT] {evaluation_result}")
+          # Parse the answer
+          json_answer = json.loads(answer)
+          category = json_answer['category']
+          answer = json_answer['answer']
+          print(f"[ACTION REPLY CHAT MESSAGE CATEGORY] Message retrieved with category: {category}")
+
+          # Filter the based on category
+          if (category == "tourism"):
+            # Display contexts
+            for i, context  in enumerate(rag_contexts):
+              context = context.replace("\n", " ")
+              if (len(context) <= 80):  context_to_display = context
+              else:   context_to_display = f"{context[:40]}...{context[-40:]}"
+              print(f"[ACTION REPLY CHAT CONTEXT #{i+1}]: {context_to_display}")
+            # Do Evaluation
+            evaluation_result = await self.evaluator_component.evaluate_response(chat_message, answer, rag_contexts, ["correctness", "faithfulness", "relevancy"])
+            evaluation_passing = evaluation_result['evaluation_passing']
+            print(f"[EVALUATION RESULT] {evaluation_result}")
+
+          elif (category == "general"):
+            # TODO To be adjusted
+            # Do Evaluation
+            contexts = [self.persona_component.get_persona_str()]
+            evaluation_result = await self.evaluator_component.evaluate_response(chat_message, answer, contexts, ["relevancy"])
+            evaluation_passing = evaluation_result['evaluation_passing']
+            print(f"[EVALUATION RESULT] {evaluation_result}")
+
+          else: # cateogry == "other"
+            # TODO To be adjusted (if needed)
+            evaluation_passing = True
+
 
           # Add notes if it does not pass
           if (not evaluation_passing):
@@ -279,12 +299,13 @@ class Agent():
     finally:
       # Clean answer
       answer = clean_quotation_string(answer)
+      answer_messages = sanitize_text_to_list(answer)
       # Store in bot's reply memory
       await self.memory_component.store(sender_id, {"role": "bot", "content" : answer})
       # Refresh tools after use
       self.model_component.refresh_tools(sender_id)
       # Return answer
-      return answer
+      return answer_messages
 
 
   async def action_generate_caption(self, 
@@ -327,7 +348,8 @@ class Agent():
         else:
           # Prepare contexts for evaluation
           keywords_str = ", ".join(caption_keywords)
-          contexts = [f"Here is the image description: {img_description}", f"Here are the keywords: {keywords_str}"]  
+          contexts = [f"Here is the image description: {img_description}", 
+                      f"Here are the keywords: {keywords_str}"]  
           
           # Evaluate the answer
           evaluation_result = await self.evaluator_component.evaluate_response("Create a caption for an Instagram post", caption_message, contexts, ["relevancy"])  
@@ -395,7 +417,7 @@ class Agent():
       schedule_time = json_answer['schedule_time']
       reason = json_answer['reason']
 
-      # TODO Scheduler
+      # TODO Write inserting to database here
       # Write here
 
       # TODO To be removed

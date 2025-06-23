@@ -71,7 +71,7 @@ class Persona():
     return self._persona['age'], self._persona['style'], self._persona['occupation']
   
 
-  def get_persona_str(self):
+  def get_persona_str(self) -> str:
     """
     Call persona data as string
     """

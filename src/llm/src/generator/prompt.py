@@ -5,7 +5,9 @@ PROMPT_TEMPLATE = """Definition:
 {persona_subprompt}.
 ---------------------
 {context_subprompt}
+
 {additional_subprompt}
+
 {previous_iteration_notes_subprompt}
 ---------------------
 Instruction:
@@ -182,40 +184,6 @@ class PromptGenerator():
     )
 
 
-  # ######## CHOOSE COMMUNITY ########
-
-  # def generate_prompt_choose_community(self, persona_str: str) -> str:
-  #   """
-  #   Generate a prompt for choosing community for internal trigger action
-  #   """
-  #   context_str =  f"You are about to do an action such as like, follow, or comment in Instagram. You are expected to choose which community you want to get into. \n" \
-  #                   "Later you are provided with tools using RAG to get some data about community. " \
-  #                   "You might want to use the context from this tools as your references. " \
-  #                   "This community data has been processed by Data Mining module so you can assume that the data is valid." \
-  #                   "The community data will consist of: the community id, the community label, and the community description. "\
-  #                   "Focus on community `Label` and `Description` because this is the critical aspect you need to examine. \n" \
-  #                   "You also have a certain persona that is set by the stakeholders. Here is the details of your persona: " \
-  #                   "\n" \
-  #                   f"{persona_str}" \
-  #                   "\n" \
-
-  #   # Setup subprompts
-  #   persona_subprompt = self.generate_subprompt_persona()
-  #   context_subprompt = self.generate_subprompt_context(context_str)
-  #   additional_subprompt =  "You have to choose which community is the most suitable with your persona. " \
-  #                           "Your end goal is to decide the community that you want to be into so it will increase the awareness of Instagram users about you." \
-  #                           "Return only the id of the community. Do not add any words, strings, or characters aside from community id. \n" 
-  #   previous_iteration_notes_subprompt = self.generate_subprompt_previous_iteration_notes([])
-    
-  #   # Setup query string
-  #   query_str = "Choose the most suitable community for your persona"
-
-  #   return self._prompt_template.format(persona_subprompt=persona_subprompt,
-  #                                     context_subprompt=context_subprompt,
-  #                                     additional_subprompt=additional_subprompt,
-  #                                     previous_iteration_notes_subprompt=previous_iteration_notes_subprompt,
-  #                                     query_str=query_str)
-
 
   ######## ACTION PROMPT ########
 
@@ -228,22 +196,43 @@ class PromptGenerator():
 
     # Process previous messages
     if (len(previous_messages) > 0):
-      context += "Here will be provided some of the most recent messages.\n"
-      context += "You need to keep in mind that there might be other messages before this. However, they were omitted for brevity.\n"
-      context += "In these messages, you have the role `bot` while the user have the role `user`.\n"
-      context += "Here is the messages:\n\n"
+      context += "Here will be provided some of the most recent messages.\n " \
+                  "You need to keep in mind that there might be other messages before this. However, they were omitted for brevity. " \
+                  "You might still be provided by other past messages that were summarized and retrieved using RAG method.\n"\
+                  "In these messages, you have the role `bot` while the user have the role `user`.\n" \
+                  "Here is the messages:\n\n"
       for i, message in enumerate(previous_messages):
         context += f"Message {i+1}. {message['role']}: \"{message['content']}\"\n"
+      context += "\n"
+
+    context +=  "In answering the context, please add a little of your explaination. " \
+                "Use your persona data to add a little characteristics to your answer. \n" \
+                "The consistency to the context and relevancy to the query is critical. " \
+                "However, the naturalness of style and characteristics of your answer is equally important. \n" \
+                "Please stay true and faithful to your persona."
 
     # Setup subprompts
     persona_subprompt = self.generate_subprompt_persona()
     context_subprompt = self.generate_subprompt_context(context)
     # Chat does not need to have examples. It can be vary depending on the topic/ message
-    additional_subprompt =  "In answering the context, please add a little of your explaination. " \
-                            "Use your persona data to add a little characteristics to your answer. \n" \
-                            "The correctness and relevancy to the query is important. " \
-                            "However, the style and characteristics of your answer is equally important. \n" \
-                            "Please stay true and faithful to your persona."
+    additional_subprompt =  "Aside from answering the message from user. You should also identify the category of the message. \n" \
+                            "The category is divided into three categories: [general, tourism, other]. \n" \
+                            "- general: casual conversation, greetings, small talk, and your personal information \n" \
+                            "- tourism: messages related to travel, destinations, itineraries,  accommodations, local culture, or tourism-related inquiries. \n" \
+                            "- other: anything that does not fall into the above two categories. \n" \
+                            "Return your answer in this JSON format: \n" \
+                            "{\n" \
+                            "\"category\": str,\n"\
+                            "\"answer\" : str\n" \
+                            "}\n"\
+                            "If the message falls into \"other\" category, explain that it is outside of your expertise to answer the question. " \
+                            "Therefore, you need to explain to the user that you cannot provide the answer that message."
+                            
+    
+    additional_subprompt += "You should answer the chat message in 1 to 3 short paragraphs. No more than 3 paragraphs are allowed. "\
+                            "Each paragraph might have different key points but still relevant to the message from user. \n" \
+                            "Do not answer in bullet points. On the other hand, try to explain it narratively. " \
+                            "Do not forget to give your opinion according to the message as if you are a user in Instagram chatting with other people."
     previous_iteration_notes_subprompt = self.generate_subprompt_previous_iteration_notes(previous_iteration_notes)
     return self._prompt_template.format(persona_subprompt=persona_subprompt,
                                   context_subprompt=context_subprompt,
@@ -274,8 +263,10 @@ class PromptGenerator():
                 "Do not use any hashtags in making the comment. " \
                 "Make sure to keep the comment short and concise. " \
                 "Long comment is not preferable and is bot-like. " \
+                "Comments longert than 2 sentences are not allowed. " \
                 "Try to make the comment as natural as you can. " \
-                "You may use emoji to express yourself. "
+                "You may use emoji to express yourself, but use it wisely." \
+                "You should avoid using hashtags unless it is really necessary and related to your persona."
 
     return self._prompt_template.format(persona_subprompt=persona_subprompt,
                                   context_subprompt=context_subprompt,
@@ -299,7 +290,9 @@ class PromptGenerator():
     persona_subprompt = self.generate_subprompt_persona()
     context_subprompt = self.generate_subprompt_context(context_str)
     additional_subprompt =  "Only answer the text caption without any explanation text. " \
-                            "Return the answer in string format without any quotation (\") symbol."
+                            "Return the answer in string format without any quotation (\") symbol.\n" \
+                            "By default, do not use hashtags and emoji unless it is described in \"additional context\". " \
+                            "Keep the caption short and meaningful to other people."
     if (additional_context is not None):
       additional_subprompt += f" Here are some additional context: {additional_context}"
     previous_iteration_notes_subprompt = self.generate_subprompt_previous_iteration_notes(previous_iteration_notes)
