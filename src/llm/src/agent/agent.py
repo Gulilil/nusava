@@ -398,7 +398,7 @@ class Agent():
         return
       
       # Give time delay
-      sleep_time = random.randint(60, 180)
+      sleep_time = random.randint(6, 18)
       print(f"[ACTION TIME SLEEP] Delay for {sleep_time} seconds")
       time.sleep(sleep_time)
 
@@ -457,7 +457,12 @@ class Agent():
         influencers = community['influencers']
         # Traverse the influencer
         for influencer in influencers:
-          if ((not "marked_follow" in influencer) or (self.user_id not in influencer['marked_follow'])):
+          if (not "mark_follow" in influencer):
+            found = True
+            chosen_influencer = influencer
+            break
+          # Case mark_follow list already in post
+          elif (self.user_id not in influencer['mark_follow'] and str(self.user_id) not in influencer['mark_follow']):
             found = True
             chosen_influencer = influencer
             break
@@ -478,8 +483,10 @@ class Agent():
         # Mark influencer
         if ('mark_follow' in chosen_influencer and isinstance(chosen_influencer['mark_follow'], list)):
           chosen_influencer['mark_follow'].append(self.user_id)
+          print(f"[ACTION FOLLOW] Mark array has been created for {self.user_id}")
         else:
           chosen_influencer['mark_follow'] = [self.user_id]
+          print(f"[ACTION FOLLOW] {self.user_id} is inserted to mark array")
         self.mongo_connector_component.update_one_data(mongo_collection_name, {"community_id": community_id}, {"influencers": influencers})
         print(f"[ACTION FOLLOW] Follow influencer {influencer_username} with influencer_id {influencer_id} in community {community_id}")
       
@@ -503,7 +510,12 @@ class Agent():
         posts = community['posts']
         # Traverse the post
         for post in posts:
-          if ((not "marked_like" in post) or (self.user_id not in post['marked_like'])):
+          if (not "mark_like" in post):
+            found = True
+            chosen_post = post
+            break
+          # Case mark_like list already in post
+          elif (self.user_id not in post['mark_like'] and str(self.user_id) not in post['mark_like']):
             found = True
             chosen_post = post
             break
@@ -523,8 +535,10 @@ class Agent():
         # Mark post
         if ('mark_like' in chosen_post and isinstance(chosen_post['mark_like'], list)):
           chosen_post['mark_like'].append(self.user_id)
+          print(f"[ACTION LIKE] Mark array has been created for {self.user_id}")
         else:
           chosen_post['mark_like'] = [self.user_id]
+          print(f"[ACTION LIKE] {self.user_id} is inserted to mark array")
         self.mongo_connector_component.update_one_data(mongo_collection_name, {"community_id": community_id}, {"posts": posts})
         print(f"[ACTION LIKE] Like post with post_id {post_id} in community {community_id}")
 
@@ -548,7 +562,13 @@ class Agent():
         posts = community['posts']
         # Traverse the post
         for post in posts:
-          if ((not "marked_comment" in post) or (self.user_id not in post['marked_comment'])):
+          if (not "mark_comment" in post):
+            found = True
+            chosen_post = post
+            break
+          # Case marked_comment list already in post
+          elif (self.user_id not in post['mark_comment'] and str(self.user_id) not in post['mark_comment']):
+            print("yang ini")
             found = True
             chosen_post = post
             break
@@ -573,6 +593,7 @@ class Agent():
       # Make comment
       comment_message, _ = await self.model_component.answer(prompt, is_direct=True)
       comment_message = clean_quotation_string(comment_message)
+      print(f"[RESULTED ACTION COMMENT] Comment message: {comment_message}")
 
       # Request
       is_success = self.output_gateway_component.request_comment(post_id, comment_message)
@@ -580,8 +601,10 @@ class Agent():
         # Mark post
         if ('mark_comment' in chosen_post and isinstance(chosen_post['mark_comment'], list)):
           chosen_post['mark_comment'].append(self.user_id)
+          print(f"[ACTION COMMENT] Mark array has been created for {self.user_id}")
         else:
           chosen_post['mark_comment'] = [self.user_id]
+          print(f"[ACTION LIKE] {self.user_id} is inserted to mark array")
         self.mongo_connector_component.update_one_data(mongo_collection_name, {"community_id": community_id}, {"posts": posts})
         print(f"[ACTION COMMENT] Comment post with post_id {post_id} in community {community_id}")
         
