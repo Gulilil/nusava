@@ -130,13 +130,27 @@ class InputGateway():
       except Exception as error: 
         return jsonify({"error": str(error)}), 400
       
+
+    ######## SCHEDULED FOR CRON ########
+
     @self.app.route("/action", methods=['POST'])
     async def respond_action():
       """
       Respond to external scheduler to start doing action
       """
       try:
-        self._agent_component.decide_action()
+        await self._agent_component.decide_action()
+        return jsonify({"response": True}), 200
+      except Exception as error: 
+        return jsonify({"error": str(error)}), 400
+
+    @self.app.route("/check_schedule", methods=['POST'])
+    async def respond_check_schedule():
+      """
+      Respond to external scheduler to check schedule for scheduled_post
+      """
+      try:
+        self._agent_component.check_schedule()
         return jsonify({"response": True}), 200
       except Exception as error: 
         return jsonify({"error": str(error)}), 400
@@ -224,7 +238,6 @@ class InputGateway():
       except Exception as error: 
         return jsonify({"error": str(error)}), 400
     
-
 
   def run(self) -> None:
     """

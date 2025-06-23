@@ -415,6 +415,17 @@ class Agent():
   ######## INTERNAL TRIGGER ACTION ########
   #########################################
 
+  def check_schedule(self) -> None:
+    # TODO Check to database for scheduled post, Wait for implementation in database
+
+    # TODO Check current time to scheduled time
+
+    # Placeholder for 
+    # self.output_gateway_component.request_post("img_url", "caption_message")
+
+    return
+
+
   async def decide_action(self) -> None:
     """
     Decide action based on the current conditions and statistics
@@ -425,7 +436,7 @@ class Agent():
 
     try:
       # Get the community
-      communities = await self.choose_community(threshold=0.1)
+      communities = await self.choose_community()
 
       # Max 5 times of action decision
       for itr in range(5):
@@ -451,7 +462,7 @@ class Agent():
 
   async def choose_community(self, 
                              top_k: int = 20, 
-                             threshold: float = 0.5) -> list[dict]:
+                             threshold: float = 0.35) -> list[dict]:
     """
     LLM decide which community it wants to got into for actions like, follow, and comment
     """
