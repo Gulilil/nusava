@@ -14,6 +14,7 @@ class PostgresConnector():
     Instantiate the database client
     """
     self.connection = psycopg2.connect(
+          # os.getenv("DB_PRODUCTION_URL")
           host=os.getenv("POSTGRES_HOST"),      
           port=os.getenv("POSTGRES_PORT"),           
           database=os.getenv("POSTGRES_DB_NAME"),    
@@ -21,17 +22,38 @@ class PostgresConnector():
           password=os.getenv("POSTGRES_PASSWORD")  
       )
     self.cursor = self.connection.cursor()
+
+  
+  def get_username(self, user_id: str) -> tuple:
+    """
+    Get username based on the user_id
+    """
+    try:
+      table_name = "bot_user"
+      column_name = "username"
+      self.cursor.execute(f"SELECT {column_name} FROM {table_name} WHERE id={user_id}")
+      data = self.cursor.fetchone()[0]
+      return data
+    except Exception as e:
+      print(f"[ERROR POSTGRES] {e}")
+      self.connection.rollback()
+      return None 
   
 
   def get_persona_data(self, user_id: str) -> tuple:
     """
     Get persona data based on the user_id
     """
-    table_name = "bot_user"
-    column_name = "persona"
-    self.cursor.execute(f"SELECT {column_name} FROM {table_name} WHERE id={user_id}")
-    data = self.cursor.fetchone()[0]
-    return data
+    try:
+      table_name = "bot_user"
+      column_name = "persona"
+      self.cursor.execute(f"SELECT {column_name} FROM {table_name} WHERE id={user_id}")
+      data = self.cursor.fetchone()[0]
+      return data
+    except Exception as e:
+      print(f"[ERROR POSTGRES] {e}")
+      self.connection.rollback()
+      return None 
   
 
   def get_config_data(self, user_id: str) -> tuple:
@@ -39,19 +61,29 @@ class PostgresConnector():
     Get persona data based on the user_id
     Make sure to not change the order of the data returned
     """
-    table_name = "bot_configuration"
-    column_names = "temperature, top_k, max_token, max_iteration"
-    self.cursor.execute(f"SELECT {column_names} FROM {table_name} WHERE user_id={user_id}")
-    data = self.cursor.fetchone()
-    return data
+    try:
+      table_name = "bot_configuration"
+      column_names = "temperature, top_k, max_token, max_iteration"
+      self.cursor.execute(f"SELECT {column_names} FROM {table_name} WHERE user_id={user_id}")
+      data = self.cursor.fetchone()
+      return data
+    except Exception as e:
+      print(f"[ERROR POSTGRES] {e}")
+      self.connection.rollback()
+      return None 
   
 
   def get_statistics_data(self, user_id: str) -> tuple:
     """
     Get persona data based on the user_id
     """
-    table_name = "bot_instagramstatistics"
-    column_names = "new_comments, new_followers, new_likes"
-    self.cursor.execute(f"SELECT {column_names} FROM {table_name} WHERE user_id={user_id}")
-    data = self.cursor.fetchone()
-    return data
+    try:
+      table_name = "bot_instagramstatistics"
+      column_names = "new_comments, new_followers, new_likes"
+      self.cursor.execute(f"SELECT {column_names} FROM {table_name} WHERE user_id={user_id}")
+      data = self.cursor.fetchone()
+      return data
+    except Exception as e:
+      print(f"[ERROR POSTGRES] {e}")
+      self.connection.rollback()
+      return None 

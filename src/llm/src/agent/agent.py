@@ -13,7 +13,6 @@ from gateway.input import InputGateway
 from gateway.output import OutputGateway
 from generator.prompt import PromptGenerator
 from generator.action import ActionGenerator
-from generator.schedule import ScheduleGenerator
 from utils.function import hotel_data_to_string_list, attraction_data_to_string_list, text_to_document, parse_documents, clean_quotation_string
 
 
@@ -44,7 +43,6 @@ class Agent():
     # Instantiate Generator
     self.prompt_generator_component = PromptGenerator(self.persona_component)
     self.action_generator_component = ActionGenerator()
-    self.schedule_generator_component = ScheduleGenerator()
     print("[AGENT INITIALIZED] Generator component(s) initialized")
 
 
@@ -92,6 +90,52 @@ class Agent():
     config_data = self.postgres_connector_component.get_config_data(self.user_id)
     self.model_component.config(config_data)
 
+
+  #####################
+  ######## GET ########
+  #####################
+
+  def get_user(self) -> dict:
+    """
+    Return user identifiers
+    """
+    username = self.postgres_connector_component.get_username(self.user_id)
+    user_data = {
+      "user_id": self.user_id,
+      "username": username
+    }
+    return user_data
+
+
+  def get_config(self) -> dict:
+    """
+    Return model configuration in model component
+    """
+    return self.model_component.get_config()
+  
+
+  def get_persona(self) -> dict:
+    """
+    Return stored persona in persona component
+    """
+    return self.persona_component.get_persona()
+  
+
+  def get_memory(self) -> dict:
+    """
+    Return all the memory in memory component
+    """
+    return self.memory_component.retrieve_all()
+
+
+  def get_observation_elm(self) -> dict:
+    """
+    Return social media account observation_elm
+    """
+    statistics = self.postgres_connector_component.get_statistics_data(self.user_id)
+    observations = self.action_generator_component.observe_statistics(statistics)
+    return observations
+  
 
   #######################
   ######## OTHER ########
@@ -376,33 +420,35 @@ class Agent():
     Decide action based on the current conditions and statistics
     This is the main entry point for the agent to decide what to do next.
     """
-    statistics = self.postgres_connector_component.get_statistics_data(self.user_id)
-    observations = self.action_generator_component.observe_statistics(statistics)
+    observations = self.get_observation_elm()
     print(f"[ACTION OBSERVATION] Acquired observations: {observations}")
 
-    # Get the community
-    communities = await self.choose_community()
+    try:
+      # Get the community
+      communities = await self.choose_community(threshold=0.1)
 
-    # Max 5 times of action decision
-    for itr in range(5):
-      action, state = self.action_generator_component.decide_action(observations, itr)
-      print(f"[ACTION DECISION] {itr+1}.  action \"{action}\" in state \"{state}\"")
+      # Max 5 times of action decision
+      for itr in range(5):
+        action, state = self.action_generator_component.decide_action(observations, itr)
+        print(f"[ACTION DECISION] {itr+1}.  action \"{action}\" in state \"{state}\"")
 
-      if (action == "like"):
-        await self.action_like(communities)
-      elif (action == "follow"):
-        await self.action_follow(communities)
-      elif (action == "comment"):
-        await self.action_comment(communities)
-      else:
-        return
-      
-      # Give time delay
-      sleep_time = random.randint(6, 18)
-      print(f"[ACTION TIME SLEEP] Delay for {sleep_time} seconds")
-      time.sleep(sleep_time)
-
+        if (action == "like"):
+          await self.action_like(communities)
+        elif (action == "follow"):
+          await self.action_follow(communities)
+        elif (action == "comment"):
+          await self.action_comment(communities)
+        else:
+          return
+        
+        # Give time delay
+        sleep_time = random.randint(60, 180)
+        print(f"[ACTION TIME SLEEP] Delay for {sleep_time} seconds")
+        time.sleep(sleep_time)
+    except Exception as e:
+      print(f"[ERROR IN DECIDING ACTION] {e}")
   
+
   async def choose_community(self, 
                              top_k: int = 20, 
                              threshold: float = 0.5) -> list[dict]:
@@ -471,7 +517,7 @@ class Agent():
           break
       # Handle if not found
       if (not found):
-        raise Exception("All fetched similar data has been marked")
+        raise Exception("No available data to be marked")
 
       # Get Influencer
       influencer_id = chosen_influencer['id']
@@ -524,7 +570,7 @@ class Agent():
           break
       # Handle if not found
       if (not found):
-        raise Exception("All fetched similar data has been marked")
+        raise Exception("No available data to be marked")
 
       # Get Influencer
       post_id = chosen_post['id']
@@ -568,7 +614,6 @@ class Agent():
             break
           # Case marked_comment list already in post
           elif (self.user_id not in post['mark_comment'] and str(self.user_id) not in post['mark_comment']):
-            print("yang ini")
             found = True
             chosen_post = post
             break
@@ -577,7 +622,7 @@ class Agent():
           break
       # Handle if not found
       if (not found):
-        raise Exception("All fetched similar data has been marked")
+        raise Exception("No available data to be marked")
 
       # Get Influencer
       post_id = chosen_post['id']
@@ -610,9 +655,6 @@ class Agent():
         
     except Exception as e:
       print(f"[ERROR ACTION COMMENT] Error occured in executing `comment`: {e}")
-
-
- 
 
 
   ##############################

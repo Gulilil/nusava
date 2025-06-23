@@ -31,6 +31,12 @@ class Persona():
 
   ######## PUBLIC ########
 
+  def get_persona(self) -> None:
+    """
+    Return persona data
+    """
+    return self._persona
+
   def display_persona(self) -> None:
     """
     Display all persona data

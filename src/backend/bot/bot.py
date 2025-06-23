@@ -1,3 +1,4 @@
+import json
 import random
 import time
 from instagrapi import Client
@@ -20,8 +21,18 @@ class InstagramBot:
             self.client.set_settings(session_settings)
 
         try:
+            session_data = self.user_obj.session_info
+            if isinstance(session_data, str):
+                session_data = json.loads(session_data)
+            
+            sessionid = None
+            if 'authorization_data' in session_data:
+                sessionid = session_data['authorization_data'].get('sessionid')
+            else:
+                sessionid = session_data.get('sessionid')
+                
             if (self.user_obj.session_info):
-                self.client.login_by_sessionid(self.user_obj.session_info['authorization_data'].get('sessionid'))
+                self.client.login_by_sessionid(sessionid)
             else:
                 self.client.login(self.username, self.password)
             self.user_obj.session_info = self.client.get_settings()

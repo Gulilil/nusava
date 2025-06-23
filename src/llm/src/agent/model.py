@@ -91,6 +91,20 @@ class Model():
 
   ######## PUBLIC ########
 
+  def get_config(self) -> dict:
+    """
+    Return the configuration model in dictionary
+    """
+    config = {
+      "llm_name": self._llm_model_name,
+      "embedding_model_name": self._embed_model_name,
+      "temperature": self._temperature,
+      "top_k": self._top_k,
+      "max_token": self._max_token,
+      "max_iteration": self._max_iteration
+    }
+    return config
+    
 
   def refresh_tools(self, tool_user_id : str,  is_all: bool = False) -> None:
     """

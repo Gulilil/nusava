@@ -51,6 +51,40 @@ class InputGateway():
       response : str
     }
     """
+      
+    #####################
+    ######## GET ########
+    #####################
+
+    @self.app.route('/status', methods=['GET'])
+    def get_status():
+      """
+      Get current status of the bot
+      """
+      try:
+        user = self._agent_component.get_user()
+        config = self._agent_component.get_config()
+        persona = self._agent_component.get_persona()
+        memory = self._agent_component.get_memory()
+        observation_elm = self._agent_component.get_observation_elm()
+
+        return jsonify({"response": { 
+                          "user" : user,
+                          "config": config,
+                          "persona": persona,
+                          "memory": memory,
+                          "observation_element": observation_elm
+                        }}), 200
+      except Exception as error: 
+        return jsonify({"error": str(error)}), 400
+      
+      
+
+    ######################
+    ######## POST ########
+    ######################
+
+    ######## SETUP & OTHER ########
 
     @self.app.route("/user", methods=['POST'])
     async def set_user():
@@ -96,6 +130,17 @@ class InputGateway():
       except Exception as error: 
         return jsonify({"error": str(error)}), 400
       
+    @self.app.route("/action", methods=['POST'])
+    async def respond_action():
+      """
+      Respond to external scheduler to start doing action
+      """
+      try:
+        self._agent_component.decide_action()
+        return jsonify({"response": True}), 200
+      except Exception as error: 
+        return jsonify({"error": str(error)}), 400
+
     ######## ACTIONS INPUT ########
 
     @self.app.route("/chat", methods=['POST'])
@@ -179,6 +224,7 @@ class InputGateway():
       except Exception as error: 
         return jsonify({"error": str(error)}), 400
     
+
 
   def run(self) -> None:
     """
