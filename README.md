@@ -12,7 +12,6 @@ pip install -r requirements.txt
 # Setup
 cd src/frontend-v2
 npm install
-
 # Run Client
 npm run dev
 ```
@@ -29,5 +28,7 @@ python src/backend/manage.py runserver
 ## For LLM 
 ```bash
 # Run LLM server
+pip install -r src/llm/requirements.txt
+
 python src/llm/src/main.py
 ```
