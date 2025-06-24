@@ -40,3 +40,5 @@ Requests==2.32.3
 cloudinary==1.44.1
 whitenoise==6.9.0
 Pillow>=8.1.1
+gunicorn==23.0.0
+uvicorn==0.34.3
