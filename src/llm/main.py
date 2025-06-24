@@ -2,4 +2,5 @@ from agent.agent import Agent
 
 nusava = Agent()
 app = nusava.input_gateway_component.app
-nusava.run() # To run on Flask
+if __name__ == "__main__":
+  nusava.run() # To run on Flask
