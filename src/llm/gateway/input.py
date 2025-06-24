@@ -18,7 +18,8 @@ class InputGateway():
     Instantiate Flask as the framework for the API and the gateway
     """
     self.app = Flask(__name__)
-    CORS(self.app, origin=[os.getenv("FRONTEND_URL")])
+    # CORS(self.app, origins=[os.getenv("FRONTEND_URL")])
+    CORS(self.app)
     self._agent_component = agent_component
     self.host = host
     self.port = port
