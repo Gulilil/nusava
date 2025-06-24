@@ -1,5 +1,4 @@
 from agent.agent import Agent
-import asyncio
 
 
 def process(nusava: Agent) -> None:
@@ -24,4 +23,4 @@ if __name__ == "__main__":
   This function will not be run on server's runtime.
   """
   nusava = Agent()
-  asyncio.run(process(nusava))
+  process(nusava)

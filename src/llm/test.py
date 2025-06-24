@@ -1,5 +1,4 @@
 from agent.agent import Agent
-import asyncio
 
 
 def test(nusava: Agent) -> None:
@@ -62,6 +61,6 @@ def test(nusava: Agent) -> None:
 
 if __name__ == "__main__":
   nusava = Agent()
-  asyncio.run(test(nusava))
+  test(nusava)
 
 
