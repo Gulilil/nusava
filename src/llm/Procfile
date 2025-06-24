@@ -1,1 +1,1 @@
-web: gunicorn gateway.input:app --bind 0.0.0.0:$PORT
+web: hypercorn gateway.input:app --bind 0.0.0.0:$PORT
