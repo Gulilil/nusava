@@ -50,10 +50,10 @@ export default function SchedulePostPage() {
       }
 
       const data = await response.json()
-      console.log('Local path:', data.localPath)
+      console.log('Cloudinary response:', data)
       
       setImagePreview(data.url)
-      setUploadedImageUrl(data.localPath)
+      setUploadedImageUrl(data.url) 
       toast.success("Image uploaded successfully")
     } catch (error) {
       console.error('Upload error:', error)
@@ -108,10 +108,6 @@ export default function SchedulePostPage() {
 
     setIsScheduling(true)
     try {
-      const requestBody = {
-        image_url: uploadedImageUrl,
-        caption_message: generatedCaption,
-      }
       // const requestBody = {
       //   image_path: uploadedImageUrl,
       //   caption: generatedCaption,
@@ -121,22 +117,86 @@ export default function SchedulePostPage() {
       //   return
       // }
 
-      const response = await fetch(`${LLM_API}/post`, {
+      // Step 1: Hit LLM_API/post to get scheduling recommendation
+      const llmRequestBody = {
+        image_url: uploadedImageUrl,
+        caption_message: generatedCaption,
+      }
+
+      toast.info("Getting optimal posting time...")
+      const llmResponse = await fetch(`${LLM_API}/post`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          // Authorization: token ? `Bearer ${token}` : ""
         },
-        body: JSON.stringify(requestBody),
+        body: JSON.stringify(llmRequestBody),
       })
 
-      if (!response.ok) {
-        throw new Error(`Post scheduling failed: ${response.statusText}`)
+      if (!llmResponse.ok) {
+        throw new Error(`LLM API failed: ${llmResponse.statusText}`)
       }
 
-      const data = await response.json()
-      toast.success("Post scheduled successfully")
-      
+      const llmData = await llmResponse.json()
+      console.log('LLM response:', llmData)
+
+      // Step 2: Store in database using Django API
+      const token = localStorage.getItem("jwtToken");
+      if (!token) {
+        toast.error("Please login first")
+        return
+      }
+
+      const scheduleRequestBody = {
+        image_url: uploadedImageUrl,
+        caption: generatedCaption,
+        reason: llmData.reason,
+        scheduled_time: llmData.scheduled_time,
+      }
+
+      toast.info("Saving to database...")
+      const scheduleResponse = await fetch(`${API}/schedule-post/`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify(scheduleRequestBody),
+      })
+
+      if (!scheduleResponse.ok) {
+        const errorData = await scheduleResponse.json()
+        throw new Error(errorData.message || `Schedule API failed: ${scheduleResponse.statusText}`)
+      }
+
+      const scheduleData = await scheduleResponse.json()
+      console.log('Schedule response:', scheduleData)
+
+      // Step 3: Post directly to Instagram (for testing)
+      toast.info("Posting to Instagram...")
+      const postRequestBody = {
+        image_path: uploadedImageUrl,
+        caption: generatedCaption,
+      }
+
+      const postResponse = await fetch(`${API}/post_photo/`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify(postRequestBody),
+      })
+
+      if (!postResponse.ok) {
+        const errorData = await postResponse.json()
+        console.warn('Instagram posting failed:', errorData)
+        // Don't throw error here, just warn - the scheduling was successful
+        toast.warning("Post scheduled successfully, but Instagram posting failed. Will retry later.")
+      } else {
+        const postData = await postResponse.json()
+        console.log('Instagram post response:', postData)
+        toast.success("Post scheduled and posted to Instagram successfully!")
+      }
       // Reset form after successful scheduling
       setImagePreview(null)
       setUploadedImageUrl(null)
