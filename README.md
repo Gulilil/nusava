@@ -30,5 +30,5 @@ python src/backend/manage.py runserver
 # Run LLM server
 pip install -r src/llm/requirements.txt
 
-python src/llm/src/main.py
+python src/llm/main.py
 ```
