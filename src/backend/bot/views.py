@@ -100,12 +100,6 @@ def register_user(request):
             max_token=4096
         )
 
-        automation_service.auto_start_for_user(
-                    user, 
-                    min_interval=min_interval,
-                    max_interval=max_interval 
-                )
-        
         # Transfer user_id for persona set
         llm_module_url = os.getenv("LLM_MODULE_URL")
         api_url = f"{llm_module_url}/user"
@@ -117,6 +111,12 @@ def register_user(request):
             return Response({"status": "error", "message": "Cannot set user to llm module"}, status=400)
         refresh = RefreshToken.for_user(user)
 
+        automation_service.auto_start_for_user(
+                    user, 
+                    min_interval=min_interval,
+                    max_interval=max_interval 
+                )
+        
         return Response({
             "status": "success",
             "message": "User registered successfully",
@@ -232,13 +232,6 @@ def login_bot(request):
         
         refresh = RefreshToken.for_user(user)
         
-        # Start automation
-        automation_service.auto_start_for_user(
-            user, 
-            min_interval=min_interval,
-            max_interval=max_interval  
-        )
-        
         # Transfer user_id for persona set
         llm_module_url = os.getenv("LLM_MODULE_URL")
         api_url = f"{llm_module_url}/user"
@@ -246,6 +239,13 @@ def login_bot(request):
             "user_id": user.id
             }
         response = requests.post(api_url, json=data)
+        # Start automation
+        automation_service.auto_start_for_user(
+            user, 
+            min_interval=min_interval,
+            max_interval=max_interval  
+        )
+        
         if (not response.status_code == 200 or not response.json()['response']):
             return Response({"status": "error", "message": "Cannot set user to llm module"}, status=400)
         
