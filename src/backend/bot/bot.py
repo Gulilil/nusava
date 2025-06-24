@@ -9,6 +9,7 @@ import requests
 from dotenv import load_dotenv
 load_dotenv()
 import os
+from .utils import download_image_from_url, cleanup_temp_file
 
 class InstagramBot:
     def __init__(self, user_obj: User, password: str, session_settings=None):
@@ -85,6 +86,45 @@ class InstagramBot:
         except Exception as e:
             self.log("post_photo", image_path, "failed", str(e))
             raise e
+    
+    def post_from_cloudinary(self, image_url: str, caption: str) -> bool:
+        """
+        Post image from Cloudinary URL to Instagram
+        
+        Parameters
+        ----------
+        image_url: str
+            Cloudinary image URL
+        caption: str
+            Post caption
+            
+        Returns
+        -------
+        bool
+            Success status
+        """
+        temp_file_path = None
+        try:
+            # Download image from Cloudinary to temp file
+            temp_file_path = download_image_from_url(image_url)
+            
+            # Upload to Instagram using instagrapi
+            media = self.client.photo_upload(
+                path=temp_file_path,
+                caption=caption
+            )
+            
+            self.log("post_photo", temp_file_path, "success", f"Posted photo from Cloudinary: {media.thumbnail_url}")
+            return True
+            
+        except Exception as e:
+            self.log("post_photo", temp_file_path, "failed", str(e))
+            return False
+            
+        finally:
+            # Clean up temporary file
+            if temp_file_path:
+                cleanup_temp_file(temp_file_path)
 
     def share_post_dm(self, media_url: str, usernames: list):
         try:

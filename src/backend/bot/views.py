@@ -9,7 +9,7 @@ from django.http import HttpResponse
 import requests
 import environ
 
-from .models import InstagramStatistics, User
+from .models import InstagramStatistics, ScheduledPost, User
 from .bot import InstagramBot
 from instagrapi import Client
 from rest_framework_simplejwt.tokens import RefreshToken
@@ -372,7 +372,7 @@ def post_photo(request):
     if not bot:
         return Response({'error': 'Bot not initialized for this user'}, status=400)
     try:
-        bot.post_photo(image_path, caption)
+        bot.post_from_cloudinary(image_path, caption)
         return Response({'status': 'success', 'message': 'Photo posted'})
     except Exception as e:
         logger.error(f"Post photo error: {e}")
@@ -582,7 +582,7 @@ def get_instagram_statistics(request):
     user = request.user
     
     try:
-        stats = InstagramStatistics.objects.get(user=user)
+        stats = InstagramStatistics.objects.filter(user=user).order_by('-created_at').first()
         
         # Serialize the statistics data
         stats_data = {
@@ -622,3 +622,103 @@ def get_instagram_statistics(request):
             'status': 'error',
             'message': str(e)
         }, status=500)
+    
+
+@api_view(['POST'])
+@authentication_classes([JWTAuthentication])
+@permission_classes([IsAuthenticated])
+def schedule_post(request):
+    """Schedule a new post and optionally post it immediately"""
+    user = request.user
+    
+    image_url = request.data.get('image_url')
+    caption = request.data.get('caption')
+    scheduled_time = request.data.get('scheduled_time')  
+    reason = request.data.get('reason', 'User scheduled post')
+    
+    if not image_url or not caption or not scheduled_time:
+        return Response({
+            "status": "error", 
+            "message": "image_url, caption, and scheduled_time are required"
+        }, status=400)
+    
+    try:
+        scheduled_post = ScheduledPost.objects.create(
+            user=user,
+            scheduled_time=scheduled_time,
+            reason=reason,
+            image_url=image_url,
+            caption=caption,
+            is_posted=False
+        )
+        
+        return Response({
+            "status": "success", 
+            "message": "Post scheduled successfully",
+            "data": {
+                "id": scheduled_post.id,
+                "scheduled_time": scheduled_post.scheduled_time,
+                "reason": scheduled_post.reason,
+                "image_url": scheduled_post.image_url,
+                "caption": scheduled_post.caption,
+                "is_posted": scheduled_post.is_posted,
+                "created_at": scheduled_post.created_at,
+                "updated_at": scheduled_post.updated_at
+            }
+        })
+    except Exception as e:
+        logger.error(f"Schedule post error: {e}")
+        return Response({
+            "status": "error", 
+            "message": f"Failed to schedule post: {str(e)}"
+        }, status=500)
+
+@api_view(['GET'])
+@authentication_classes([JWTAuthentication])
+@permission_classes([IsAuthenticated])
+def get_scheduled_posts(request):
+    """Get all scheduled posts for the authenticated user"""
+    user = request.user
+    
+    # Get query parameters
+    page = request.GET.get('page', 1)
+    page_size = request.GET.get('page_size', 20)
+    posted_filter = request.GET.get('posted')  # 'true', 'false', or None for all
+    
+    # Filter posts
+    posts = ScheduledPost.objects.filter(user=user).order_by('-scheduled_time')
+    
+    if posted_filter is not None:
+        is_posted = posted_filter.lower() == 'true'
+        posts = posts.filter(is_posted=is_posted)
+    
+    # Paginate
+    paginator = Paginator(posts, page_size)
+    page_obj = paginator.get_page(page)
+    
+    # Serialize data
+    posts_data = []
+    for post in page_obj:
+        posts_data.append({
+            'id': post.id,
+            'scheduled_time': post.scheduled_time,
+            'reason': post.reason,
+            'image_url': post.image_url,
+            'caption': post.caption,
+            'is_posted': post.is_posted,
+            'is_overdue': post.is_overdue,
+            'created_at': post.created_at,
+            'updated_at': post.updated_at,
+        })
+    
+    return Response({
+        'status': 'success',
+        'data': posts_data,
+        'pagination': {
+            'current_page': page_obj.number,
+            'total_pages': paginator.num_pages,
+            'total_count': paginator.count,
+            'has_next': page_obj.has_next(),
+            'has_previous': page_obj.has_previous(),
+        }
+    })
