@@ -99,9 +99,9 @@ class InstagramStatistics(models.Model):
     reach_delta = models.IntegerField(null=True, blank=True)
 
     # boolean metrics
-    new_followers = models.BooleanField(default=False)
-    new_comments = models.BooleanField(default=False)
-    new_likes = models.BooleanField(default=False)
+    new_followers = models.IntegerField(default=0)
+    new_comments = models.IntegerField(default=0)
+    new_likes = models.IntegerField(default=0)
 
     # Metadata
     created_at = models.DateTimeField(auto_now_add=True)
@@ -122,3 +122,29 @@ class InstagramStatistics(models.Model):
             # This is a simplified calculation
             return round((self.impressions / self.followers_count) * 100, 2) if self.impressions > 0 else 0
         return 0
+    
+class ScheduledPost(models.Model):
+    id = models.BigAutoField(primary_key=True)
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='scheduled_posts')
+    scheduled_time = models.DateTimeField()
+    reason = models.TextField()
+    image_url = models.TextField()
+    caption = models.TextField()
+    is_posted = models.BooleanField(default=False)
+    
+    # Metadata
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    
+    class Meta:
+        ordering = ['scheduled_time']
+        verbose_name = 'Scheduled Post'
+        verbose_name_plural = 'Scheduled Posts'
+    
+    def __str__(self):
+        return f"{self.user.username} - {self.scheduled_time.strftime('%Y-%m-%d %H:%M')} - {'Posted' if self.is_posted else 'Pending'}"
+    
+    @property
+    def is_overdue(self):
+        """Check if the scheduled time has passed and post is not yet posted"""
+        return timezone.now() > self.scheduled_time and not self.is_posted

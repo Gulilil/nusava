@@ -582,7 +582,7 @@ def get_instagram_statistics(request):
     user = request.user
     
     try:
-        stats = InstagramStatistics.objects.get(user=user)
+        stats = InstagramStatistics.objects.filter(user=user).order_by('-created_at').first()
         
         # Serialize the statistics data
         stats_data = {

@@ -90,23 +90,22 @@ class Command(BaseCommand):
             
             # Check if statistics already exist for this user
             try:
-                existing_stats = InstagramStatistics.objects.get(user=self.user)
+                existing_stats = InstagramStatistics.objects.filter(user=self.user).order_by('-created_at').first()
                 self.stdout.write(f"[{datetime.now()}] Found existing statistics, comparing...")
                 
                 # Compare and set boolean flags
-                new_followers = current_stats['followers_count'] > existing_stats.followers_count
-                new_likes = current_stats['all_likes_count'] > existing_stats.all_likes_count
-                new_comments = current_stats['all_comments_count'] > existing_stats.all_comments_count
+                new_followers = current_stats['followers_count'] - existing_stats.followers_count
+                new_likes = current_stats['all_likes_count'] - existing_stats.all_likes_count
+                new_comments = current_stats['all_comments_count'] - existing_stats.all_comments_count
                 
-                # Update existing statistics
-                for key, value in current_stats.items():
-                    setattr(existing_stats, key, value)
-                
-                existing_stats.new_followers = new_followers
-                existing_stats.new_likes = new_likes
-                existing_stats.new_comments = new_comments
-                existing_stats.save()
-                
+                new_stats = InstagramStatistics.objects.create(
+                    user=self.user,
+                    new_followers=new_followers,
+                    new_likes=new_likes,
+                    new_comments=new_comments,
+                    **current_stats
+                )
+
                 self.stdout.write(
                     self.style.SUCCESS(
                         f"[{datetime.now()}] Updated statistics for {self.user.username}:\n"
@@ -120,9 +119,9 @@ class Command(BaseCommand):
                 # Create new statistics
                 new_stats = InstagramStatistics.objects.create(
                     user=self.user,
-                    new_followers=False,  # First time, so no comparison
-                    new_likes=False,
-                    new_comments=False,
+                    new_followers=0,
+                    new_likes=0,
+                    new_comments=0,
                     **current_stats
                 )
                 
