@@ -39,3 +39,4 @@ Requests==2.32.3
 # cloudinary
 cloudinary==1.44.1
 whitenoise==6.9.0
+Pillow>=8.1.1
