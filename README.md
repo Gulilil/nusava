@@ -22,7 +22,6 @@ npm run dev
 # Setup
 python src/backend/manage.py makemigrations bot
 python src/backend/manage.py migrate
-
 # Run Server
 python src/backend/manage.py runserver
 ```
@@ -31,7 +30,4 @@ python src/backend/manage.py runserver
 ```bash
 # Run LLM server
 python src/llm/src/main.py
-
-# Trigger LLM action
-python src/llm/src/action.py <user_id>
 ```

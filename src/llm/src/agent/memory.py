@@ -78,6 +78,7 @@ class Memory():
       
       # Migrating memory if it reaches certain length
       if (len(self._memory[sender_id]) >= self._max_message_limit):
+        print('test')
         success = await self._agent_component.summarize_and_store_memory(sender_id, self._memory[sender_id])
         print(f"[MIGRATING MEMORY] Successfully migrating short-term memory with {sender_id} as long-term memory")
         # If already stored in vector, remove from short term memory

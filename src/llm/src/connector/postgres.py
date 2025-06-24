@@ -14,12 +14,12 @@ class PostgresConnector():
     Instantiate the database client
     """
     self.connection = psycopg2.connect(
-          # os.getenv("DB_PRODUCTION_URL")
-          host=os.getenv("POSTGRES_HOST"),      
-          port=os.getenv("POSTGRES_PORT"),           
-          database=os.getenv("POSTGRES_DB_NAME"),    
-          user=os.getenv("POSTGRES_USER"),     
-          password=os.getenv("POSTGRES_PASSWORD")  
+          os.getenv("DB_PRODUCTION_URL")
+          # host=os.getenv("POSTGRES_HOST"),      
+          # port=os.getenv("POSTGRES_PORT"),           
+          # database=os.getenv("POSTGRES_DB_NAME"),    
+          # user=os.getenv("POSTGRES_USER"),     
+          # password=os.getenv("POSTGRES_PASSWORD")  
       )
     self.cursor = self.connection.cursor()
 
