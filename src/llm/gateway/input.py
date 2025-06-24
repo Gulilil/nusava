@@ -1,7 +1,6 @@
-from flask import Flask, request, jsonify
-import asyncio
+from quart import Quart, request, jsonify
 import os
-from flask_cors import CORS
+from quart_cors import cors
 
 from dotenv import load_dotenv
 load_dotenv()
@@ -16,10 +15,10 @@ class InputGateway():
                host : str = os.getenv("LLM_MODULE_HOST"), 
                port : str = os.getenv("LLM_MODULE_PORT")):
     """
-    Instantiate Flask as the framework for the API and the gateway
+    Instantiate Quart as the framework for the API and the gateway
     """
-    self.app = Flask(__name__)
-    CORS(self.app, origins=[os.getenv("FRONTEND_URL")])
+    self.app = cors(Quart(__name__), 
+                    allow_origin=[os.getenv("FRONTEND_URL")])
     self._agent_component = agent_component
     self.host = host
     self.port = port
@@ -96,7 +95,7 @@ class InputGateway():
       }
       """
       try:
-        data = request.get_json()
+        data = await request.get_json()
         is_valid, error_message = self._check_data_validity(data, ['user_id'])
         if (not is_valid):
           return jsonify({"error": error_message}), 400
@@ -168,7 +167,7 @@ class InputGateway():
       }
       """
       try:
-        data = request.get_json()
+        data = await request.get_json()
         is_valid, error_message = self._check_data_validity(data, ['chat_message', 'sender_id'])
         if (not is_valid):
           return jsonify({"error": error_message}), 400
@@ -192,7 +191,7 @@ class InputGateway():
       }
       """
       try:
-        data = request.get_json()
+        data = await request.get_json()
         is_valid, error_message = self._check_data_validity(data, ["image_url", "caption_message"])
         if (not is_valid):
           return jsonify({"error": error_message}), 400
@@ -222,7 +221,7 @@ class InputGateway():
       }
       """
       try:
-        data = request.get_json()
+        data = await request.get_json()
         is_valid, error_message = self._check_data_validity(data, ["image_description", "caption_keywords"])
         if (not is_valid):
           return jsonify({"error": error_message}), 400
