@@ -261,6 +261,7 @@ class PromptGenerator():
       context += "Here is the messages:\n\n"
       for i, message in enumerate(previous_messages):
         context += f"Message {i+1}. {message['role']}: \"{message['content']}\"\n"
+      context += "\n"
 
       context += "Aside for the previous recent messages that you are provided. You will also be provided with some tools. "
       context += "You should and have to use the tools in answering the question using RAG method. The usage of the tools is critical on this aspect. "

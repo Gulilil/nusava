@@ -99,12 +99,16 @@ class Agent():
     """
     Return user identifiers
     """
-    username = self.postgres_connector_component.get_username(self.user_id)
-    user_data = {
-      "user_id": self.user_id,
-      "username": username
-    }
-    return user_data
+    try:
+      username = self.postgres_connector_component.get_username(self.user_id)
+      user_data = {
+        "user_id": self.user_id,
+        "username": username
+      }
+      return user_data
+    except Exception as e:
+      print(f"[FAILED GET USER] {e}")
+      return {}
 
 
   def get_config(self) -> dict:
@@ -118,7 +122,11 @@ class Agent():
     """
     Return stored persona in persona component
     """
-    return self.persona_component.get_persona()
+    try:
+      return self.persona_component.get_persona()
+    except Exception as e:
+      print(f"[FAILED GET PERSONA]: {e}")
+      return {}
   
 
   def get_memory(self) -> dict:
@@ -128,13 +136,17 @@ class Agent():
     return self.memory_component.retrieve_all()
 
 
-  def get_observation_elm(self) -> dict:
+  def get_observation_elm(self) -> list:
     """
     Return social media account observation_elm
     """
-    statistics = self.postgres_connector_component.get_statistics_data(self.user_id)
-    observations = self.action_generator_component.observe_statistics(statistics)
-    return observations
+    try:
+      statistics = self.postgres_connector_component.get_statistics_data(self.user_id)
+      observations = self.action_generator_component.observe_statistics(statistics)
+      return observations
+    except Exception as e:
+      print(f"[FAILED GET OBSERVATION ELEMENT] {e}")
+      return []
   
 
   #######################
@@ -162,10 +174,9 @@ class Agent():
       pinecone_namespace_name = f"chat_bot[{self.user_id}]_sender[{sender_id}]"
       summary_document = text_to_document([summary])
       summary_parsed = parse_documents(summary_document)
-      _, storage_context = self.pinecone_connector_component.get_vector_store(pinecone_namespace_name)
 
       # Insert to pinecone
-      self.pinecone_connector_component.store_data(summary_parsed, storage_context, self.model_component.embed_model) 
+      self.pinecone_connector_component.store_data(summary_parsed, pinecone_namespace_name) 
       return True
 
     except Exception as e:
@@ -429,10 +440,6 @@ class Agent():
 
       # TODO Write inserting to database here
       # Write here
-
-      # TODO To be removed
-      # Do immediate post
-      self.output_gateway_component.request_post(img_url, caption_message)
 
       # Refresh tools
       self.model_component.refresh_tools("self")

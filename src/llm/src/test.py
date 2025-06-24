@@ -13,25 +13,25 @@ async def test(nusava: Agent) -> None:
 
   # # Test action chat
   # # General
-  # print(await nusava.action_reply_chat("Hi There!", "Gulilii"))
-  print(await nusava.action_reply_chat("What is your favorite color?", "Gulilii"))
-  print(await nusava.action_reply_chat("What do you do for a living?", "Gulilii"))
+  # print(await nusava.action_reply_chat("Hi There!", "gulilii"))
+  print(await nusava.action_reply_chat("What is your favorite color?", "gulilii"))
+  print(await nusava.action_reply_chat("What do you do for a living?", "gulilii"))
   # # Tourism
-  # print(await nusava.action_reply_chat("Give me general informations of Tanto hotel.", "Gulilii"))
-  print(await nusava.action_reply_chat("Give me your 5 recommended Hotels in Nusa Tenggara. Please list it down along the name of the hotels", "Gulilii"))
-  # print(await nusava.action_reply_chat("Tell me the exact location of Tanto Hotel", "Gulilii"))
-  # print(await nusava.action_reply_chat("Summarize me some reviews of Tanto Hotel. State the ratings and the description of some of the reviews too.", "Gulilii"))
-  # print(await nusava.action_reply_chat("Tell me the check-in and check-out time of Siola Hotel", "Gulilii"))
-  print(await nusava.action_reply_chat("Based on Harbour Shuttle by Bajo Taxi tourist attractions. Give me some of your recommended hotels.", "Gulilii"))
+  # print(await nusava.action_reply_chat("Give me general informations of Tanto hotel.", "gulilii"))
+  print(await nusava.action_reply_chat("Give me your 5 recommended Hotels in Nusa Tenggara. Please list it down along the name of the hotels", "gulilii"))
+  # print(await nusava.action_reply_chat("Tell me the exact location of Tanto Hotel", "gulilii"))
+  # print(await nusava.action_reply_chat("Summarize me some reviews of Tanto Hotel. State the ratings and the description of some of the reviews too.", "gulilii"))
+  # print(await nusava.action_reply_chat("Tell me the check-in and check-out time of Siola Hotel", "gulilii"))
+  print(await nusava.action_reply_chat("Based on Harbour Shuttle by Bajo Taxi tourist attractions. Give me some of your recommended hotels.", "gulilii"))
   # # Other
-  # print(await nusava.action_reply_chat("Can you explain me more about the differences between JavaScript and Python?", "Gulilii"))
-  print(await nusava.action_reply_chat("Provide me a recipe details to make Nasi Goreng", "Gulilii"))
+  # print(await nusava.action_reply_chat("Can you explain me more about the differences between JavaScript and Python?", "gulilii"))
+  print(await nusava.action_reply_chat("Provide me a recipe details to make Nasi Goreng", "gulilii"))
 
 
   # # Tourist attraction  
-  # print(await nusava.action_reply_chat("I would like to go to Nusa Tenggara in a near future. Can you recommend me any tourist attraction?", "Gulilii"))
+  # print(await nusava.action_reply_chat("I would like to go to Nusa Tenggara in a near future. Can you recommend me any tourist attraction?", "gulilii"))
   # # Association rule
-  # print(await nusava.action_reply_chat("It seems La Boheme Bajo Hostel and Sahid T-MORE Kupang are some good hotels. Can you give recommendation of any other hotels like those two?", "Gulilii"))
+  # print(await nusava.action_reply_chat("It seems La Boheme Bajo Hostel and Sahid T-MORE Kupang are some good hotels. Can you give recommendation of any other hotels like those two?", "gulilii"))
 
 
   # # Test action post
