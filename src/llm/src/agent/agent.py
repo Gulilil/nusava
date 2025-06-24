@@ -208,18 +208,14 @@ class Agent():
     await self.memory_component.store(sender_id, {"role": "user", "content" : chat_message})
 
     try:
-      # Load the data from pinecone
-      # First hotel data
-      await self._load_tools_rag("hotels", "rag_tools_for_hotels_data", "Used to answer hotels-related query based on retrieved documents", sender_id)
-      # Then asso-rules
-      await self._load_tools_rag("association_rules", "rag_tools_for_association_rules_data", "Used to recommend system for hotel based on its antecedent-consequent relation based on retrieved documents", sender_id)
-      # Then tourist attractions
-      await self._load_tools_rag("tourist_attractions", "rag_tools_for_tourist_attractions_data", "Used to answer tourist-attractions-related query based on retrieved documents", sender_id)
-            
-      # Load the long-term memory from pinecone
-      chat_memory_namespace_name = f"chat_bot[{self.user_id}]_sender[{sender_id}]"
-      if (self.pinecone_connector_component.is_namespace_exist(chat_memory_namespace_name)):
-        await self._load_tools_rag(chat_memory_namespace_name, f"rag_tools_for_memory_chat_with_{sender_id}", f"Used to help answering question from {sender_id} based on previous occurences", sender_id)
+      # Detect the category first
+      prompt = self.prompt_generator_component.generate_prompt_identify_chat_category(
+          new_message=chat_message)  
+      categorization, _ = await self.model_component.answer(prompt, is_direct=True)
+      json_categorization = json.loads(categorization)
+      category = json_categorization['category']
+      reason = json_categorization['reason']
+      print(f"[ACTION REPLY CHAT MESSAGE CATEGORY] Message retrieved with category: {category} | With reason: {reason}")
 
       # Do iteration of action reply chat
       # While the thresholds are not satisfied, do the iteration
@@ -228,61 +224,75 @@ class Agent():
       evaluation_passing = False
       previous_iteration_notes = []
       while (not evaluation_passing):
-        # Generate prompt
-        prompt = self.prompt_generator_component.generate_prompt_reply_chat(
-          new_message=chat_message,
-          previous_messages=self.memory_component.retrieve(sender_id),
-          previous_iteration_notes=previous_iteration_notes)  
-        # Answer the query
-        # Skip if the answer is None
-        answer, rag_contexts = await self.model_component.answer(prompt, tool_user_id=sender_id)
-        print(f"[ACTION REPLY CHAT] Attempt {attempt+1} of {max_attempts}.")
+        # Filter the based on category
+        if (category == "tourism"):
+          # Load the data from pinecone
+          # First hotel data
+          await self._load_tools_rag("hotels", "rag_tools_for_hotels_data", "Used to answer hotels-related query based on retrieved documents", sender_id)
+          # Then asso-rules
+          await self._load_tools_rag("association_rules", "rag_tools_for_association_rules_data", "Used to recommend system for hotel based on its antecedent-consequent relation based on retrieved documents", sender_id)
+          # Then tourist attractions
+          await self._load_tools_rag("tourist_attractions", "rag_tools_for_tourist_attractions_data", "Used to answer tourist-attractions-related query based on retrieved documents", sender_id)
+          # Load the long-term memory from pinecone
+          chat_memory_namespace_name = f"chat_bot[{self.user_id}]_sender[{sender_id}]"
+          if (self.pinecone_connector_component.is_namespace_exist(chat_memory_namespace_name)):
+            await self._load_tools_rag(chat_memory_namespace_name, f"rag_tools_for_memory_chat_with_{sender_id}", f"Used to help answering question from {sender_id} based on previous occurences", sender_id)
 
-        if (answer is None):
-          previous_iteration_notes.append({
-            "iteration": attempt,
-            "your_answer" : None,
-            "evaluator": "model",
-            "evaluation_score": None,
-            "reason_of_rejection": "Model cannot answer this query."
-          })
-        # Answer is not None
-        else:
-          # Parse the answer
-          json_answer = json.loads(answer)
-          category = json_answer['category']
-          answer = json_answer['answer']
-          print(f"[ACTION REPLY CHAT MESSAGE CATEGORY] Message retrieved with category: {category}")
+          # Generate prompt
+          prompt = self.prompt_generator_component.generate_prompt_reply_chat(
+            new_message=chat_message,
+            previous_messages=self.memory_component.retrieve(sender_id),
+            previous_iteration_notes=previous_iteration_notes)  
+          # Answer the query
+          # Skip if the answer is None
+          answer, rag_contexts = await self.model_component.answer(prompt, tool_user_id=sender_id)
+          print(f"[ACTION REPLY CHAT] Attempt {attempt+1} of {max_attempts}.")
 
-          # Filter the based on category
-          if (category == "tourism"):
-            # Display contexts
-            for i, context  in enumerate(rag_contexts):
-              context = context.replace("\n", " ")
-              if (len(context) <= 80):  context_to_display = context
-              else:   context_to_display = f"{context[:40]}...{context[-40:]}"
-              print(f"[ACTION REPLY CHAT CONTEXT #{i+1}]: {context_to_display}")
-            # Do Evaluation
-            evaluation_result = await self.evaluator_component.evaluate_response(chat_message, answer, rag_contexts, ["correctness", "faithfulness", "relevancy"])
-            evaluation_passing = evaluation_result['evaluation_passing']
-            print(f"[EVALUATION RESULT] {evaluation_result}")
+          if (answer is None):
+            previous_iteration_notes.append({
+              "iteration": attempt,
+              "your_answer" : None,
+              "evaluator": "model",
+              "evaluation_score": None,
+              "reason_of_rejection": "Model cannot answer this query."
+            })
 
-          elif (category == "general"):
-            # TODO To be adjusted
-            # Do Evaluation
-            contexts = [self.persona_component.get_persona_str()]
-            evaluation_result = await self.evaluator_component.evaluate_response(chat_message, answer, contexts, ["relevancy"])
-            evaluation_passing = evaluation_result['evaluation_passing']
-            print(f"[EVALUATION RESULT] {evaluation_result}")
+          # Display contexts
+          for i, context  in enumerate(rag_contexts):
+            context = context.replace("\n", " ")
+            if (len(context) <= 80):  context_to_display = context
+            else:   context_to_display = f"{context[:40]}...{context[-40:]}"
+            print(f"[ACTION REPLY CHAT CONTEXT #{i+1}]: {context_to_display}")
+          # Do Evaluation
+          evaluation_result = await self.evaluator_component.evaluate_response(chat_message, answer, rag_contexts, ["correctness", "faithfulness", "relevancy"])
+          evaluation_passing = evaluation_result['evaluation_passing']
+          print(f"[EVALUATION RESULT] {evaluation_result}")
 
-          else: # cateogry == "other"
-            # TODO To be adjusted (if needed)
-            evaluation_passing = True
+        elif (category == "general"):
+          # Generate prompt
+          prompt = self.prompt_generator_component.generate_prompt_reply_chat(
+            new_message=chat_message,
+            previous_messages=self.memory_component.retrieve(sender_id),
+            previous_iteration_notes=previous_iteration_notes)  
+          # Answer the query
+          answer, _ = await self.model_component.answer(prompt, is_direct=True)
+          # Do Evaluation
+          contexts = [self.persona_component.get_persona_str()]
+          evaluation_result = await self.evaluator_component.evaluate_response(chat_message, answer, contexts, ["relevancy"])
+          evaluation_passing = evaluation_result['evaluation_passing']
+          print(f"[EVALUATION RESULT] {evaluation_result}")
+
+        else: # cateogry == "other"
+          # Generate prompt
+          prompt = self.prompt_generator_component.generate_prompt_out_of_domain(user_query=chat_message)  
+          # Answer the query
+          answer, _ = await self.model_component.answer(prompt, is_direct=True)
+          evaluation_passing = True
 
 
-          # Add notes if it does not pass
-          if (not evaluation_passing):
-            previous_iteration_notes.append(evaluation_result)
+        # Add notes if it does not pass
+        if (not evaluation_passing):
+          previous_iteration_notes.append(evaluation_result)
 
         # Increment attempt
         attempt += 1
