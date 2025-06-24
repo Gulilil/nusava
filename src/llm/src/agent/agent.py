@@ -13,8 +13,7 @@ from gateway.input import InputGateway
 from gateway.output import OutputGateway
 from generator.prompt import PromptGenerator
 from generator.action import ActionGenerator
-from generator.schedule import ScheduleGenerator
-from utils.function import hotel_data_to_string_list, attraction_data_to_string_list, text_to_document, parse_documents, clean_quotation_string
+from utils.function import hotel_data_to_string_list, attraction_data_to_string_list, text_to_document, parse_documents, clean_quotation_string, sanitize_text_to_list
 
 
 class Agent():
@@ -44,7 +43,6 @@ class Agent():
     # Instantiate Generator
     self.prompt_generator_component = PromptGenerator(self.persona_component)
     self.action_generator_component = ActionGenerator()
-    self.schedule_generator_component = ScheduleGenerator()
     print("[AGENT INITIALIZED] Generator component(s) initialized")
 
 
@@ -92,6 +90,52 @@ class Agent():
     config_data = self.postgres_connector_component.get_config_data(self.user_id)
     self.model_component.config(config_data)
 
+
+  #####################
+  ######## GET ########
+  #####################
+
+  def get_user(self) -> dict:
+    """
+    Return user identifiers
+    """
+    username = self.postgres_connector_component.get_username(self.user_id)
+    user_data = {
+      "user_id": self.user_id,
+      "username": username
+    }
+    return user_data
+
+
+  def get_config(self) -> dict:
+    """
+    Return model configuration in model component
+    """
+    return self.model_component.get_config()
+  
+
+  def get_persona(self) -> dict:
+    """
+    Return stored persona in persona component
+    """
+    return self.persona_component.get_persona()
+  
+
+  def get_memory(self) -> dict:
+    """
+    Return all the memory in memory component
+    """
+    return self.memory_component.retrieve_all()
+
+
+  def get_observation_elm(self) -> dict:
+    """
+    Return social media account observation_elm
+    """
+    statistics = self.postgres_connector_component.get_statistics_data(self.user_id)
+    observations = self.action_generator_component.observe_statistics(statistics)
+    return observations
+  
 
   #######################
   ######## OTHER ########
@@ -164,18 +208,14 @@ class Agent():
     await self.memory_component.store(sender_id, {"role": "user", "content" : chat_message})
 
     try:
-      # Load the data from pinecone
-      # First hotel data
-      await self._load_tools_rag("hotels", "rag_tools_for_hotels_data", "Used to answer hotels-related query based on retrieved documents", sender_id)
-      # Then asso-rules
-      await self._load_tools_rag("association_rules", "rag_tools_for_association_rules_data", "Used to recommend system for hotel based on its antecedent-consequent relation based on retrieved documents", sender_id)
-      # Then tourist attractions
-      await self._load_tools_rag("tourist_attractions", "rag_tools_for_tourist_attractions_data", "Used to answer tourist-attractions-related query based on retrieved documents", sender_id)
-            
-      # Load the long-term memory from pinecone
-      chat_memory_namespace_name = f"chat_bot[{self.user_id}]_sender[{sender_id}]"
-      if (self.pinecone_connector_component.is_namespace_exist(chat_memory_namespace_name)):
-        await self._load_tools_rag(chat_memory_namespace_name, f"rag_tools_for_memory_chat_with_{sender_id}", f"Used to help answering question from {sender_id} based on previous occurences", sender_id)
+      # Detect the category first
+      prompt = self.prompt_generator_component.generate_prompt_identify_chat_category(
+          new_message=chat_message)  
+      categorization, _ = await self.model_component.answer(prompt, is_direct=True)
+      json_categorization = json.loads(categorization)
+      category = json_categorization['category']
+      reason = json_categorization['reason']
+      print(f"[ACTION REPLY CHAT MESSAGE CATEGORY] Message retrieved with category: {category} | With reason: {reason}")
 
       # Do iteration of action reply chat
       # While the thresholds are not satisfied, do the iteration
@@ -184,41 +224,75 @@ class Agent():
       evaluation_passing = False
       previous_iteration_notes = []
       while (not evaluation_passing):
-        # Generate prompt
-        prompt = self.prompt_generator_component.generate_prompt_reply_chat(
-          new_message=chat_message,
-          previous_messages=self.memory_component.retrieve(sender_id),
-          previous_iteration_notes=previous_iteration_notes)  
-        # Answer the query
-        # Skip if the answer is None
-        answer, contexts = await self.model_component.answer(prompt, tool_user_id=sender_id)
-        print(f"[ACTION REPLY CHAT] Attempt {attempt+1} of {max_attempts}. \nQuery: {chat_message} \nAnswer: {answer}")
+        # Filter the based on category
+        if (category == "tourism"):
+          # Load the data from pinecone
+          # First hotel data
+          await self._load_tools_rag("hotels", "rag_tools_for_hotels_data", "Used to answer hotels-related query based on retrieved documents", sender_id)
+          # Then asso-rules
+          await self._load_tools_rag("association_rules", "rag_tools_for_association_rules_data", "Used to recommend system for hotel based on its antecedent-consequent relation based on retrieved documents", sender_id)
+          # Then tourist attractions
+          await self._load_tools_rag("tourist_attractions", "rag_tools_for_tourist_attractions_data", "Used to answer tourist-attractions-related query based on retrieved documents", sender_id)
+          # Load the long-term memory from pinecone
+          chat_memory_namespace_name = f"chat_bot[{self.user_id}]_sender[{sender_id}]"
+          if (self.pinecone_connector_component.is_namespace_exist(chat_memory_namespace_name)):
+            await self._load_tools_rag(chat_memory_namespace_name, f"rag_tools_for_memory_chat_with_{sender_id}", f"Used to help answering question from {sender_id} based on previous occurences", sender_id)
 
-        if (answer is None):
-          previous_iteration_notes.append({
-            "iteration": attempt,
-            "your_answer" : None,
-            "evaluator": "model",
-            "evaluation_score": None,
-            "reason_of_rejection": "Model cannot answer this query."
-          })
-        # Answer is not None
-        else:
+          # Generate prompt
+          prompt = self.prompt_generator_component.generate_prompt_reply_chat(
+            new_message=chat_message,
+            previous_messages=self.memory_component.retrieve(sender_id),
+            previous_iteration_notes=previous_iteration_notes)  
+          # Answer the query
+          # Skip if the answer is None
+          answer, rag_contexts = await self.model_component.answer(prompt, tool_user_id=sender_id)
+          print(f"[ACTION REPLY CHAT] Attempt {attempt+1} of {max_attempts}.")
+
+          if (answer is None):
+            previous_iteration_notes.append({
+              "iteration": attempt,
+              "your_answer" : None,
+              "evaluator": "model",
+              "evaluation_score": None,
+              "reason_of_rejection": "Model cannot answer this query."
+            })
+
           # Display contexts
-          for i, context  in enumerate(contexts):
+          for i, context  in enumerate(rag_contexts):
             context = context.replace("\n", " ")
             if (len(context) <= 80):  context_to_display = context
             else:   context_to_display = f"{context[:40]}...{context[-40:]}"
             print(f"[ACTION REPLY CHAT CONTEXT #{i+1}]: {context_to_display}")
-          
-          # Evaluate the answer
-          evaluation_result = await self.evaluator_component.evaluate_response(chat_message, answer, contexts, ["correctness", "faithfulness", "relevancy"])
+          # Do Evaluation
+          evaluation_result = await self.evaluator_component.evaluate_response(chat_message, answer, rag_contexts, ["correctness", "faithfulness", "relevancy"])
           evaluation_passing = evaluation_result['evaluation_passing']
           print(f"[EVALUATION RESULT] {evaluation_result}")
 
-          # Add notes if it does not pass
-          if (not evaluation_passing):
-            previous_iteration_notes.append(evaluation_result)
+        elif (category == "general"):
+          # Generate prompt
+          prompt = self.prompt_generator_component.generate_prompt_reply_chat(
+            new_message=chat_message,
+            previous_messages=self.memory_component.retrieve(sender_id),
+            previous_iteration_notes=previous_iteration_notes)  
+          # Answer the query
+          answer, _ = await self.model_component.answer(prompt, is_direct=True)
+          # Do Evaluation
+          contexts = [self.persona_component.get_persona_str()]
+          evaluation_result = await self.evaluator_component.evaluate_response(chat_message, answer, contexts, ["relevancy"])
+          evaluation_passing = evaluation_result['evaluation_passing']
+          print(f"[EVALUATION RESULT] {evaluation_result}")
+
+        else: # cateogry == "other"
+          # Generate prompt
+          prompt = self.prompt_generator_component.generate_prompt_out_of_domain(user_query=chat_message)  
+          # Answer the query
+          answer, _ = await self.model_component.answer(prompt, is_direct=True)
+          evaluation_passing = True
+
+
+        # Add notes if it does not pass
+        if (not evaluation_passing):
+          previous_iteration_notes.append(evaluation_result)
 
         # Increment attempt
         attempt += 1
@@ -235,12 +309,13 @@ class Agent():
     finally:
       # Clean answer
       answer = clean_quotation_string(answer)
+      answer_messages = sanitize_text_to_list(answer)
       # Store in bot's reply memory
       await self.memory_component.store(sender_id, {"role": "bot", "content" : answer})
       # Refresh tools after use
       self.model_component.refresh_tools(sender_id)
       # Return answer
-      return answer
+      return answer_messages
 
 
   async def action_generate_caption(self, 
@@ -283,7 +358,8 @@ class Agent():
         else:
           # Prepare contexts for evaluation
           keywords_str = ", ".join(caption_keywords)
-          contexts = [f"Here is the image description: {img_description}", f"Here are the keywords: {keywords_str}"]  
+          contexts = [f"Here is the image description: {img_description}", 
+                      f"Here are the keywords: {keywords_str}"]  
           
           # Evaluate the answer
           evaluation_result = await self.evaluator_component.evaluate_response("Create a caption for an Instagram post", caption_message, contexts, ["relevancy"])  
@@ -351,7 +427,7 @@ class Agent():
       schedule_time = json_answer['schedule_time']
       reason = json_answer['reason']
 
-      # TODO Scheduler
+      # TODO Write inserting to database here
       # Write here
 
       # TODO To be removed
@@ -371,41 +447,54 @@ class Agent():
   ######## INTERNAL TRIGGER ACTION ########
   #########################################
 
+  def check_schedule(self) -> None:
+    # TODO Check to database for scheduled post, Wait for implementation in database
+
+    # TODO Check current time to scheduled time
+
+    # Placeholder for 
+    # self.output_gateway_component.request_post("img_url", "caption_message")
+
+    return
+
+
   async def decide_action(self) -> None:
     """
     Decide action based on the current conditions and statistics
     This is the main entry point for the agent to decide what to do next.
     """
-    statistics = self.postgres_connector_component.get_statistics_data(self.user_id)
-    observations = self.action_generator_component.observe_statistics(statistics)
+    observations = self.get_observation_elm()
     print(f"[ACTION OBSERVATION] Acquired observations: {observations}")
 
-    # Get the community
-    communities = await self.choose_community()
+    try:
+      # Get the community
+      communities = await self.choose_community()
 
-    # Max 5 times of action decision
-    for itr in range(5):
-      action, state = self.action_generator_component.decide_action(observations, itr)
-      print(f"[ACTION DECISION] {itr+1}.  action \"{action}\" in state \"{state}\"")
+      # Max 5 times of action decision
+      for itr in range(5):
+        action, state = self.action_generator_component.decide_action(observations, itr)
+        print(f"[ACTION DECISION] {itr+1}.  action \"{action}\" in state \"{state}\"")
 
-      if (action == "like"):
-        await self.action_like(communities)
-      elif (action == "follow"):
-        await self.action_follow(communities)
-      elif (action == "comment"):
-        await self.action_comment(communities)
-      else:
-        return
-      
-      # Give time delay
-      sleep_time = random.randint(6, 18)
-      print(f"[ACTION TIME SLEEP] Delay for {sleep_time} seconds")
-      time.sleep(sleep_time)
-
+        if (action == "like"):
+          await self.action_like(communities)
+        elif (action == "follow"):
+          await self.action_follow(communities)
+        elif (action == "comment"):
+          await self.action_comment(communities)
+        else:
+          return
+        
+        # Give time delay
+        sleep_time = random.randint(60, 180)
+        print(f"[ACTION TIME SLEEP] Delay for {sleep_time} seconds")
+        time.sleep(sleep_time)
+    except Exception as e:
+      print(f"[ERROR IN DECIDING ACTION] {e}")
   
+
   async def choose_community(self, 
                              top_k: int = 20, 
-                             threshold: float = 0.5) -> list[dict]:
+                             threshold: float = 0.35) -> list[dict]:
     """
     LLM decide which community it wants to got into for actions like, follow, and comment
     """
@@ -471,7 +560,7 @@ class Agent():
           break
       # Handle if not found
       if (not found):
-        raise Exception("All fetched similar data has been marked")
+        raise Exception("No available data to be marked")
 
       # Get Influencer
       influencer_id = chosen_influencer['id']
@@ -524,7 +613,7 @@ class Agent():
           break
       # Handle if not found
       if (not found):
-        raise Exception("All fetched similar data has been marked")
+        raise Exception("No available data to be marked")
 
       # Get Influencer
       post_id = chosen_post['id']
@@ -568,7 +657,6 @@ class Agent():
             break
           # Case marked_comment list already in post
           elif (self.user_id not in post['mark_comment'] and str(self.user_id) not in post['mark_comment']):
-            print("yang ini")
             found = True
             chosen_post = post
             break
@@ -577,7 +665,7 @@ class Agent():
           break
       # Handle if not found
       if (not found):
-        raise Exception("All fetched similar data has been marked")
+        raise Exception("No available data to be marked")
 
       # Get Influencer
       post_id = chosen_post['id']
@@ -610,9 +698,6 @@ class Agent():
         
     except Exception as e:
       print(f"[ERROR ACTION COMMENT] Error occured in executing `comment`: {e}")
-
-
- 
 
 
   ##############################

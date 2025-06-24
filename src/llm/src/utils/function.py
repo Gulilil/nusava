@@ -51,6 +51,11 @@ def text_to_document(text_list: list[str]) -> list[Document]:
   return [Document(text=text) for text in text_list]
 
 
+def sanitize_text_to_list(text: str) -> list[str]:
+  text_splitted = text.split("\n")
+  return [subtext for subtext in text_splitted if (len(subtext.strip()) > 0)]
+
+
 def parse_documents(document_list: list[Document]) -> list:
   """
   Parse documents using LlamaIndex parser
@@ -77,6 +82,7 @@ def clean_quotation_string(text: str) -> str:
   else:
     return text
   
+
 def hotel_data_to_string_list(data: dict, max_limit_arr: int = 20) -> list[str]:
   """
   Convert hotel data to list of string
@@ -124,6 +130,7 @@ def hotel_data_to_string_list(data: dict, max_limit_arr: int = 20) -> list[str]:
   data_list.extend(reviews_list)
   data_list = [info for info in data_list if info.strip() != ""]  # Remove empty strings
   return data_list
+
 
 def attraction_data_to_string_list(data: dict, max_limit_arr: int = 20) -> list[str]:
   """
