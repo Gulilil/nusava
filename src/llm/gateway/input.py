@@ -25,6 +25,11 @@ class InputGateway():
     self.port = port
     self.setup_routes()
     
+    print("[REGISTERED ROUTES]:")
+    for rule in self.app.url_map.iter_rules():
+        print(f"{rule.endpoint}: {rule.methods} -> {rule}")
+
+    
 
   def _check_data_validity(self, 
                            data: dict, 
