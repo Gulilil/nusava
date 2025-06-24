@@ -163,7 +163,7 @@ class Model():
       return query_engine
     
 
-  async def load_data(self, 
+  def load_data(self, 
                       vector_store, 
                       storage_context, 
                       metadata_name, 
@@ -176,7 +176,7 @@ class Model():
       self._setup_tool(query_engine, metadata_name, metadata_description, tool_user_id)
 
 
-  async def answer(self, 
+  def answer(self, 
                    prompt: str, 
                    is_direct: bool = False, 
                    verbose: bool = True,
@@ -194,7 +194,7 @@ class Model():
     )
     try:
       if (is_direct):
-         response = await self.llm_model.acomplete(prompt)
+         response = self.llm_model.complete(prompt)
          result = response.text
          return result, None
       else:
@@ -205,7 +205,7 @@ class Model():
           max_iterations=self._max_iteration,
           system_prompt=system_prompt
         )
-        response = await agent.aquery(prompt)
+        response = agent.query(prompt)
         result = response.response
         contexts = [node.node.text for node in response.source_nodes]
         return result, contexts

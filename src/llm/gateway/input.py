@@ -1,6 +1,6 @@
-from quart import Quart, request, jsonify
+from flask import Flask, request, jsonify
 import os
-from quart_cors import cors
+from flask_cors import CORS
 
 from dotenv import load_dotenv
 load_dotenv()
@@ -15,10 +15,10 @@ class InputGateway():
                host : str = os.getenv("LLM_MODULE_HOST"), 
                port : str = os.getenv("LLM_MODULE_PORT")):
     """
-    Instantiate Quart as the framework for the API and the gateway
+    Instantiate Flask as the framework for the API and the gateway
     """
-    self.app = cors(Quart(__name__), 
-                    allow_origin=[os.getenv("FRONTEND_URL")])
+    self.app = Flask(__name__)
+    CORS(self.app, origin=[os.getenv("FRONTEND_URL")])
     self._agent_component = agent_component
     self.host = host
     self.port = port
@@ -86,7 +86,7 @@ class InputGateway():
     ######## SETUP & OTHER ########
 
     @self.app.route("/user", methods=['POST'])
-    async def set_user():
+    def set_user():
       """
       Set user_id to the agent
       Field format : 
@@ -95,14 +95,14 @@ class InputGateway():
       }
       """
       try:
-        data = await request.get_json()
+        data = request.get_json()
         is_valid, error_message = self._check_data_validity(data, ['user_id'])
         if (not is_valid):
           return jsonify({"error": error_message}), 400
         
         # Proceed to process
         user_id = data['user_id']
-        await self._agent_component.set_user(user_id)
+        self._agent_component.set_user(user_id)
         return jsonify({"response": True}), 200
       except Exception as error: 
         return jsonify({"error": str(error)}), 400
@@ -133,18 +133,18 @@ class InputGateway():
     ######## SCHEDULED FOR CRON ########
 
     @self.app.route("/action", methods=['POST'])
-    async def respond_action():
+    def respond_action():
       """
       Respond to external scheduler to start doing action
       """
       try:
-        await self._agent_component.decide_action()
+        self._agent_component.decide_action()
         return jsonify({"response": True}), 200
       except Exception as error: 
         return jsonify({"error": str(error)}), 400
 
     @self.app.route("/check_schedule", methods=['POST'])
-    async def respond_check_schedule():
+    def respond_check_schedule():
       """
       Respond to external scheduler to check schedule for scheduled_post
       """
@@ -157,7 +157,7 @@ class InputGateway():
     ######## ACTIONS INPUT ########
 
     @self.app.route("/chat", methods=['POST'])
-    async def respond_chat():
+    def respond_chat():
       """
       Respond to input chat from user, returning the reply to the inputted message
       Field format : 
@@ -167,7 +167,7 @@ class InputGateway():
       }
       """
       try:
-        data = await request.get_json()
+        data = request.get_json()
         is_valid, error_message = self._check_data_validity(data, ['chat_message', 'sender_id'])
         if (not is_valid):
           return jsonify({"error": error_message}), 400
@@ -175,13 +175,13 @@ class InputGateway():
         # Proceed to process
         chat_message = data['chat_message']
         sender_id = data['sender_id']
-        response = await self._agent_component.action_reply_chat(chat_message, sender_id)
+        response = self._agent_component.action_reply_chat(chat_message, sender_id)
         return jsonify({"response": response}), 200
       except Exception as error: 
         return jsonify({"error": str(error)}), 400
       
     @self.app.route("/post", methods=['POST'])
-    async def respond_schedule_post():
+    def respond_schedule_post():
       """
       Respond to schedule post input from dashboard, will be scheduled
       Field format : 
@@ -191,7 +191,7 @@ class InputGateway():
       }
       """
       try:
-        data = await request.get_json()
+        data = request.get_json()
         is_valid, error_message = self._check_data_validity(data, ["image_url", "caption_message"])
         if (not is_valid):
           return jsonify({"error": error_message}), 400
@@ -200,7 +200,7 @@ class InputGateway():
         img_url = data['image_url']
         caption_message= data['caption_message']
         # Process and schedule the post
-        schedule_time, reason = await self._agent_component.action_schedule_post(img_url, caption_message)
+        schedule_time, reason = self._agent_component.action_schedule_post(img_url, caption_message)
         # Handle if none
         if (schedule_time is None or reason is None):
           raise Exception("None scheduled time")
@@ -210,7 +210,7 @@ class InputGateway():
         return jsonify({"error": str(error)}), 400
 
     @self.app.route("/caption", methods=['POST'])
-    async def respond_generate_caption():
+    def respond_generate_caption():
       """
       Respond to post input from dashboard, returning the caption for the post
       Field format : 
@@ -221,7 +221,7 @@ class InputGateway():
       }
       """
       try:
-        data = await request.get_json()
+        data = request.get_json()
         is_valid, error_message = self._check_data_validity(data, ["image_description", "caption_keywords"])
         if (not is_valid):
           return jsonify({"error": error_message}), 400
@@ -231,7 +231,7 @@ class InputGateway():
         caption_keywords = data['caption_keywords']
         additional_context = data.get('additional_context', None)
         # Process and schedule the action post
-        caption_message = await self._agent_component.action_generate_caption(img_description, caption_keywords, additional_context)
+        caption_message = self._agent_component.action_generate_caption(img_description, caption_keywords, additional_context)
 
         return jsonify({"response": caption_message}), 200
       except Exception as error: 
