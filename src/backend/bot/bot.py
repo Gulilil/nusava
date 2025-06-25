@@ -3,42 +3,34 @@ import random
 import time
 from instagrapi import Client
 from .models import User, ActionLog
+from .session_manager import SessionManager
 from typing import List
 from instagrapi.types import DirectThread
 import requests
 from dotenv import load_dotenv
 load_dotenv()
 import os
+import logging
 from .utils import download_image_from_url, cleanup_temp_file
+
+logger = logging.getLogger(__name__)
 
 class InstagramBot:
     def __init__(self, user_obj: User, password: str, session_settings=None):
         self.username = user_obj.username
         self.password = password
         self.user_obj = user_obj
-        self.client = Client()
-
-        if session_settings:
-            self.client.set_settings(session_settings)
-
+        self.session_manager = SessionManager()
+        
         try:
-            session_data = self.user_obj.session_info
-            if isinstance(session_data, str):
-                session_data = json.loads(session_data)
+            # Use the new session manager for proper session handling
+            self.client = self.session_manager.login_user(self.username, self.password, self.user_obj)
             
-            sessionid = None
-            if 'authorization_data' in session_data:
-                sessionid = session_data['authorization_data'].get('sessionid')
-            else:
-                sessionid = session_data.get('sessionid')
-                
-            if (self.user_obj.session_info):
-                self.client.login_by_sessionid(sessionid)
-            else:
-                self.client.login(self.username, self.password)
-            self.user_obj.session_info = self.client.get_settings()
-            self.user_obj.save()
+            # Session is automatically saved to database in login_user method
+            logger.info(f"Instagram bot initialized successfully for user: {self.username}")
+            
         except Exception as e:
+            logger.error(f"Failed to initialize Instagram bot for {self.username}: {str(e)}")
             raise e
 
     def log(self, action_type, target, status, message):
