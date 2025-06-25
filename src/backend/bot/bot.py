@@ -224,7 +224,6 @@ class InstagramBot:
             pending_threads = self.client.direct_pending_inbox(amount)
             pending_processed = self.process_thread_messages(pending_threads, is_pending=True)
             all_processed.extend(pending_processed)
-            
             # Sort by timestamp (newest first)
             all_processed.sort(key=lambda x: x['latest_timestamp'], reverse=True)
                     
@@ -246,20 +245,39 @@ class InstagramBot:
             
             print(f"\n--- Processing {username} ---")
             
-            # Generate response based on combined message
-            reply_text = self.generate_response(combined_message, username)
+            # Generate response based on combined message (should return list of messages)
+            reply_messages = self.generate_response(combined_message, username)
             
-            # Send reply
-            reply_success = self.client.direct_send(text=reply_text, thread_ids=[thread_id])
-            
-            if not reply_success:
-                print("Failed to send reply")
+            if not reply_messages:
+                print("No response generated")
                 return False
             
-            self.log("dm_reply", username, "success", f"Replied to {username}: {reply_text[:50]}...")
+            
+            print(f"Sending {len(reply_messages)} message(s) to {username}")
+            
+            # Send each message with realistic delays to simulate human behavior
+            for i, message in enumerate(reply_messages):
+                if not message or not message.strip():
+                    continue
+                    
+                print(f"Sending message {i+1}/{len(reply_messages)}: {message[:50]}...")
+                
+                # Send the message
+                reply_success = self.client.direct_send(text=message, thread_ids=[thread_id])
+                
+                if not reply_success:
+                    print(f"Failed to send message {i+1}")
+                    return False
+                                
+                if i < len(reply_messages) - 1:
+                    typing_delay = min(max(len(message) * 0.05, 2), 8)  # 2-8 seconds based on length
+                    print(f"typing delay: {typing_delay:.1f} seconds...")
+                    time.sleep(typing_delay)
 
-            # Mark as seen
-            self.client.direct_send_seen(thread_id)            
+            self.log("dm_reply", username, "success", f"Replied to {username}")
+            # Mark as seen after all messages are sent
+            self.client.direct_send_seen(thread_id)
+            print(f"✅ All messages sent to {username}")
             return True
             
         except Exception as e:
@@ -306,6 +324,7 @@ class InstagramBot:
             
         except Exception as e:
             print(f"Error in optimized automation: {str(e)}")
+            return {"success": 0, "total": 0, "message": f"Error: {str(e)}"}
 
     def generate_response(self, combined_message: str, username: str):
         """Generate travel response based on combined conversation context"""
