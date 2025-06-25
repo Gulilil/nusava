@@ -36,6 +36,7 @@ export default function PostsPage() {
       try {
         const data = await getBotPosts();
         setPosts(data ?? []);
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       } catch (err: any) {
         setError(err.message || "Failed to fetch posts");
       }

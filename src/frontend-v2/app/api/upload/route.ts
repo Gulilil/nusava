@@ -73,6 +73,7 @@ export const POST = async (req: Request) => {
       ).end(buffer);
     });
 
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const result = uploadResponse as any;
 
     return NextResponse.json({ 
