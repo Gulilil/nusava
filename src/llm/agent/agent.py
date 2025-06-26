@@ -155,12 +155,16 @@ class Agent():
     Return social media account observation_elm
     """
     try:
-      statistics = self.postgres_connector_component.get_statistics_data(self.user_id)
+      # # MARK only for testing
+      # statistics = (1,2,1)
+      # statistics = (0,0,0) 
+
+      statistics = self.output_gateway_component.request_statistics(self.user_id)
       observations = self.action_generator_component.observe_statistics(statistics)
       return observations
     except Exception as e:
       print(f"[FAILED GET OBSERVATION ELEMENT] {e}")
-      return []
+      raise Exception(e)
   
 
   #######################
@@ -480,10 +484,11 @@ class Agent():
     Decide action based on the current conditions and statistics
     This is the main entry point for the agent to decide what to do next.
     """
-    observations = self.get_observation_elm()
-    print(f"[ACTION OBSERVATION] Acquired observations: {observations}")
 
     try:
+      observations = self.get_observation_elm()
+      print(f"[ACTION OBSERVATION] Acquired observations: {observations}")
+
       # Get the community
       communities = self.choose_community()
 
@@ -505,6 +510,7 @@ class Agent():
         sleep_time = random.randint(60, 180)
         print(f"[ACTION TIME SLEEP] Delay for {sleep_time} seconds")
         time.sleep(sleep_time)
+
     except Exception as e:
       print(f"[ERROR IN DECIDING ACTION] {e}")
       raise Exception (e)
@@ -546,6 +552,7 @@ class Agent():
 
     except Exception as e:
       print(f"[ERROR CHOOSE COMMUNITY] Error occured in executing `choose community`: {e}")
+      raise Exception(e)
 
 
   async def action_follow(self, communities: list[dict]) -> None:
@@ -585,18 +592,18 @@ class Agent():
       influencer_username = chosen_influencer['username']
       print(f"[CHOSEN INFLUENCER] Influencer {influencer_username} with influencer_id {influencer_id} in community {community_id}")
 
-      # # Request
-      # is_success = self.output_gateway_component.request_follow(influencer_username)
-      # if (is_success):
-      #   # Mark influencer
-      #   if ('mark_follow' in chosen_influencer and isinstance(chosen_influencer['mark_follow'], list)):
-      #     chosen_influencer['mark_follow'].append(self.user_id)
-      #     print(f"[ACTION FOLLOW] Mark array has been created for {self.user_id}")
-      #   else:
-      #     chosen_influencer['mark_follow'] = [self.user_id]
-      #     print(f"[ACTION FOLLOW] {self.user_id} is inserted to mark array")
-      #   self.mongo_connector_component.update_one_data(mongo_collection_name, {"community_id": community_id}, {"influencers": influencers})
-      #   print(f"[ACTION FOLLOW] Successfully follow influencer {influencer_username}")
+      # Request
+      is_success = self.output_gateway_component.request_follow(influencer_username)
+      if (is_success):
+        # Mark influencer
+        if ('mark_follow' in chosen_influencer and isinstance(chosen_influencer['mark_follow'], list)):
+          chosen_influencer['mark_follow'].append(self.user_id)
+          print(f"[ACTION FOLLOW] Mark array has been created for {self.user_id}")
+        else:
+          chosen_influencer['mark_follow'] = [self.user_id]
+          print(f"[ACTION FOLLOW] {self.user_id} is inserted to mark array")
+        self.mongo_connector_component.update_one_data(mongo_collection_name, {"community_id": community_id}, {"influencers": influencers})
+        print(f"[ACTION FOLLOW] Successfully follow influencer {influencer_username}")
       
     except Exception as e:
       print(f"[ERROR ACTION FOLLOW] Error occured in executing `follow`: {e}")
@@ -638,18 +645,18 @@ class Agent():
       post_id = chosen_post['id']
       print(f"[CHOSEN POST] Like post with post_id {post_id} in community {community_id}")
 
-      # # Request
-      # is_success = self.output_gateway_component.request_like(post_id)
-      # if (is_success):
-      #   # Mark post
-      #   if ('mark_like' in chosen_post and isinstance(chosen_post['mark_like'], list)):
-      #     chosen_post['mark_like'].append(self.user_id)
-      #     print(f"[ACTION LIKE] Mark array has been created for {self.user_id}")
-      #   else:
-      #     chosen_post['mark_like'] = [self.user_id]
-      #     print(f"[ACTION LIKE] {self.user_id} is inserted to mark array")
-      #   self.mongo_connector_component.update_one_data(mongo_collection_name, {"community_id": community_id}, {"posts": posts})
-      #   print(f"[ACTION LIKE] Successfully like post with post_id {post_id}")
+      # Request
+      is_success = self.output_gateway_component.request_like(post_id)
+      if (is_success):
+        # Mark post
+        if ('mark_like' in chosen_post and isinstance(chosen_post['mark_like'], list)):
+          chosen_post['mark_like'].append(self.user_id)
+          print(f"[ACTION LIKE] Mark array has been created for {self.user_id}")
+        else:
+          chosen_post['mark_like'] = [self.user_id]
+          print(f"[ACTION LIKE] {self.user_id} is inserted to mark array")
+        self.mongo_connector_component.update_one_data(mongo_collection_name, {"community_id": community_id}, {"posts": posts})
+        print(f"[ACTION LIKE] Successfully like post with post_id {post_id}")
 
     except Exception as e:
       print(f"[ERROR ACTION LIKE] Error occured in executing `like`: {e}")
@@ -704,18 +711,18 @@ class Agent():
       comment_message = clean_quotation_string(comment_message)
       print(f"[RESULTED ACTION COMMENT] Comment message: {comment_message}")
 
-      # # Request
-      # is_success = self.output_gateway_component.request_comment(post_id, comment_message)
-      # if (is_success):
-      #   # Mark post
-      #   if ('mark_comment' in chosen_post and isinstance(chosen_post['mark_comment'], list)):
-      #     chosen_post['mark_comment'].append(self.user_id)
-      #     print(f"[ACTION COMMENT] Mark array has been created for {self.user_id}")
-      #   else:
-      #     chosen_post['mark_comment'] = [self.user_id]
-      #     print(f"[ACTION LIKE] {self.user_id} is inserted to mark array")
-      #   self.mongo_connector_component.update_one_data(mongo_collection_name, {"community_id": community_id}, {"posts": posts})
-      #   print(f"[ACTION COMMENT] Successfully comment post with post_id {post_id}")
+      # Request
+      is_success = self.output_gateway_component.request_comment(post_id, comment_message)
+      if (is_success):
+        # Mark post
+        if ('mark_comment' in chosen_post and isinstance(chosen_post['mark_comment'], list)):
+          chosen_post['mark_comment'].append(self.user_id)
+          print(f"[ACTION COMMENT] Mark array has been created for {self.user_id}")
+        else:
+          chosen_post['mark_comment'] = [self.user_id]
+          print(f"[ACTION LIKE] {self.user_id} is inserted to mark array")
+        self.mongo_connector_component.update_one_data(mongo_collection_name, {"community_id": community_id}, {"posts": posts})
+        print(f"[ACTION COMMENT] Successfully comment post with post_id {post_id}")
         
     except Exception as e:
       print(f"[ERROR ACTION COMMENT] Error occured in executing `comment`: {e}")

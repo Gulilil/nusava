@@ -317,7 +317,8 @@ class PromptGenerator():
                 "Comments longer than 2 sentences are not allowed. Avoid using long and complex sentences. Keep the sentences short and concise. " \
                 "Try to make the comment as natural as you can. You can use informal tone to suit your persona. " \
                 "Users are rarely use emoji in making comments. You may use 1 and 2 if you think it is necessary to suit to your persona. " \
-                "You should avoid using hashtags unless it is really necessary and related to your persona."
+                "You should avoid using hashtags unless it is really necessary and related to your persona. \n" \
+                "You should and have to make the comment in the same language as the post caption. "
 
     return self._prompt_template.format(persona_subprompt=persona_subprompt,
                                   context_subprompt=context_subprompt,
@@ -343,7 +344,8 @@ class PromptGenerator():
     additional_subprompt =  "Only answer the text caption without any explanation text. " \
                             "Return the answer in string format without any quotation (\") symbol.\n" \
                             "By default, do not use hashtags and emoji unless it is described in \"additional context\". " \
-                            "Keep the caption short and meaningful to other people."
+                            "Keep the caption short and meaningful to other people. " \
+                            "Use English as the default language in making caption unless it is stated in \"additional context\" regarding the language you have to use."
     if (additional_context is not None):
       additional_subprompt += f" Here are some additional context: {additional_context}"
     previous_iteration_notes_subprompt = self.generate_subprompt_previous_iteration_notes(previous_iteration_notes)

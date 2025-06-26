@@ -1,4 +1,5 @@
 import requests
+from typing import Optional
 import os
 from dotenv import load_dotenv
 load_dotenv()
@@ -97,7 +98,7 @@ class OutputGateway():
       return False
   
 
-  def request_post(self, img_url: str, caption_message:str) -> None:
+  def request_post(self, img_url: str, caption_message:str) -> bool:
     """
     Hit comment api in automation module
     """
@@ -124,7 +125,7 @@ class OutputGateway():
       return False
     
 
-  def request_statistics(self, user_id: int) -> None:
+  def request_statistics(self, user_id: int) -> Optional[tuple]:
     """
     Hit statistics api in automation module
     """
@@ -138,13 +139,14 @@ class OutputGateway():
       # Check response
       response = requests.post(url, json=data)
       if (response.status_code == 200):
-        response_data = response.json()
-        return True
+        response_data = response.json()['data']
+        result_data = (response_data['new_comments'], response_data['new_followers'], response_data['new_likes'])
+        return result_data
       else:
         response_json = response.json()
-        print(f"[ERROR REQUEST POST] Status code: {response.status_code}. Error : {response_json['error']}")
-        return False
+        print(f"[ERROR REQUEST STATISTICS] Status code: {response.status_code}. Error : {response_json['error']}")
+        return None
 
     except Exception as e:
-      print(f"[ERROR REQUEST POST] Error occured in requesting action `post`: {e}")
-      return False
+      print(f"[ERROR REQUEST STATISTICS] Error occured in requesting action `statistics`: {e}")
+      return None

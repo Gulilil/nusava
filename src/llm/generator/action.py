@@ -80,9 +80,9 @@ class ActionGenerator:
           # Define emission probability
           model.emissionprob_ = np.array([
                 # new_com, new_fol, liked, morning, afternoon, night
-                [0.2,     0.3,     0.2,    0.12,     0.1,        0.08],   # growth
-                [0.3,     0.2,     0.2,    0.08,     0.12,       0.1],   # engagement
-                [0.1,     0.1,     0.2,    0.2,      0.2,        0.2],    # idle
+                [0.20,    0.30,    0.20,    0.12,    0.10,    0.08],   # growth
+                [0.30,    0.20,    0.20,    0.08,    0.12,    0.10],   # engagement
+                [0.23,    0.23,    0.24,    0.10,    0.10,    0.10],    # idle
             ])
 
 
