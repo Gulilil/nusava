@@ -470,14 +470,25 @@ class Agent():
   #########################################
 
   def check_schedule(self) -> None:
-    # TODO Check to database for scheduled post, Wait for implementation in database
+    """
+    Check for schedule in database
+    """
+    try:
+      post_to_schedule = self.postgres_connector_component.get_scheduled_post_data(self.user_id)
+      for post in post_to_schedule:
+        img_url = post[0]
+        caption = post[1]
+        self.output_gateway_component.request_post(img_url, caption)
 
-    # TODO Check current time to scheduled time
+        # Give time delay
+        sleep_time = random.randint(60, 180)
+        print(f"[ACTION TIME SLEEP] Delay for {sleep_time} seconds")
+        time.sleep(sleep_time)
 
-    # Placeholder for 
-    # self.output_gateway_component.request_post("img_url", "caption_message")
-
-    return
+      return
+    except Exception as e:
+      print(f"[ERROR CHECK SCHEDULE] Error checking scheduled post: {e}")
+      raise Exception(e)
 
 
   async def decide_action(self) -> None:
