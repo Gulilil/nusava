@@ -549,11 +549,14 @@ def user_persona(request):
         })
 
 @api_view(['GET'])
-@authentication_classes([JWTAuthentication])
-@permission_classes([IsAuthenticated])
+@permission_classes([AllowAny])
 def get_instagram_statistics(request):
     """Get Instagram statistics for the authenticated user"""
-    user = request.user
+    user_id = request.data.get('user_id')
+    if not user_id:
+        user = request.user
+    else:
+        user = User.objects.filter(id=user_id).first()
     
     try:
         stats = InstagramStatistics.objects.filter(user=user).order_by('-created_at').first()
