@@ -7,16 +7,21 @@ class Memory():
   The usage itself is closely related to Episodic Memory
   """
 
+  # Max short term memory length that can be held 
+  _max_message_limit : int = 16
+  # Length of "short term memory" to be migrated
+  _memory_length_migration: int = 10
+
   def __init__(
       self,
       agent_component: object,  
-      max_message_limit : int = 10
+      max_message_limit : int = 16
+
   ) -> None:
       """
       Use dictionary as memory store 
       """
       self._agent_component = agent_component
-      self._max_message_limit = max_message_limit
       self._memory= {}
 
   ######## STORE  ########
@@ -78,12 +83,12 @@ class Memory():
       
       # Migrating memory if it reaches certain length
       if (len(self._memory[sender_id]) >= self._max_message_limit):
-        print('test')
-        success = self._agent_component.summarize_and_store_memory(sender_id, self._memory[sender_id])
+        memory_to_migrate = self._memory[sender_id][:self._memory_length_migration]
+        success = self._agent_component.summarize_and_store_memory(sender_id, memory_to_migrate)
         print(f"[MIGRATING MEMORY] Successfully migrating short-term memory with {sender_id} as long-term memory")
         # If already stored in vector, remove from short term memory
         if (success):
-           self._memory.pop(sender_id)
+           self.delete(sender_id, self._memory_length_migration, is_all= False)
 
   
   ######## RETRIEVE ########
@@ -103,7 +108,31 @@ class Memory():
      Return all the memory
      """
      return self._memory
-      
+  
+
+  ######## RETRIEVE ########
+
+  def delete(self, sender_id: str, n_late: int, is_all: bool = False):
+    """
+    Delete memory of certain sender_id and truncate n_late memories (or all)
+    """
+    if (sender_id in self._memory):
+      if (is_all):
+        self._memory.pop(sender_id)
+      else:
+        # Truncate the n_late memory
+        self._memory[sender_id] = self._memory[sender_id][n_late:]
+
+    else:
+      print(f"[ERROR DELETING MEMORY] No sender_id \"{sender_id}\" is found")
+
+  def delete_all(self):
+     """
+     Delete all short term memory
+     """
+     self._memory = {}
+    
+
 
 """
 Example of Memory (FOR TESTING ONLY)
