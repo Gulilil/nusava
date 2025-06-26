@@ -24,13 +24,12 @@ class InputGateway():
     self.host = host
     self.port = port
     self.setup_routes()
-    
+
     print("[REGISTERED ROUTES]:")
     for rule in self.app.url_map.iter_rules():
         print(f"{rule.endpoint}: {rule.methods} -> {rule}")
 
     
-
   def _check_data_validity(self, 
                            data: dict, 
                            fields_to_check : list) -> bool:
@@ -83,8 +82,6 @@ class InputGateway():
       except Exception as error: 
         return jsonify({"error": str(error)}), 400
       
-      
-
     ######################
     ######## POST ########
     ######################

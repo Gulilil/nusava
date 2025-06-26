@@ -56,23 +56,37 @@ class Agent():
     This function should be called first thing
     """
 
-    # Check if there is any memory
-    # Insert first the memory before changing user_id
-    if (self.user_id and self.memory_component.count() > 0):
-      memories = self.memory_component.retrieve_all()
-      for sender_id, memory_data in memories.items():
-        print(f"[STORING REMAINING MEMORY] Storing remaining memory from previous user with user_id: {user_id} with {sender_id}")
-        self.summarize_and_store_memory(sender_id, memory_data)
-      
-    print(f"[AGENT CONSTRUCTED] Constructing agent for user_id: {user_id}")
-    self.user_id = user_id
+    try:
+      # Check if there is any memory
+      # Insert first the memory before changing user_id
+      if (self.user_id and self.memory_component.count() > 0):
+        memories = self.memory_component.retrieve_all()
+        for sender_id, memory_data in memories.items():
 
-    # Reset model tools
-    self.model_component.refresh_tools("", is_all=True)
+          # Try inserting memory with maximum of 3 attempts
+          max_attempt = 3
+          attempt = 1
+          success = False
+          while (attempt <= max_attempt and not success):
+            success = self.summarize_and_store_memory(sender_id, memory_data)
+            attempt += 1
+          if (success):
+            print(f"[STORING REMAINING MEMORY] Storing remaining memory from previous user_id: {user_id} with {sender_id}")
+          else:
+            print(f"[ERROR STORING REMAINING MEMORY] Error storing remaining memory user_id: {user_id} with {sender_id} after {max_attempt} attempts. Memory will be lost")
+      # Delete all memory
+      self.memory_component.delete_all()
 
-    # Setup components
-    self.set_config()
-    self.set_persona()
+      print(f"[AGENT CONSTRUCTED] Constructing agent for user_id: {user_id}")
+      self.user_id = user_id
+      # Reset model tools
+      self.model_component.refresh_tools("", is_all=True)
+
+      # Setup components
+      self.set_config()
+      self.set_persona()
+    except Exception as e:
+      print(f"[ERROR SETTING UP USER] Error in setting up user: {e}")
 
 
   def set_persona(self) -> None:
