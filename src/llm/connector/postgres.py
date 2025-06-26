@@ -1,5 +1,6 @@
 import os
 import psycopg2
+from datetime import datetime, timezone, timedelta
 
 from dotenv import load_dotenv
 load_dotenv()
@@ -73,17 +74,32 @@ class PostgresConnector():
       return None 
   
 
-  def get_statistics_data(self, user_id: str) -> tuple:
-    """
-    Get persona data based on the user_id
-    """
-    try:
-      table_name = "bot_instagramstatistics"
-      column_names = "new_comments, new_followers, new_likes"
-      self.cursor.execute(f"SELECT {column_names} FROM {table_name} WHERE user_id={user_id}")
-      data = self.cursor.fetchone()
-      return data
-    except Exception as e:
-      print(f"[ERROR POSTGRES] {e}")
-      self.connection.rollback()
-      return None 
+  def get_scheduled_post_data(self, user_id: str) -> tuple:
+      """
+      Get scheduled post data that is ready to post:
+      - scheduled_time is before current time (GMT+7)
+      - is_posted is False
+      """
+      try:
+          table_name = "bot_scheduledpost"
+          column_names = "image_url, caption"
+
+          # Get current time in GMT+7
+          current_time_gmt7 = datetime.now(timezone.utc) + timedelta(hours=7)
+          
+          # Use parameterized query to prevent SQL injection
+          query = f"""
+              SELECT {column_names}
+              FROM {table_name}
+              WHERE user_id = %s
+                AND scheduled_time < %s
+                AND is_posted = FALSE
+              LIMIT 1;
+          """
+          self.cursor.execute(query, (user_id, current_time_gmt7))
+          data = self.cursor.fetchone()
+          return data
+      except Exception as e:
+          print(f"[ERROR POSTGRES] {e}")
+          self.connection.rollback()
+          return None

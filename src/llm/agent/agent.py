@@ -59,32 +59,33 @@ class Agent():
     try:
       # Check if there is any memory
       # Insert first the memory before changing user_id
-      if (self.user_id and self.memory_component.count() > 0):
-        memories = self.memory_component.retrieve_all()
-        for sender_id, memory_data in memories.items():
+      if (self.user_id is None or user_id != self.user_id):
+        if (self.user_id and self.memory_component.count() > 0):
+          memories = self.memory_component.retrieve_all()
+          for sender_id, memory_data in memories.items():
 
-          # Try inserting memory with maximum of 3 attempts
-          max_attempt = 3
-          attempt = 1
-          success = False
-          while (attempt <= max_attempt and not success):
-            success = await self.summarize_and_store_memory(sender_id, memory_data)
-            attempt += 1
-          if (success):
-            print(f"[STORING REMAINING MEMORY] Storing remaining memory from previous user_id: {user_id} with {sender_id}")
-          else:
-            print(f"[ERROR STORING REMAINING MEMORY] Error storing remaining memory user_id: {user_id} with {sender_id} after {max_attempt} attempts. Memory will be lost")
-      # Delete all memory
-      self.memory_component.delete_all()
+            # Try inserting memory with maximum of 3 attempts
+            max_attempt = 3
+            attempt = 1
+            success = False
+            while (attempt <= max_attempt and not success):
+              success = await self.summarize_and_store_memory(sender_id, memory_data)
+              attempt += 1
+            if (success):
+              print(f"[STORING REMAINING MEMORY] Storing remaining memory from previous user_id: {user_id} with {sender_id}")
+            else:
+              print(f"[ERROR STORING REMAINING MEMORY] Error storing remaining memory user_id: {user_id} with {sender_id} after {max_attempt} attempts. Memory will be lost")
+        # Delete all memory
+        self.memory_component.delete_all()
 
-      print(f"[AGENT CONSTRUCTED] Constructing agent for user_id: {user_id}")
-      self.user_id = user_id
-      # Reset model tools
-      self.model_component.refresh_tools("", is_all=True)
+        print(f"[AGENT CONSTRUCTED] Constructing agent for user_id: {user_id}")
+        self.user_id = user_id
+        # Reset model tools
+        self.model_component.refresh_tools("", is_all=True)
 
-      # Setup components
-      self.set_config()
-      self.set_persona()
+        # Setup components
+        self.set_config()
+        self.set_persona()
     except Exception as e:
       print(f"[ERROR SETTING UP USER] Error in setting up user: {e}")
 

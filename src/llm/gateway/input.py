@@ -70,14 +70,12 @@ class InputGateway():
         config = self._agent_component.get_config()
         persona = self._agent_component.get_persona()
         memory = self._agent_component.get_memory()
-        observation_elm = self._agent_component.get_observation_elm()
 
         return jsonify({"response": { 
                           "user" : user,
                           "config": config,
                           "persona": persona,
-                          "memory": memory,
-                          "observation_element": observation_elm
+                          "memory": memory
                         }}), 200
       except Exception as error: 
         return jsonify({"error": str(error)}), 400
