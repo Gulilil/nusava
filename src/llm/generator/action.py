@@ -28,12 +28,15 @@ class ActionGenerator:
         
         observations = []
         # Engagement based
-        if (statistics[0]):
-            observations.append("new_comment")
-        if (statistics[1]):
-            observations.append("new_follower")
-        if (statistics[2]):
-            observations.append("post_liked")
+        if (statistics[0] and isinstance(statistics[0], int)):
+          observations.extend(["new_comment" for _ in range(statistics[0])])
+        if (statistics[1] and isinstance(statistics[1], int)):
+          observations.extend(["new_follower" for _ in range(statistics[1])])
+        if (statistics[2] and isinstance(statistics[2], int)):
+          observations.extend(["post_liked" for _ in range(statistics[2])])
+
+        # Shuffle the observation
+        random.shuffle(observations)
 
         # Time based
         hour = datetime.now().hour
