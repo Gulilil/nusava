@@ -11,7 +11,6 @@ class OutputGateway():
     """
     Instantiate output gateway to call the API of other module
     """
-    # TODO To be adjusted
     self._agent_component = agent
     self.base_url = os.getenv("AUTOMATION_MODULE_URL")
     self.headers = {
@@ -102,8 +101,6 @@ class OutputGateway():
     """
     Hit comment api in automation module
     """
-    # TODO 
-
     try:
       path = "/api/post/"
       url = f"{self.base_url}{path}"
@@ -116,6 +113,32 @@ class OutputGateway():
       # Check response
       response = requests.post(url, json=data)
       if (response.status_code == 200):
+        return True
+      else:
+        response_json = response.json()
+        print(f"[ERROR REQUEST POST] Status code: {response.status_code}. Error : {response_json['error']}")
+        return False
+
+    except Exception as e:
+      print(f"[ERROR REQUEST POST] Error occured in requesting action `post`: {e}")
+      return False
+    
+
+  def request_statistics(self, user_id: int) -> None:
+    """
+    Hit statistics api in automation module
+    """
+    try:
+      path = "/api/stats/update/"
+      url = f"{self.base_url}{path}"
+      data = {
+          "user_id": user_id,
+      }
+
+      # Check response
+      response = requests.post(url, json=data)
+      if (response.status_code == 200):
+        response_data = response.json()
         return True
       else:
         response_json = response.json()

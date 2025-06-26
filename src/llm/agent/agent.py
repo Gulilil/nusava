@@ -50,7 +50,7 @@ class Agent():
   ######## SETUP ########
   #######################
 
-  def set_user(self, user_id:str) -> None:
+  async def set_user(self, user_id:str) -> None:
     """
     Set user_id, as well as model config and persona.
     This function should be called first thing
@@ -68,7 +68,7 @@ class Agent():
           attempt = 1
           success = False
           while (attempt <= max_attempt and not success):
-            success = self.summarize_and_store_memory(sender_id, memory_data)
+            success = await self.summarize_and_store_memory(sender_id, memory_data)
             attempt += 1
           if (success):
             print(f"[STORING REMAINING MEMORY] Storing remaining memory from previous user_id: {user_id} with {sender_id}")
@@ -175,14 +175,14 @@ class Agent():
     self.input_gateway_component.run()
       
 
-  def summarize_and_store_memory(self, sender_id: str, memory_data: list[dict]) -> bool:
+  async def summarize_and_store_memory(self, sender_id: str, memory_data: list[dict]) -> bool:
     """
     Summarize memory and store it to vector database
     """
     # Make the summary
     try:
       prompt = self.prompt_generator_component.generate_prompt_summarize_memory(memory_data)
-      summary, _ = self.model_component.answer(prompt, is_direct=True)
+      summary, _ = await self.model_component.answer(prompt, is_direct=True)
       
       # Prepare to insert
       pinecone_namespace_name = f"chat_bot[{self.user_id}]_sender[{sender_id}]"
@@ -198,12 +198,12 @@ class Agent():
       return False
     
 
-  def _load_tools_rag(self, pinecone_namespace_name : str, metadata_name: str, metadata_description: str, tool_user_id: str):
+  async def _load_tools_rag(self, pinecone_namespace_name : str, metadata_name: str, metadata_description: str, tool_user_id: str):
     """
     Load tools to be inserted to array of tools and later be used by ReAct
     """
     vector_store, storage_context = self.pinecone_connector_component.get_vector_store(pinecone_namespace_name)
-    self.model_component.load_data(vector_store, 
+    await self.model_component.load_data(vector_store, 
                                           storage_context, 
                                           metadata_name,
                                           metadata_description,
@@ -224,19 +224,18 @@ class Agent():
   ######## EXTERNAL TRIGGER ACTION ########
   #########################################
 
-  def action_reply_chat(self, chat_message: str, sender_id: str) -> str:
+  async def action_reply_chat(self, chat_message: str, sender_id: str) -> str:
     """
     Operate the action reply chat
     """
 
     # Store in user query reply memory
-    self.memory_component.store(sender_id, {"role": "user", "content" : chat_message})
+    await self.memory_component.store(sender_id, {"role": "user", "content" : chat_message})
 
     try:
       # Detect the category first
-      prompt = self.prompt_generator_component.generate_prompt_identify_chat_category(
-          new_message=chat_message)  
-      categorization, _ = self.model_component.answer(prompt, is_direct=True)
+      prompt = self.prompt_generator_component.generate_prompt_identify_chat_category(new_message=chat_message)  
+      categorization, _ = await self.model_component.answer(prompt, is_direct=True)
       json_categorization = json.loads(categorization)
       category = json_categorization['category']
       reason = json_categorization['reason']
@@ -253,15 +252,15 @@ class Agent():
         if (category == "tourism"):
           # Load the data from pinecone
           # First hotel data
-          self._load_tools_rag("hotels", "rag_tools_for_hotels_data", "Used to answer hotels-related query based on retrieved documents", sender_id)
+          await self._load_tools_rag("hotels", "rag_tools_for_hotels_data", "Used to answer hotels-related query based on retrieved documents", sender_id)
           # Then asso-rules
-          self._load_tools_rag("association_rules", "rag_tools_for_association_rules_data", "Used to recommend system for hotel based on its antecedent-consequent relation based on retrieved documents", sender_id)
+          await self._load_tools_rag("association_rules", "rag_tools_for_association_rules_data", "Used to recommend system for hotel based on its antecedent-consequent relation based on retrieved documents", sender_id)
           # Then tourist attractions
-          self._load_tools_rag("tourist_attractions", "rag_tools_for_tourist_attractions_data", "Used to answer tourist-attractions-related query based on retrieved documents", sender_id)
+          await self._load_tools_rag("tourist_attractions", "rag_tools_for_tourist_attractions_data", "Used to answer tourist-attractions-related query based on retrieved documents", sender_id)
           # Load the long-term memory from pinecone
           chat_memory_namespace_name = f"chat_bot[{self.user_id}]_sender[{sender_id}]"
           if (self.pinecone_connector_component.is_namespace_exist(chat_memory_namespace_name)):
-            self._load_tools_rag(chat_memory_namespace_name, f"rag_tools_for_memory_chat_with_{sender_id}", f"Used to help answering question from {sender_id} based on previous occurences", sender_id)
+            await self._load_tools_rag(chat_memory_namespace_name, f"rag_tools_for_memory_chat_with_{sender_id}", f"Used to help answering question from {sender_id} based on previous occurences", sender_id)
 
           # Generate prompt
           prompt = self.prompt_generator_component.generate_prompt_reply_chat(
@@ -270,7 +269,7 @@ class Agent():
             previous_iteration_notes=previous_iteration_notes)  
           # Answer the query
           # Skip if the answer is None
-          answer, rag_contexts = self.model_component.answer(prompt, tool_user_id=sender_id)
+          answer, rag_contexts = await self.model_component.answer(prompt, tool_user_id=sender_id)
           print(f"[ACTION REPLY CHAT] Attempt {attempt+1} of {max_attempts}.")
 
           if (answer is None):
@@ -289,7 +288,7 @@ class Agent():
             else:   context_to_display = f"{context[:40]}...{context[-40:]}"
             print(f"[ACTION REPLY CHAT CONTEXT #{i+1}]: {context_to_display}")
           # Do Evaluation
-          evaluation_result = self.evaluator_component.evaluate_response(chat_message, answer, rag_contexts, ["correctness", "faithfulness", "relevancy"])
+          evaluation_result = await self.evaluator_component.evaluate_response(chat_message, answer, rag_contexts, ["correctness", "faithfulness", "relevancy"])
           evaluation_passing = evaluation_result['evaluation_passing']
           print(f"[EVALUATION RESULT] {evaluation_result}")
 
@@ -300,10 +299,10 @@ class Agent():
             previous_messages=self.memory_component.retrieve(sender_id),
             previous_iteration_notes=previous_iteration_notes)  
           # Answer the query
-          answer, _ = self.model_component.answer(prompt, is_direct=True)
+          answer, _ = await self.model_component.answer(prompt, is_direct=True)
           # Do Evaluation
           contexts = [self.persona_component.get_persona_str()]
-          evaluation_result = self.evaluator_component.evaluate_response(chat_message, answer, contexts, ["relevancy"])
+          evaluation_result = await self.evaluator_component.evaluate_response(chat_message, answer, contexts, ["relevancy"])
           evaluation_passing = evaluation_result['evaluation_passing']
           print(f"[EVALUATION RESULT] {evaluation_result}")
 
@@ -311,7 +310,7 @@ class Agent():
           # Generate prompt
           prompt = self.prompt_generator_component.generate_prompt_out_of_domain(user_query=chat_message)  
           # Answer the query
-          answer, _ = self.model_component.answer(prompt, is_direct=True)
+          answer, _ = await self.model_component.answer(prompt, is_direct=True)
           evaluation_passing = True
 
 
@@ -329,21 +328,21 @@ class Agent():
       print(f"[ERROR ACTION REPLY CHAT] Error occured while processing action reply chat: {e}")
       # LLM should explain to user about the error
       error_prompt = self.prompt_generator_component.generate_prompt_error(user_query=chat_message)
-      answer, _ = self.model_component.answer(error_prompt, is_direct=True)
+      answer, _ = await self.model_component.answer(error_prompt, is_direct=True)
     
     finally:
       # Clean answer
       answer = clean_quotation_string(answer)
       answer_messages = sanitize_text_to_list(answer)
       # Store in bot's reply memory
-      self.memory_component.store(sender_id, {"role": "bot", "content" : answer})
+      await self.memory_component.store(sender_id, {"role": "bot", "content" : answer})
       # Refresh tools after use
       self.model_component.refresh_tools(sender_id)
       # Return answer
       return answer_messages
 
 
-  def action_generate_caption(self, 
+  async def action_generate_caption(self, 
                   img_description: str, 
                   caption_keywords: list[str],
                   additional_context: str = None) -> str:
@@ -368,7 +367,7 @@ class Agent():
 
         # Generate caption message
         # Skip is the caption message is None
-        caption_message, _ = self.model_component.answer(prompt, is_direct=True)
+        caption_message, _ = await self.model_component.answer(prompt, is_direct=True)
         print(f"[ACTION POST CAPTION] Attempt {attempt+1} of {max_attempts}. \nCaption: {caption_message}")          
         
         if (caption_message is None):
@@ -387,7 +386,7 @@ class Agent():
                       f"Here are the keywords: {keywords_str}"]  
           
           # Evaluate the answer
-          evaluation_result = self.evaluator_component.evaluate_response("Create a caption for an Instagram post", caption_message, contexts, ["relevancy"])  
+          evaluation_result = await self.evaluator_component.evaluate_response("Create a caption for an Instagram post", caption_message, contexts, ["relevancy"])  
           evaluation_passing = evaluation_result['evaluation_passing']
           print(f"[EVALUATION RESULT] {evaluation_result}")
           
@@ -405,7 +404,7 @@ class Agent():
       print(f"[ERROR ACTION POST] Error occured while processing action post caption: {e}")
       user_query = f"Make a post caption with image description: {img_description}, keywords: {caption_keywords}, additional context: {additional_context}"
       error_prompt = self.prompt_generator_component.generate_prompt_error(user_query=user_query)
-      answer, _ = self.model_component.answer(error_prompt, is_direct=True)
+      answer, _ = await self.model_component.answer(error_prompt, is_direct=True)
     
     finally:
       # Return answer regardless the condition
@@ -413,13 +412,13 @@ class Agent():
       return answer
 
 
-  def action_schedule_post(self, img_url: str, caption_message: str) -> None:
+  async def action_schedule_post(self, img_url: str, caption_message: str) -> None:
     """
     Operate the action schedule post
     """
     try:
       # Load posts in database pinecone
-      self._load_tools_rag("posts", "rag_tools_for_post_data", "Used to provide examples of posts from Influencers", "self")
+      await self._load_tools_rag("posts", "rag_tools_for_post_data", "Used to provide examples of posts from Influencers", "self")
       
       # Initiate attempts
       max_attempts = 3 
@@ -429,7 +428,7 @@ class Agent():
         prompt = self.prompt_generator_component.generate_prompt_choose_schedule_post(caption_message)
       
         # Ask the LLM
-        answer, contexts = self.model_component.answer(prompt, tool_user_id="self")
+        answer, contexts = await self.model_component.answer(prompt, tool_user_id="self")
         print(f"[ACTION SCHEDULE POST] Attempt {attempt+1} of {max_attempts}. \nCaption: {caption_message} \nAnswer: {answer}")
 
 
@@ -451,9 +450,6 @@ class Agent():
       json_answer = json.loads(answer)
       schedule_time = json_answer['schedule_time']
       reason = json_answer['reason']
-
-      # TODO Write inserting to database here
-      # Write here
 
       # Refresh tools
       self.model_component.refresh_tools("self")
@@ -479,27 +475,12 @@ class Agent():
     return
 
 
-  def decide_action(self) -> None:
+  async def decide_action(self) -> None:
     """
     Decide action based on the current conditions and statistics
     This is the main entry point for the agent to decide what to do next.
     """
     observations = self.get_observation_elm()
-
-    # TODO TO BE REMOVED
-    HMM_OBSERVATION_LIST = [
-      # Engagement
-      "new_comment",
-      "new_follower",
-      "post_liked", 
-      # Time of day observations
-      "morning_time",
-      "afternoon_time",
-      "night_time",
-    ]
-    observations = [random.choice(HMM_OBSERVATION_LIST) for _ in range(5)]
-    ###
-
     print(f"[ACTION OBSERVATION] Acquired observations: {observations}")
 
     try:
@@ -512,11 +493,11 @@ class Agent():
         print(f"[ACTION DECISION] {itr+1}.  action \"{action}\" in state \"{state}\"")
 
         if (action == "like"):
-          self.action_like(communities)
+          await self.action_like(communities)
         elif (action == "follow"):
-          self.action_follow(communities)
+          await self.action_follow(communities)
         elif (action == "comment"):
-          self.action_comment(communities)
+          await self.action_comment(communities)
         else:
           return
         
@@ -526,6 +507,7 @@ class Agent():
         time.sleep(sleep_time)
     except Exception as e:
       print(f"[ERROR IN DECIDING ACTION] {e}")
+      raise Exception (e)
   
 
   def choose_community(self, 
@@ -566,7 +548,7 @@ class Agent():
       print(f"[ERROR CHOOSE COMMUNITY] Error occured in executing `choose community`: {e}")
 
 
-  def action_follow(self, communities: list[dict]) -> None:
+  async def action_follow(self, communities: list[dict]) -> None:
     """
     Operate the action follow
     """
@@ -620,7 +602,7 @@ class Agent():
       print(f"[ERROR ACTION FOLLOW] Error occured in executing `follow`: {e}")
 
 
-  def action_like(self, communities: list[dict]) -> None:
+  async def action_like(self, communities: list[dict]) -> None:
     """
     Operate the action like
     """
@@ -673,7 +655,7 @@ class Agent():
       print(f"[ERROR ACTION LIKE] Error occured in executing `like`: {e}")
 
 
-  def action_comment(self, communities: list[dict]) -> None:
+  async def action_comment(self, communities: list[dict]) -> None:
     """
     Operate the action comment
     """
@@ -718,7 +700,7 @@ class Agent():
       prompt = self.prompt_generator_component.generate_prompt_comment(post_caption, selected_comments_str)
       
       # Make comment
-      comment_message, _ = self.model_component.answer(prompt, is_direct=True)
+      comment_message, _ = await self.model_component.answer(prompt, is_direct=True)
       comment_message = clean_quotation_string(comment_message)
       print(f"[RESULTED ACTION COMMENT] Comment message: {comment_message}")
 
@@ -909,7 +891,7 @@ class Agent():
       idx += length_per_batch
     
 
-  def process_labelling_communities(self, limit=None) -> None:
+  async def process_labelling_communities(self, limit=None) -> None:
     """"
       Give label to all communities based on influencers' bios, posts' tags, captions, and comments
     """
@@ -933,7 +915,7 @@ class Agent():
           continue
         
         # Generate label using LLM
-        label, description = self._generate_community_label(influencers, posts)
+        label, description = await self._generate_community_label(influencers, posts)
         print(label, description)
         
         # Store to Mongo DB
@@ -964,7 +946,7 @@ class Agent():
       traceback.print_exc()
 
 
-  def _generate_community_label(self, influencers: list, posts: list) -> tuple[str]:
+  async def _generate_community_label(self, influencers: list, posts: list) -> tuple[str]:
     """
     Generate a community label based on influencers' biographies, posts' tags, captions, and comments
     """
@@ -1004,7 +986,7 @@ class Agent():
       prompt = self.prompt_generator_component.generate_community_labeling_prompt(influencer_context, post_context)
       
       # Get response from LLM
-      response, _ = self.model_component.answer(prompt, is_direct=True)
+      response, _ = await self.model_component.answer(prompt, is_direct=True)
       response_json = json.loads(response)
       label = response_json['label']
       description = response_json['description']
