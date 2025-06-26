@@ -276,11 +276,14 @@ class PromptGenerator():
                             "The correctness and relevancy to the query is critical. " \
                             "However, the style and characteristics of your answer is equally important. \n" \
                             "Please stay true and faithful to your persona. \n"
-    additional_subprompt += "You should answer the chat message in 1 to 3 short paragraphs. No more than 3 paragraphs are allowed. \n" \
-                            "Each paragraph can only contain maximum 3 sentences, but avoid using complex sentences. "\
-                            "Each paragraph might have different key points but still relevant to the message from user. \n" \
+    additional_subprompt += "You should answer the chat message in 1 to 3 short paragraphs. You may answer up to 5 paragraphs but ONLY if it is critical and necessary. "\
+                            "Under normal circumstances, please stick to only using 3 paragraphs. \n" \
+                            "Each paragraph can only contain maximum 2 sentences. Avoid using long and complex sentences. "\
+                            "You may use slang words and informal tone. However, please use it to suit to your persona. \n" \
+                            "Do not explain other things that are not related the message from user. You would like to answer straight to the point. " \
                             "Do not answer in bullet points. On the other hand, try to explain it narratively. " \
-                            "Do not forget to give your opinion according to the message as if you are a user in Instagram chatting with other people."
+                            "Do not forget to give your opinion according to the message as if you are a user in Instagram chatting with other people. " \
+                            "You have to state your answer in the same language as the one user uses. "
     
     previous_iteration_notes_subprompt = self.generate_subprompt_previous_iteration_notes(previous_iteration_notes)
     return self._prompt_template.format(persona_subprompt=persona_subprompt,
@@ -310,10 +313,9 @@ class PromptGenerator():
     # Setup query string
     query_str = "Make a comment for Instagram post based on the context. " \
                 "Do not use any hashtags in making the comment. " \
-                "Make sure to keep the comment short and concise. " \
                 "Long comment is not preferable and is bot-like. " \
-                "Comments longert than 2 sentences are not allowed. " \
-                "Try to make the comment as natural as you can. " \
+                "Comments longer than 2 sentences are not allowed. Avoid using long and complex sentences. Keep the sentences short and concise. " \
+                "Try to make the comment as natural as you can. You can use informal tone to suit your persona. " \
                 "You may use emoji to express yourself, but use it wisely." \
                 "You should avoid using hashtags unless it is really necessary and related to your persona."
 
