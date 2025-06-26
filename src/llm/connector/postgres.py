@@ -77,12 +77,13 @@ class PostgresConnector():
   def get_scheduled_post_data(self, user_id: str) -> tuple:
       """
       Get scheduled post data that is ready to post:
+      - id
       - scheduled_time is before current time (GMT+7)
       - is_posted is False
       """
       try:
           table_name = "bot_scheduledpost"
-          column_names = "image_url, caption"
+          column_names = "id, image_url, caption"
 
           # Get current time in GMT+7
           current_time_gmt7 = datetime.now(timezone.utc) + timedelta(hours=7)
@@ -102,3 +103,24 @@ class PostgresConnector():
           print(f"[ERROR POSTGRES] {e}")
           self.connection.rollback()
           return None
+      
+
+  def mark_posts_as_posted(self, id: str) -> None:
+      """
+      Set is_posted = TRUE for id post
+      """
+      try:
+          table_name = "bot_scheduledpost"
+          # Get current time in GMT+7
+
+          query = f"""
+              UPDATE {table_name}
+              SET is_posted = TRUE
+              WHERE id = %s;
+          """
+          self.cursor.execute(query, (id))
+          self.connection.commit()
+          print(f"[MARK IS POSTED] Marked posts as posted for id={id}")
+      except Exception as e:
+          print(f"[ERROR MARK IS POSTED] {e}")
+          self.connection.rollback()

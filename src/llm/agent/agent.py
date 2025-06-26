@@ -476,9 +476,12 @@ class Agent():
     try:
       post_to_schedule = self.postgres_connector_component.get_scheduled_post_data(self.user_id)
       for post in post_to_schedule:
-        img_url = post[0]
-        caption = post[1]
-        self.output_gateway_component.request_post(img_url, caption)
+        id = post[0]
+        img_url = post[1]
+        caption = post[2]
+        success = self.output_gateway_component.request_post(img_url, caption)
+        if (success):
+          self.postgres_connector_component.mark_posts_as_posted(id)
 
         # Give time delay
         sleep_time = random.randint(60, 180)
