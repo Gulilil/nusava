@@ -11,6 +11,7 @@ import environ
 
 from .models import InstagramStatistics, ScheduledPost, User
 from .bot import InstagramBot
+from .session_manager import SessionManager
 from instagrapi import Client
 from rest_framework_simplejwt.tokens import RefreshToken
 import logging
@@ -64,38 +65,32 @@ def register_user(request):
             return Response({
                 "status": "error",
                 "message": "User already exists"
-            }, status=400)
-
-        # Test Instagram login before creating user
-        bot_client = Client()
-        is_success = bot_client.login(username, password)
-        
-        if not is_success:
-            try:
-                # Try relogin if first attempt fails
-                is_success = bot_client.login(username, password, relogin=True)
-                if not is_success:
-                    return Response({
-                        "status": "error", 
-                        "message": "Instagram login failed - incorrect credentials"
-                    }, status=400)
-            except LoginRequired:
-                return Response({
-                    "status": "error", 
-                    "message": "Instagram login failed - account may be restricted"
-                }, status=400)
-        
-        # Create new user with session
-        session = bot_client.get_settings()
-        user = User.objects.create(username=username, session_info=session)
+            }, status=400)        # Create new user first with empty session_info (as user requested)
+        user = User.objects.create(username=username, session_info=None)
         user.set_password(password)
         user.save()
+        
+        # Use session manager to test Instagram login and save session
+        session_manager = SessionManager()
+        
+        try:
+            # Test Instagram login - this will save session to DB if successful
+            bot_client = session_manager.login_user(username, password, user)
+            logger.info(f"Instagram login successful for registration: {username}")
+            
+        except Exception as login_error:
+            # Delete the user if Instagram login fails
+            user.delete()
+            logger.error(f"Instagram login failed during registration for {username}: {str(login_error)}")
+            return Response({
+                "status": "error", 
+                "message": f"Instagram login failed: {str(login_error)}"
+            }, status=400)
         
         # Create default configuration
         Configuration.objects.create(
             user=user,
-            max_iteration=10,
-            temperature=0.3,
+            max_iteration=10,            temperature=0.3,
             top_k=10,
             max_token=4096
         )
@@ -160,74 +155,23 @@ def login_bot(request):
                 "status": "error", 
                 "message": "Incorrect password"
             }, status=400)
+          # Use session manager for proper Instagram login
+        session_manager = SessionManager()
         
-        # Load existing session
-        bot_client = Client()
-        session_valid = False
-        
-        if user.session_info:
-            try:
-                # Extract sessionid from session_info
-                session_data = user.session_info
-                if isinstance(session_data, str):
-                    session_data = json.loads(session_data)
-                
-                sessionid = None
-                if 'authorization_data' in session_data:
-                    sessionid = session_data['authorization_data'].get('sessionid')
-                else:
-                    sessionid = session_data.get('sessionid')
-                    
-                if sessionid:
-                    # Try to login using sessionid
-                    success = bot_client.login_by_sessionid(sessionid)
-                    if success:
-                        session_valid = True
-                    else:
-                        logger.warning(f"Session invalid for user {username}")
-
-            except LoginRequired:
-                # Session is flagged, delete it and create new one
-                logger.warning(f"Session flagged for user {username}, creating new session")
-                
-                # Try fresh login
-                fresh_client = Client()
-                is_success = fresh_client.login(username, password, relogin=True)
-                
-                if not is_success:
-                    return Response({"status": "error", "message": "Instagram login failed after relogin attempt"}, status=400)
-                
-                # Update user with new session
-                new_session = fresh_client.get_settings()
-                user.session_info = new_session
-                user.save()
-                
-                bot = InstagramBot(user_obj=user, password=password, session_settings=new_session)
-                user_bots[user.id] = bot
-                refresh = RefreshToken.for_user(user)
-                automation_service.auto_start_for_user(
-                    user, 
-                    min_interval=min_interval,
-                    max_interval=max_interval 
-                )
-                return Response({
-                    "status": "success",
-                    "message": "Logged in with new session (old session was flagged)",
-                    "access": str(refresh.access_token),
-                    "refresh": str(refresh),
-                })  
-            except (json.JSONDecodeError, KeyError, LoginRequired, Exception) as e:
-                logger.warning(f"Error loading session for user {username}: {e}")
-        
-        # If session is invalid, create new one
-        if not session_valid:
-            return Response({
-                "status": "error", 
-                "message": "Session expired or invalid. Please register again to refresh your Instagram session."
-            }, status=401)
+        try:
+            # Login using session manager (handles session validation automatically)
+            bot_client = session_manager.login_user(username, password, user)
+            
+            logger.info(f"Instagram login successful: {username}")
+            
+        except Exception as login_error:
+            logger.error(f"Instagram login failed for {username}: {str(login_error)}")
+            return Response({                "status": "error", 
+                "message": f"Instagram login failed: {str(login_error)}"
+            }, status=400)
         
         # Create bot instance and tokens
-        bot = InstagramBot(user_obj=user, password=password, session_settings=user.session_info)
+        bot = InstagramBot(user_obj=user, password=password)
         user_bots[user.id] = bot
         
         refresh = RefreshToken.for_user(user)
@@ -239,6 +183,7 @@ def login_bot(request):
             "user_id": user.id
             }
         response = requests.post(api_url, json=data)
+        
         # Start automation
         automation_service.auto_start_for_user(
             user, 
@@ -293,7 +238,7 @@ def like_post(request):
         user = User.objects.filter(id=user_id).first()
         if not user:
             return Response({"error": "User not found"}, status=404)
-        bot = InstagramBot(user_obj=user, password=user.password, session_settings=user.session_info)
+        bot = InstagramBot(user_obj=user, password=user.password)
     if not bot:
         return Response({'error': 'Bot not initialized for this user'}, status=400)
     try:
@@ -317,7 +262,7 @@ def follow_user(request):
         user = User.objects.filter(id=user_id).first()
         if not user:
             return Response({"error": "User not found"}, status=404)
-        bot = InstagramBot(user_obj=user, password=user.password, session_settings=user.session_info)
+        bot = InstagramBot(user_obj=user, password=user.password)
     if not bot:
         return Response({'error': 'Bot not initialized for this user'}, status=400)
     try:
@@ -343,7 +288,7 @@ def comment_post(request):
         user = User.objects.filter(id=user_id).first()
         if not user:
             return Response({"error": "User not found"}, status=404)
-        bot = InstagramBot(user_obj=user, password=user.password, session_settings=user.session_info)
+        bot = InstagramBot(user_obj=user, password=user.password)
     if not bot:
         return Response({'error': 'Bot not initialized for this user'}, status=400)
     try:
@@ -368,7 +313,7 @@ def post_photo(request):
         user = User.objects.filter(id=user_id).first()
         if not user:
             return Response({"error": "User not found"}, status=404)
-        bot = InstagramBot(user_obj=user, password=user.password, session_settings=user.session_info)
+        bot = InstagramBot(user_obj=user, password=user.password)
     if not bot:
         return Response({'error': 'Bot not initialized for this user'}, status=400)
     try:

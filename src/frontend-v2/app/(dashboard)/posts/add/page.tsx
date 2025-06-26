@@ -178,7 +178,7 @@ export default function SchedulePostPage() {
         caption: generatedCaption,
       }
 
-      const postResponse = await fetch(`${API}/post_photo/`, {
+      const postResponse = await fetch(`${API}/post/`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

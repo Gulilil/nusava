@@ -11,9 +11,9 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from 'sonner';
 
-import { Heart, UserPlus, MessageCircle, ImageIcon, Share2, Search, Send } from "lucide-react";
+import { Heart, UserPlus, MessageCircle} from "lucide-react";
 
-import { likePost, followUser, commentPost, postPhoto } from "@/app/api/bot";
+import { likePost, followUser, commentPost } from "@/app/api/bot";
 
 export default function ActionsPage() {
   // Like

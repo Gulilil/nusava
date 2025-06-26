@@ -3,42 +3,34 @@ import random
 import time
 from instagrapi import Client
 from .models import User, ActionLog
+from .session_manager import SessionManager
 from typing import List
 from instagrapi.types import DirectThread
 import requests
 from dotenv import load_dotenv
 load_dotenv()
 import os
+import logging
 from .utils import download_image_from_url, cleanup_temp_file
+
+logger = logging.getLogger(__name__)
 
 class InstagramBot:
     def __init__(self, user_obj: User, password: str, session_settings=None):
         self.username = user_obj.username
         self.password = password
         self.user_obj = user_obj
-        self.client = Client()
-
-        if session_settings:
-            self.client.set_settings(session_settings)
-
+        self.session_manager = SessionManager()
+        
         try:
-            session_data = self.user_obj.session_info
-            if isinstance(session_data, str):
-                session_data = json.loads(session_data)
+            # Use the new session manager for proper session handling
+            self.client = self.session_manager.login_user(self.username, self.password, self.user_obj)
             
-            sessionid = None
-            if 'authorization_data' in session_data:
-                sessionid = session_data['authorization_data'].get('sessionid')
-            else:
-                sessionid = session_data.get('sessionid')
-                
-            if (self.user_obj.session_info):
-                self.client.login_by_sessionid(sessionid)
-            else:
-                self.client.login(self.username, self.password)
-            self.user_obj.session_info = self.client.get_settings()
-            self.user_obj.save()
+            # Session is automatically saved to database in login_user method
+            logger.info(f"Instagram bot initialized successfully for user: {self.username}")
+            
         except Exception as e:
+            logger.error(f"Failed to initialize Instagram bot for {self.username}: {str(e)}")
             raise e
 
     def log(self, action_type, target, status, message):
@@ -232,7 +224,6 @@ class InstagramBot:
             pending_threads = self.client.direct_pending_inbox(amount)
             pending_processed = self.process_thread_messages(pending_threads, is_pending=True)
             all_processed.extend(pending_processed)
-            
             # Sort by timestamp (newest first)
             all_processed.sort(key=lambda x: x['latest_timestamp'], reverse=True)
                     
@@ -254,20 +245,39 @@ class InstagramBot:
             
             print(f"\n--- Processing {username} ---")
             
-            # Generate response based on combined message
-            reply_text = self.generate_response(combined_message, username)
+            # Generate response based on combined message (should return list of messages)
+            reply_messages = self.generate_response(combined_message, username)
             
-            # Send reply
-            reply_success = self.client.direct_send(text=reply_text, thread_ids=[thread_id])
-            
-            if not reply_success:
-                print("Failed to send reply")
+            if not reply_messages:
+                print("No response generated")
                 return False
             
-            self.log("dm_reply", username, "success", f"Replied to {username}: {reply_text[:50]}...")
+            
+            print(f"Sending {len(reply_messages)} message(s) to {username}")
+            
+            # Send each message with realistic delays to simulate human behavior
+            for i, message in enumerate(reply_messages):
+                if not message or not message.strip():
+                    continue
+                    
+                print(f"Sending message {i+1}/{len(reply_messages)}: {message[:50]}...")
+                
+                # Send the message
+                reply_success = self.client.direct_send(text=message, thread_ids=[thread_id])
+                
+                if not reply_success:
+                    print(f"Failed to send message {i+1}")
+                    return False
+                                
+                if i < len(reply_messages) - 1:
+                    typing_delay = min(max(len(message) * 0.05, 2), 8)  # 2-8 seconds based on length
+                    print(f"typing delay: {typing_delay:.1f} seconds...")
+                    time.sleep(typing_delay)
 
-            # Mark as seen
-            self.client.direct_send_seen(thread_id)            
+            self.log("dm_reply", username, "success", f"Replied to {username}")
+            # Mark as seen after all messages are sent
+            self.client.direct_send_seen(thread_id)
+            print(f"✅ All messages sent to {username}")
             return True
             
         except Exception as e:
@@ -314,6 +324,7 @@ class InstagramBot:
             
         except Exception as e:
             print(f"Error in optimized automation: {str(e)}")
+            return {"success": 0, "total": 0, "message": f"Error: {str(e)}"}
 
     def generate_response(self, combined_message: str, username: str):
         """Generate travel response based on combined conversation context"""

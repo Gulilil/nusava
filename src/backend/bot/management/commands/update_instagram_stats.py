@@ -55,10 +55,8 @@ class Command(BaseCommand):
             # Get user from database
             self.user = User.objects.get(username=username)
             self.stdout.write(f"[{datetime.now()}] Found user: {username}")
-            
-            # Initialize bot
-            session_settings = self.user.session_info if self.user.session_info else None
-            self.bot = InstagramBot(self.user, password, session_settings)
+              # Initialize bot
+            self.bot = InstagramBot(self.user, password)
             self.stdout.write(f"[{datetime.now()}] Bot initialized and logged in successfully")
             
             return True

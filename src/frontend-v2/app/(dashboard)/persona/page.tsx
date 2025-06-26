@@ -142,6 +142,7 @@ export default function PersonaPage() {
 
       return true
     } catch (error) {
+      console.log("Invalid JSON format:", error)
       return false
     }
   }
