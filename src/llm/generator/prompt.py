@@ -316,7 +316,7 @@ class PromptGenerator():
                 "Long comment is not preferable and is bot-like. " \
                 "Comments longer than 2 sentences are not allowed. Avoid using long and complex sentences. Keep the sentences short and concise. " \
                 "Try to make the comment as natural as you can. You can use informal tone to suit your persona. " \
-                "You may use emoji to express yourself, but use it wisely." \
+                "Users are rarely use emoji in making comments. You may use 1 and 2 if you think it is necessary to suit to your persona. " \
                 "You should avoid using hashtags unless it is really necessary and related to your persona."
 
     return self._prompt_template.format(persona_subprompt=persona_subprompt,

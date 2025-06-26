@@ -485,6 +485,21 @@ class Agent():
     This is the main entry point for the agent to decide what to do next.
     """
     observations = self.get_observation_elm()
+
+    # TODO TO BE REMOVED
+    HMM_OBSERVATION_LIST = [
+      # Engagement
+      "new_comment",
+      "new_follower",
+      "post_liked", 
+      # Time of day observations
+      "morning_time",
+      "afternoon_time",
+      "night_time",
+    ]
+    observations = [random.choice(HMM_OBSERVATION_LIST) for _ in range(5)]
+    ###
+
     print(f"[ACTION OBSERVATION] Acquired observations: {observations}")
 
     try:
@@ -586,19 +601,20 @@ class Agent():
       # Get Influencer
       influencer_id = chosen_influencer['id']
       influencer_username = chosen_influencer['username']
+      print(f"[CHOSEN INFLUENCER] Influencer {influencer_username} with influencer_id {influencer_id} in community {community_id}")
 
-      # Request
-      is_success = self.output_gateway_component.request_follow(influencer_username)
-      if (is_success):
-        # Mark influencer
-        if ('mark_follow' in chosen_influencer and isinstance(chosen_influencer['mark_follow'], list)):
-          chosen_influencer['mark_follow'].append(self.user_id)
-          print(f"[ACTION FOLLOW] Mark array has been created for {self.user_id}")
-        else:
-          chosen_influencer['mark_follow'] = [self.user_id]
-          print(f"[ACTION FOLLOW] {self.user_id} is inserted to mark array")
-        self.mongo_connector_component.update_one_data(mongo_collection_name, {"community_id": community_id}, {"influencers": influencers})
-        print(f"[ACTION FOLLOW] Follow influencer {influencer_username} with influencer_id {influencer_id} in community {community_id}")
+      # # Request
+      # is_success = self.output_gateway_component.request_follow(influencer_username)
+      # if (is_success):
+      #   # Mark influencer
+      #   if ('mark_follow' in chosen_influencer and isinstance(chosen_influencer['mark_follow'], list)):
+      #     chosen_influencer['mark_follow'].append(self.user_id)
+      #     print(f"[ACTION FOLLOW] Mark array has been created for {self.user_id}")
+      #   else:
+      #     chosen_influencer['mark_follow'] = [self.user_id]
+      #     print(f"[ACTION FOLLOW] {self.user_id} is inserted to mark array")
+      #   self.mongo_connector_component.update_one_data(mongo_collection_name, {"community_id": community_id}, {"influencers": influencers})
+      #   print(f"[ACTION FOLLOW] Successfully follow influencer {influencer_username}")
       
     except Exception as e:
       print(f"[ERROR ACTION FOLLOW] Error occured in executing `follow`: {e}")
@@ -638,19 +654,20 @@ class Agent():
 
       # Get Influencer
       post_id = chosen_post['id']
+      print(f"[CHOSEN POST] Like post with post_id {post_id} in community {community_id}")
 
-      # Request
-      is_success = self.output_gateway_component.request_like(post_id)
-      if (is_success):
-        # Mark post
-        if ('mark_like' in chosen_post and isinstance(chosen_post['mark_like'], list)):
-          chosen_post['mark_like'].append(self.user_id)
-          print(f"[ACTION LIKE] Mark array has been created for {self.user_id}")
-        else:
-          chosen_post['mark_like'] = [self.user_id]
-          print(f"[ACTION LIKE] {self.user_id} is inserted to mark array")
-        self.mongo_connector_component.update_one_data(mongo_collection_name, {"community_id": community_id}, {"posts": posts})
-        print(f"[ACTION LIKE] Like post with post_id {post_id} in community {community_id}")
+      # # Request
+      # is_success = self.output_gateway_component.request_like(post_id)
+      # if (is_success):
+      #   # Mark post
+      #   if ('mark_like' in chosen_post and isinstance(chosen_post['mark_like'], list)):
+      #     chosen_post['mark_like'].append(self.user_id)
+      #     print(f"[ACTION LIKE] Mark array has been created for {self.user_id}")
+      #   else:
+      #     chosen_post['mark_like'] = [self.user_id]
+      #     print(f"[ACTION LIKE] {self.user_id} is inserted to mark array")
+      #   self.mongo_connector_component.update_one_data(mongo_collection_name, {"community_id": community_id}, {"posts": posts})
+      #   print(f"[ACTION LIKE] Successfully like post with post_id {post_id}")
 
     except Exception as e:
       print(f"[ERROR ACTION LIKE] Error occured in executing `like`: {e}")
@@ -695,6 +712,7 @@ class Agent():
       max_length = 20
       selected_comments = comments[:min(max_length, len(comments))]
       selected_comments_str = [comment['content'] for comment in selected_comments]
+      print(f"[CHOSEN POST] Comment post with post_id {post_id} in community {community_id} with caption: {post_caption}")
 
       # Generate prompt
       prompt = self.prompt_generator_component.generate_prompt_comment(post_caption, selected_comments_str)
@@ -704,18 +722,18 @@ class Agent():
       comment_message = clean_quotation_string(comment_message)
       print(f"[RESULTED ACTION COMMENT] Comment message: {comment_message}")
 
-      # Request
-      is_success = self.output_gateway_component.request_comment(post_id, comment_message)
-      if (is_success):
-        # Mark post
-        if ('mark_comment' in chosen_post and isinstance(chosen_post['mark_comment'], list)):
-          chosen_post['mark_comment'].append(self.user_id)
-          print(f"[ACTION COMMENT] Mark array has been created for {self.user_id}")
-        else:
-          chosen_post['mark_comment'] = [self.user_id]
-          print(f"[ACTION LIKE] {self.user_id} is inserted to mark array")
-        self.mongo_connector_component.update_one_data(mongo_collection_name, {"community_id": community_id}, {"posts": posts})
-        print(f"[ACTION COMMENT] Comment post with post_id {post_id} in community {community_id}")
+      # # Request
+      # is_success = self.output_gateway_component.request_comment(post_id, comment_message)
+      # if (is_success):
+      #   # Mark post
+      #   if ('mark_comment' in chosen_post and isinstance(chosen_post['mark_comment'], list)):
+      #     chosen_post['mark_comment'].append(self.user_id)
+      #     print(f"[ACTION COMMENT] Mark array has been created for {self.user_id}")
+      #   else:
+      #     chosen_post['mark_comment'] = [self.user_id]
+      #     print(f"[ACTION LIKE] {self.user_id} is inserted to mark array")
+      #   self.mongo_connector_component.update_one_data(mongo_collection_name, {"community_id": community_id}, {"posts": posts})
+      #   print(f"[ACTION COMMENT] Successfully comment post with post_id {post_id}")
         
     except Exception as e:
       print(f"[ERROR ACTION COMMENT] Error occured in executing `comment`: {e}")
