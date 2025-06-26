@@ -1,13 +1,19 @@
 import os
 import json
 import logging
+import random
+import environ
 import tempfile
 from pathlib import Path
 from instagrapi import Client
 from instagrapi.exceptions import LoginRequired
+import requests
 from .models import User
 
+BASE_DIR = Path(__file__).resolve().parent.parent
 logger = logging.getLogger(__name__)
+env = environ.Env()
+environ.Env.read_env(os.path.join(BASE_DIR, '.env'))
 
 class SessionManager:
     """
@@ -170,9 +176,22 @@ class SessionManager:
                 raise Exception(f"User {username} not found in database")
         
         client = Client()
+        client.set_locale('id_ID')
+        client.set_country('ID')
+        client.set_country_code(62)
+        client.set_timezone_offset(25200)  # UTC+7
+        
+        # Set common Indonesian device characteristics
+        client.set_device({
+            'manufacturer': random.choice(['samsung', 'oppo', 'vivo', 'xiaomi']),
+            'model': random.choice(['SM-A325F', 'CPH2113', 'V2027', 'M2006C3LG']),
+            'android_version': random.choice([28, 29, 30]),
+            'android_release': random.choice(['9.0', '10.0', '11.0'])
+        })
         
         # Add delays for more human-like behavior
         client.delay_range = [1, 3]
+        client.set_proxy(env('PROXY_URL', default=None))
         
         login_via_session = False
         login_via_password = False
@@ -197,11 +216,6 @@ class SessionManager:
         # If no existing session or session login failed, try fresh Instagram login
         if not login_via_session:
             try:
-                # Create fresh client for clean login
-                client = Client()
-                client.delay_range = [1, 3]
-                
-                # Preserve UUIDs if we had an old session
                 if user.session_info and 'uuids' in user.session_info:
                     client.set_uuids(user.session_info['uuids'])
                 
