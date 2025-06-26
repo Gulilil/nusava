@@ -9,7 +9,7 @@ from .views import (
     bot_configuration, action_logs,
     user_persona,
     automation_status, stop_dm_automation, start_dm_automation, admin_automation_overview,
-    get_instagram_statistics,
+    get_instagram_statistics, update_instagram_statistics,
     schedule_post, get_scheduled_posts
 )
 
@@ -38,6 +38,7 @@ urlpatterns = [
 
     path('persona/', user_persona, name='user_persona'),
     path('stats/', get_instagram_statistics, name='get_instagram_statistics'),
+    path('stats/update/', update_instagram_statistics, name='update_instagram_statistics'),
 
     # Scheduling
     path('schedule-post/', schedule_post, name='schedule_post'),

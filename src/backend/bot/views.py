@@ -76,6 +76,7 @@ def register_user(request):
         try:
             # Test Instagram login - this will save session to DB if successful
             bot_client = session_manager.login_user(username, password, user)
+            user_bots[user.id] = bot_client
             logger.info(f"Instagram login successful for registration: {username}")
             
         except Exception as login_error:
@@ -90,7 +91,8 @@ def register_user(request):
         # Create default configuration
         Configuration.objects.create(
             user=user,
-            max_iteration=10,            temperature=0.3,
+            max_iteration=10,            
+            temperature=0.3,
             top_k=10,
             max_token=4096
         )
@@ -170,9 +172,15 @@ def login_bot(request):
                 "message": f"Instagram login failed: {str(login_error)}"
             }, status=400)
         
-        # Create bot instance and tokens
-        bot = InstagramBot(user_obj=user, password=password)
-        user_bots[user.id] = bot
+        bot = user_bots.get(user.id)
+        if not bot:
+            try:
+                # Only create new bot if not in memory
+                bot = InstagramBot(user_obj=user, password=user.password)
+                user_bots[user.id] = bot
+            except Exception as e:
+                logger.error(f"Failed to initialize bot for user {user.id}: {str(e)}")
+                return Response({"error": f"Bot initialization failed: {str(e)}"}, status=500)
         
         refresh = RefreshToken.for_user(user)
         
@@ -233,14 +241,21 @@ def like_post(request):
     user_id = request.data.get('user_id')
     if not user_id:
         user = request.user
-        bot = user_bots.get(user.id)
     else:
         user = User.objects.filter(id=user_id).first()
         if not user:
             return Response({"error": "User not found"}, status=404)
-        bot = InstagramBot(user_obj=user, password=user.password)
+        
+    bot = user_bots.get(user.id)
     if not bot:
-        return Response({'error': 'Bot not initialized for this user'}, status=400)
+        try:
+            # Only create new bot if not in memory
+            bot = InstagramBot(user_obj=user, password=user.password)
+            user_bots[user.id] = bot
+        except Exception as e:
+            logger.error(f"Failed to initialize bot for user {user.id}: {str(e)}")
+            return Response({"error": f"Bot initialization failed: {str(e)}"}, status=500)
+
     try:
         bot.like_post(media_id, media_url)
         return Response({'status': 'success', 'message': 'Post liked'})
@@ -257,14 +272,19 @@ def follow_user(request):
     user_id = request.data.get('user_id')
     if not user_id:
         user = request.user
-        bot = user_bots.get(user.id)
     else:
         user = User.objects.filter(id=user_id).first()
-        if not user:
-            return Response({"error": "User not found"}, status=404)
-        bot = InstagramBot(user_obj=user, password=user.password)
+    
+    bot = user_bots.get(user.id)
     if not bot:
-        return Response({'error': 'Bot not initialized for this user'}, status=400)
+        try:
+            # Only create new bot if not in memory
+            bot = InstagramBot(user_obj=user, password=user.password)
+            user_bots[user.id] = bot
+        except Exception as e:
+            logger.error(f"Failed to initialize bot for user {user.id}: {str(e)}")
+            return Response({"error": f"Bot initialization failed: {str(e)}"}, status=500)
+        
     try:
         bot.follow_user(target_username)
         return Response({'status': 'success', 'message': 'User followed'})
@@ -283,14 +303,18 @@ def comment_post(request):
     user_id = request.data.get('user_id')
     if not user_id:
         user = request.user
-        bot = user_bots.get(user.id)
     else:
         user = User.objects.filter(id=user_id).first()
-        if not user:
-            return Response({"error": "User not found"}, status=404)
-        bot = InstagramBot(user_obj=user, password=user.password)
+
+    bot = user_bots.get(user.id)
     if not bot:
-        return Response({'error': 'Bot not initialized for this user'}, status=400)
+        try:
+            # Only create new bot if not in memory
+            bot = InstagramBot(user_obj=user, password=user.password)
+            user_bots[user.id] = bot
+        except Exception as e:
+            logger.error(f"Failed to initialize bot for user {user.id}: {str(e)}")
+            return Response({"error": f"Bot initialization failed: {str(e)}"}, status=500)
     try:
         bot.comment_on_post(comment, media_id, media_url)
         return Response({'status': 'success', 'message': 'Comment posted'})
@@ -305,17 +329,22 @@ def post_photo(request):
     caption = request.data.get('caption')
     if not image_path or not caption:
         return Response({"error": "image_path and caption are required"}, status=400)
+    
     user_id = request.data.get('user_id')
     if not user_id:
         user = request.user
-        bot = user_bots.get(user.id)
     else:
         user = User.objects.filter(id=user_id).first()
-        if not user:
-            return Response({"error": "User not found"}, status=404)
-        bot = InstagramBot(user_obj=user, password=user.password)
+
+    bot = user_bots.get(user.id)
     if not bot:
-        return Response({'error': 'Bot not initialized for this user'}, status=400)
+        try:
+            # Only create new bot if not in memory
+            bot = InstagramBot(user_obj=user, password=user.password)
+            user_bots[user.id] = bot
+        except Exception as e:
+            logger.error(f"Failed to initialize bot for user {user.id}: {str(e)}")
+            return Response({"error": f"Bot initialization failed: {str(e)}"}, status=500)
     try:
         bot.post_from_cloudinary(image_path, caption)
         return Response({'status': 'success', 'message': 'Photo posted'})
@@ -520,11 +549,14 @@ def user_persona(request):
         })
 
 @api_view(['GET'])
-@authentication_classes([JWTAuthentication])
-@permission_classes([IsAuthenticated])
+@permission_classes([AllowAny])
 def get_instagram_statistics(request):
     """Get Instagram statistics for the authenticated user"""
-    user = request.user
+    user_id = request.data.get('user_id')
+    if not user_id:
+        user = request.user
+    else:
+        user = User.objects.filter(id=user_id).first()
     
     try:
         stats = InstagramStatistics.objects.filter(user=user).order_by('-created_at').first()
@@ -567,7 +599,104 @@ def get_instagram_statistics(request):
             'status': 'error',
             'message': str(e)
         }, status=500)
+
+@api_view(['POST'])
+@permission_classes([AllowAny])
+def update_instagram_statistics(request):
+    """Update Instagram statistics by fetching current data and comparing with existing"""
+    user_id = request.data.get('user_id')
+    if not user_id:
+        user = request.user
+    else:
+        user = User.objects.filter(id=user_id).first()
+
+    bot = user_bots.get(user.id)
+    if not bot:
+        try:
+            # Only create new bot if not in memory
+            bot = InstagramBot(user_obj=user, password=user.password)
+            user_bots[user.id] = bot
+        except Exception as e:
+            logger.error(f"Failed to initialize bot for user {user.id}: {str(e)}")
+            return Response({"error": f"Bot initialization failed: {str(e)}"}, status=500)
     
+    try:
+        # Get current statistics from Instagram
+        current_stats = bot.get_account_statistics()
+        
+        # Check if statistics already exist for this user
+        existing_stats = InstagramStatistics.objects.filter(user=user).order_by('-created_at').first()
+        
+        if existing_stats:
+            # Compare and calculate differences
+            new_followers = current_stats['followers_count'] - existing_stats.followers_count
+            new_likes = current_stats['all_likes_count'] - existing_stats.all_likes_count
+            new_comments = current_stats['all_comments_count'] - existing_stats.all_comments_count
+            
+            # Create new statistics entry
+            new_stats = InstagramStatistics.objects.create(
+                user=user,
+                new_followers=new_followers,
+                new_likes=new_likes,
+                new_comments=new_comments,
+                **current_stats
+            )
+            
+            return Response({
+                'status': 'success',
+                'message': 'Statistics updated successfully',
+                'data': {
+                    'followers_count': new_stats.followers_count,
+                    'following_count': new_stats.following_count,
+                    'posts_count': new_stats.posts_count,
+                    'all_likes_count': new_stats.all_likes_count,
+                    'all_comments_count': new_stats.all_comments_count,
+                    'new_followers': new_followers,
+                    'new_likes': new_likes,
+                    'new_comments': new_comments,
+                    'profile_visits': new_stats.profile_visits,
+                    'impressions': new_stats.impressions,
+                    'reach': new_stats.reach,
+                    'engagement_rate': new_stats.engagement_rate,
+                    'created_at': new_stats.created_at
+                }
+            })
+        else:
+            # Create first statistics entry
+            new_stats = InstagramStatistics.objects.create(
+                user=user,
+                new_followers=0,
+                new_likes=0,
+                new_comments=0,
+                **current_stats
+            )
+            
+            return Response({
+                'status': 'success',
+                'message': 'Initial statistics created successfully',
+                'data': {
+                    'followers_count': new_stats.followers_count,
+                    'following_count': new_stats.following_count,
+                    'posts_count': new_stats.posts_count,
+                    'all_likes_count': new_stats.all_likes_count,
+                    'all_comments_count': new_stats.all_comments_count,
+                    'new_followers': 0,
+                    'new_likes': 0,
+                    'new_comments': 0,
+                    'profile_visits': new_stats.profile_visits,
+                    'impressions': new_stats.impressions,
+                    'reach': new_stats.reach,
+                    'engagement_rate': new_stats.engagement_rate,
+                    'created_at': new_stats.created_at
+                }
+            })
+            
+    except Exception as e:
+        logger.error(f"Update statistics error: {e}")
+        return Response({
+            'status': 'error',
+            'message': f'Failed to update statistics: {str(e)}'
+        }, status=500)
 
 @api_view(['POST'])
 @authentication_classes([JWTAuthentication])
