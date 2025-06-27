@@ -1,7 +1,10 @@
 import requests
+import os
+from dotenv import load_dotenv
+load_dotenv()
 
 try:
-  url = "https://nusava-production.up.railway.app/check_schedule"
+  url = f"{os.getenv('LLM_URL')}/check_schedule"
   payload = ""
   headers = {
     'Content-Type': 'application/json'

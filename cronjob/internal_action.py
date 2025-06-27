@@ -1,13 +1,11 @@
 import requests
-import json
+import os
+from dotenv import load_dotenv
+load_dotenv()
 
 try:
-  # TODO Add get current user.id from server
-
-  url = "https://nusava-production.up.railway.app/action"
-  payload = json.dumps({
-    "user_id": 1
-  })
+  url = f"{os.getenv('LLM_URL')}/action"
+  payload = ""
   headers = {
     'Content-Type': 'application/json'
   }
