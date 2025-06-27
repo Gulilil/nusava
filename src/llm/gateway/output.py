@@ -130,16 +130,17 @@ class OutputGateway():
     Hit statistics api in automation module
     """
     try:
-      path = "/api/stats/update/"
+      path = "/api/stats/"
       url = f"{self.base_url}{path}"
       data = {
           "user_id": user_id,
       }
 
       # Check response
-      response = requests.post(url, json=data)
+      response = requests.get(url, json=data)
       if (response.status_code == 200):
         response_data = response.json()['data']
+        print(response_data)
         result_data = (response_data['new_comments'], response_data['new_followers'], response_data['new_likes'])
         return result_data
       else:

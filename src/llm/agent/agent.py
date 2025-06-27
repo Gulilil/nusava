@@ -475,6 +475,7 @@ class Agent():
     """
     try:
       post_to_schedule = self.postgres_connector_component.get_scheduled_post_data(self.user_id)
+      print(f"[CHECK SCHEDULE] Got {len(post_to_schedule)} scheduled post to be posted")
       for post in post_to_schedule:
         id = post[0]
         img_url = post[1]
@@ -488,7 +489,6 @@ class Agent():
         print(f"[ACTION TIME SLEEP] Delay for {sleep_time} seconds")
         time.sleep(sleep_time)
 
-      return
     except Exception as e:
       print(f"[ERROR CHECK SCHEDULE] Error checking scheduled post: {e}")
       raise Exception(e)
