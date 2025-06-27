@@ -2,7 +2,7 @@ import numpy as np
 import random
 from hmmlearn.hmm import CategoricalHMM
 from utils.constant import HMM_HIDDEN_STATES, HMM_OBSERVATION_LIST
-from datetime import datetime
+from datetime import datetime, timezone, timedelta
 from typing import Tuple
 
 class ActionGenerator:
@@ -39,10 +39,11 @@ class ActionGenerator:
         random.shuffle(observations)
 
         # Time based
-        hour = datetime.now().hour
-        if 5 <= hour < 12:
+        current_time = datetime.now(timezone.utc) + timedelta(hours=7)
+        current_hour = current_time.hour
+        if 5 <= current_hour < 12:
             observations.append("morning_time")
-        elif 12 <= hour < 18:
+        elif 12 <= current_hour < 18:
             observations.append("afternoon_time")
         else:
             observations.append("night_time")
