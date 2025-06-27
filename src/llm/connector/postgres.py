@@ -74,16 +74,17 @@ class PostgresConnector():
       return None 
   
 
-  def get_scheduled_post_data(self, user_id: str) -> tuple:
+  def get_scheduled_post_data(self) -> tuple:
       """
       Get scheduled post data that is ready to post:
-      - id
+      - id of post
       - scheduled_time is before current time (GMT+7)
       - is_posted is False
+      - user_id 
       """
       try:
           table_name = "bot_scheduledpost"
-          column_names = "id, image_url, caption"
+          column_names = "id, image_url, caption, user_id"
 
           # Get current time in GMT+7
           current_time_gmt7 = datetime.now(timezone.utc) + timedelta(hours=7)
@@ -92,11 +93,10 @@ class PostgresConnector():
           query = f"""
               SELECT {column_names}
               FROM {table_name}
-              WHERE user_id = %s
-                AND scheduled_time < %s
+              WHERE scheduled_time < %s
                 AND is_posted = FALSE;
           """
-          self.cursor.execute(query, (user_id, current_time_gmt7))
+          self.cursor.execute(query, (current_time_gmt7))
           data = self.cursor.fetchall()
           return data
       except Exception as e:

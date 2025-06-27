@@ -98,7 +98,7 @@ class OutputGateway():
       return False
   
 
-  def request_post(self, img_url: str, caption_message:str) -> bool:
+  def request_post(self, img_url: str, caption_message:str, user_id: int) -> bool:
     """
     Hit comment api in automation module
     """
@@ -108,7 +108,7 @@ class OutputGateway():
       data = {
           "image_path": img_url,
           "caption": caption_message,
-          "user_id": self._agent_component.user_id
+          "user_id": user_id
       }
 
       # Check response

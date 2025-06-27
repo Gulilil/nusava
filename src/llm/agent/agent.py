@@ -469,18 +469,25 @@ class Agent():
   ######## INTERNAL TRIGGER ACTION ########
   #########################################
 
-  def check_schedule(self) -> None:
+  async def check_schedule(self) -> None:
     """
     Check for schedule in database
     """
     try:
       post_to_schedule = self.postgres_connector_component.get_scheduled_post_data(self.user_id)
       print(f"[CHECK SCHEDULE] Got {len(post_to_schedule)} scheduled post to be posted")
-      for post in post_to_schedule:
+      # Handle no scheduled post
+      if (len(post_to_schedule) == 0):
+        print(f"[CHECK SCHEDULE] There is no scheduled post to be posted.")
+        return
+      # Iterate post to be scheduled
+      for post in post_to_schedule: 
+        print(f"[DOING POST] Post for post_id {id} of user_id {user_id}")
         id = post[0]
         img_url = post[1]
         caption = post[2]
-        success = self.output_gateway_component.request_post(img_url, caption)
+        user_id = post[3]
+        success = self.output_gateway_component.request_post(img_url, caption, user_id)
         if (success):
           self.postgres_connector_component.mark_posts_as_posted(id)
 
