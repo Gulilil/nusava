@@ -2,7 +2,7 @@ name: Do Internal Action
 # on:
 #   workflow_dispatch:
 #   schedule:
-#     - cron: '30 0,6,9,12,15,18,21 * * *' # “At minute 30 past hour 0, 6, 9, 12, 15, 18, and 21.”
+#     - cron: '*/30 * * * *' # At every 30th minute.
 
 # jobs:
 #   build:
@@ -23,7 +23,7 @@ name: Do Internal Action
 #           pip install -r requirements.txt
 
 #       - name: Execute cronjob script
-#         run: python cronjob/internal_action.py
+#         run: python cronjob/check_schedule.py
           
 
 ####################################################
