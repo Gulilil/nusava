@@ -165,7 +165,7 @@ class Agent():
       return observations
     except Exception as e:
       print(f"[FAILED GET OBSERVATION ELEMENT] {e}")
-      raise Exception(e)
+      return []
   
 
   #######################
@@ -503,6 +503,8 @@ class Agent():
     try:
       observations = self.get_observation_elm()
       print(f"[ACTION OBSERVATION] Acquired observations: {observations}")
+      if (len(observations) == 0):
+        raise Exception ("Invalid observation element: empty list")
 
       # Get the community
       communities = self.choose_community()
