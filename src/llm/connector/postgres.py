@@ -1,5 +1,6 @@
 import os
 import psycopg2
+from datetime import datetime, timezone, timedelta
 
 from dotenv import load_dotenv
 load_dotenv()
@@ -73,17 +74,53 @@ class PostgresConnector():
       return None 
   
 
-  def get_statistics_data(self, user_id: str) -> tuple:
-    """
-    Get persona data based on the user_id
-    """
-    try:
-      table_name = "bot_instagramstatistics"
-      column_names = "new_comments, new_followers, new_likes"
-      self.cursor.execute(f"SELECT {column_names} FROM {table_name} WHERE user_id={user_id}")
-      data = self.cursor.fetchone()
-      return data
-    except Exception as e:
-      print(f"[ERROR POSTGRES] {e}")
-      self.connection.rollback()
-      return None 
+  def get_scheduled_post_data(self) -> tuple:
+      """
+      Get scheduled post data that is ready to post:
+      - id of post
+      - scheduled_time is before current time (GMT+7)
+      - is_posted is False
+      - user_id 
+      """
+      try:
+          table_name = "bot_scheduledpost"
+          column_names = "id, image_url, caption, user_id"
+
+          # Get current time in GMT+7
+          current_time_gmt7 = datetime.now(timezone.utc) + timedelta(hours=7)
+          
+          # Use parameterized query to prevent SQL injection
+          query = f"""
+              SELECT {column_names}
+              FROM {table_name}
+              WHERE scheduled_time < %s
+                AND is_posted = FALSE;
+          """
+          self.cursor.execute(query, (current_time_gmt7))
+          data = self.cursor.fetchall()
+          return data
+      except Exception as e:
+          print(f"[ERROR POSTGRES] {e}")
+          self.connection.rollback()
+          return None
+      
+
+  def mark_posts_as_posted(self, id: str) -> None:
+      """
+      Set is_posted = TRUE for id post
+      """
+      try:
+          table_name = "bot_scheduledpost"
+          # Get current time in GMT+7
+
+          query = f"""
+              UPDATE {table_name}
+              SET is_posted = TRUE
+              WHERE id = %s;
+          """
+          self.cursor.execute(query, (id))
+          self.connection.commit()
+          print(f"[MARK IS POSTED] Marked posts as posted for id={id}")
+      except Exception as e:
+          print(f"[ERROR MARK IS POSTED] {e}")
+          self.connection.rollback()

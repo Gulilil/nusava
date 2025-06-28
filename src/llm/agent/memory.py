@@ -14,9 +14,7 @@ class Memory():
 
   def __init__(
       self,
-      agent_component: object,  
-      max_message_limit : int = 16
-
+      agent_component: object
   ) -> None:
       """
       Use dictionary as memory store 
@@ -59,7 +57,7 @@ class Memory():
 
   ######## STORE  ########
 
-  def store(self, sender_id: str, memory_data: dict) -> None:
+  async def store(self, sender_id: str, memory_data: dict) -> None:
       """
       Stores a value in memory.
 
@@ -84,7 +82,7 @@ class Memory():
       # Migrating memory if it reaches certain length
       if (len(self._memory[sender_id]) >= self._max_message_limit):
         memory_to_migrate = self._memory[sender_id][:self._memory_length_migration]
-        success = self._agent_component.summarize_and_store_memory(sender_id, memory_to_migrate)
+        success = await self._agent_component.summarize_and_store_memory(sender_id, memory_to_migrate)
         print(f"[MIGRATING MEMORY] Successfully migrating short-term memory with {sender_id} as long-term memory")
         # If already stored in vector, remove from short term memory
         if (success):

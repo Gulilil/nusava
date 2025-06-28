@@ -77,7 +77,7 @@ class InputGateway():
                           "config": config,
                           "persona": persona,
                           "memory": memory,
-                          "observation_element": observation_elm
+                          "observation": observation_elm,
                         }}), 200
       except Exception as error: 
         return jsonify({"error": str(error)}), 400
@@ -89,7 +89,7 @@ class InputGateway():
     ######## SETUP & OTHER ########
 
     @self.app.route("/user", methods=['POST'])
-    def set_user():
+    async def set_user():
       """
       Set user_id to the agent
       Field format : 
@@ -105,7 +105,7 @@ class InputGateway():
         
         # Proceed to process
         user_id = data['user_id']
-        self._agent_component.set_user(user_id)
+        await self._agent_component.set_user(user_id)
         return jsonify({"response": True}), 200
       except Exception as error: 
         return jsonify({"error": str(error)}), 400
@@ -136,23 +136,23 @@ class InputGateway():
     ######## SCHEDULED FOR CRON ########
 
     @self.app.route("/action", methods=['POST'])
-    def respond_action():
+    async def respond_action():
       """
       Respond to external scheduler to start doing action
       """
       try:
-        self._agent_component.decide_action()
+        await self._agent_component.decide_action()
         return jsonify({"response": True}), 200
       except Exception as error: 
         return jsonify({"error": str(error)}), 400
 
     @self.app.route("/check_schedule", methods=['POST'])
-    def respond_check_schedule():
+    async def respond_check_schedule():
       """
       Respond to external scheduler to check schedule for scheduled_post
       """
       try:
-        self._agent_component.check_schedule()
+        await self._agent_component.check_schedule()
         return jsonify({"response": True}), 200
       except Exception as error: 
         return jsonify({"error": str(error)}), 400
@@ -160,7 +160,7 @@ class InputGateway():
     ######## ACTIONS INPUT ########
 
     @self.app.route("/chat", methods=['POST'])
-    def respond_chat():
+    async def respond_chat():
       """
       Respond to input chat from user, returning the reply to the inputted message
       Field format : 
@@ -178,13 +178,13 @@ class InputGateway():
         # Proceed to process
         chat_message = data['chat_message']
         sender_id = data['sender_id']
-        response = self._agent_component.action_reply_chat(chat_message, sender_id)
+        response = await self._agent_component.action_reply_chat(chat_message, sender_id)
         return jsonify({"response": response}), 200
       except Exception as error: 
         return jsonify({"error": str(error)}), 400
       
     @self.app.route("/post", methods=['POST'])
-    def respond_schedule_post():
+    async def respond_schedule_post():
       """
       Respond to schedule post input from dashboard, will be scheduled
       Field format : 
@@ -203,7 +203,7 @@ class InputGateway():
         img_url = data['image_url']
         caption_message= data['caption_message']
         # Process and schedule the post
-        schedule_time, reason = self._agent_component.action_schedule_post(img_url, caption_message)
+        schedule_time, reason = await self._agent_component.action_schedule_post(img_url, caption_message)
         # Handle if none
         if (schedule_time is None or reason is None):
           raise Exception("None scheduled time")
@@ -213,7 +213,7 @@ class InputGateway():
         return jsonify({"error": str(error)}), 400
 
     @self.app.route("/caption", methods=['POST'])
-    def respond_generate_caption():
+    async def respond_generate_caption():
       """
       Respond to post input from dashboard, returning the caption for the post
       Field format : 
@@ -234,7 +234,7 @@ class InputGateway():
         caption_keywords = data['caption_keywords']
         additional_context = data.get('additional_context', None)
         # Process and schedule the action post
-        caption_message = self._agent_component.action_generate_caption(img_description, caption_keywords, additional_context)
+        caption_message = await self._agent_component.action_generate_caption(img_description, caption_keywords, additional_context)
 
         return jsonify({"response": caption_message}), 200
       except Exception as error: 

@@ -1,4 +1,5 @@
 import requests
+from typing import Optional
 import os
 from dotenv import load_dotenv
 load_dotenv()
@@ -11,7 +12,6 @@ class OutputGateway():
     """
     Instantiate output gateway to call the API of other module
     """
-    # TODO To be adjusted
     self._agent_component = agent
     self.base_url = os.getenv("AUTOMATION_MODULE_URL")
     self.headers = {
@@ -98,19 +98,17 @@ class OutputGateway():
       return False
   
 
-  def request_post(self, img_url: str, caption_message:str) -> None:
+  def request_post(self, img_url: str, caption_message:str, user_id: int) -> bool:
     """
     Hit comment api in automation module
     """
-    # TODO 
-
     try:
       path = "/api/post/"
       url = f"{self.base_url}{path}"
       data = {
           "image_path": img_url,
           "caption": caption_message,
-          "user_id": self._agent_component.user_id
+          "user_id": user_id
       }
 
       # Check response
@@ -125,3 +123,31 @@ class OutputGateway():
     except Exception as e:
       print(f"[ERROR REQUEST POST] Error occured in requesting action `post`: {e}")
       return False
+    
+
+  def request_statistics(self, user_id: int) -> Optional[tuple]:
+    """
+    Hit statistics api in automation module
+    """
+    try:
+      path = "/api/stats/"
+      url = f"{self.base_url}{path}"
+      data = {
+          "user_id": user_id,
+      }
+
+      # Check response
+      response = requests.get(url, json=data)
+      if (response.status_code == 200):
+        response_data = response.json()['data']
+        print(f"[STATISTICS DATA] {response_data}")
+        result_data = (response_data['new_comments'], response_data['new_followers'], response_data['new_likes'])
+        return result_data
+      else:
+        response_json = response.json()
+        print(f"[ERROR REQUEST STATISTICS] Status code: {response.status_code}. Error : {response_json['error']}")
+        return None
+
+    except Exception as e:
+      print(f"[ERROR REQUEST STATISTICS] Error occured in requesting action `statistics`: {e}")
+      return None
