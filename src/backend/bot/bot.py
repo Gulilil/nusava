@@ -79,8 +79,9 @@ class InstagramBot:
                 if self.user_obj.session_info and 'uuids' in self.user_obj.session_info:
                     self.client.set_uuids(self.user_obj.session_info['uuids'])
                 
-                self.client.login(self.username, self.password)
-                # Save new session to database
+                self.client.login(self.username, self.password, relogin=True)
+                # Save new session to database\
+                self.user_obj.refresh_from_db()
                 self.user_obj.session_info = self.client.get_settings()
                 self.user_obj.save()
                 logger.info(f"Logged in via password: {self.username}")
@@ -118,6 +119,9 @@ class InstagramBot:
 
     def like_post(self, media_id: str, media_url: str = None):
         try:
+            if not self.validate_session():
+                raise Exception("Unable to validate Instagram session")
+            
             if media_url:
                 media_id = self.client.media_pk_from_url(media_url)
             self.client.media_like(media_id)
@@ -140,6 +144,9 @@ class InstagramBot:
 
     def comment_on_post(self, comment: str, media_id: str, media_url: str = None):
         try:
+            if not self.validate_session():
+                    raise Exception("Unable to validate Instagram session")
+            
             if media_url:
                 media_id = self.client.media_pk_from_url(media_url)
             self.client.media_comment(media_id, comment)
@@ -190,6 +197,9 @@ class InstagramBot:
         bool
             Success status
         """
+        if not self.validate_session():
+                raise Exception("Unable to validate Instagram session")
+            
         temp_file_path = None
         try:
             # Download image from Cloudinary to temp file
@@ -231,16 +241,6 @@ class InstagramBot:
             # Clean up temporary file
             if temp_file_path:
                 cleanup_temp_file(temp_file_path)
-
-    def share_post_dm(self, media_url: str, usernames: list):
-        try:
-            media_id = self.client.media_pk_from_url(media_url)
-            user_ids = [self.client.user_id_from_username(u) for u in usernames]
-            self.client.direct_send(media_ids=[media_id], user_ids=user_ids)
-            self.log("share_dm", media_url, "success", f"Shared to {usernames}")
-        except Exception as e:
-            self.log("share_dm", media_url, "failed", str(e))
-            raise e
 
     def send_dm(self, username: str, message: str):
         try:
@@ -310,6 +310,8 @@ class InstagramBot:
             print("=== Getting All Combined Messages ===")
             
             all_processed = []
+            if not self.validate_session():
+                raise Exception("Unable to validate Instagram session")
             
             # Get regular threads
             print("\n--- Processing Regular Threads ---")
@@ -449,6 +451,9 @@ class InstagramBot:
         """
         try:
             # Get all posts from Instagram
+            if not self.validate_session():
+                raise Exception("Unable to validate Instagram session")
+            
             if (all_medias is None):
                 all_medias = self.client.user_medias_v1(self.client.user_id)
             
@@ -524,6 +529,9 @@ class InstagramBot:
     def get_account_statistics(self):
         """Get comprehensive account statistics and update post statistics"""
         try:
+            if not self.validate_session():
+                raise Exception("Unable to validate Instagram session")
+            
             # Get basic account info
             user_info = self.client.user_info_v1(self.client.user_id)
             
