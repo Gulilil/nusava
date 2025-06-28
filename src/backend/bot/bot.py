@@ -44,15 +44,15 @@ class InstagramBot:
         self.client = Client()
         
         # Setup self.client configuration
-        self.client.set_locale('id_ID')
-        self.client.set_country('ID')
-        self.client.set_country_code(62)
-        self.client.set_timezone_offset(25200)  # UTC+7
+        self.client.set_locale('en_SG')  # Singapore English locale
+        self.client.set_country('SG')    # Singapore country code
+        self.client.set_country_code(65) # Singapore country calling code
+        self.client.set_timezone_offset(28800)  # UTC+8 (Singapore timezone)
         self.client.set_device({
-            'manufacturer': random.choice(['samsung', 'oppo', 'vivo', 'xiaomi']),
-            'model': random.choice(['SM-A325F', 'CPH2113', 'V2027', 'M2006C3LG']),
-            'android_version': random.choice([28, 29, 30]),
-            'android_release': random.choice(['9.0', '10.0', '11.0'])
+            'manufacturer': random.choice(['samsung', 'apple', 'oppo', 'xiaomi']),
+            'model': random.choice(['SM-G991B', 'iPhone13,2', 'CPH2145', 'M2007J20CG']),
+            'android_version': random.choice([29, 30, 31]),
+            'android_release': random.choice(['10.0', '11.0', '12.0'])
         })
         self.client.delay_range = [1, 3]
         

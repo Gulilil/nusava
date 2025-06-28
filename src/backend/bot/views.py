@@ -75,15 +75,15 @@ def register_user(request):
         client = Client()
         
         # Setup client configuration
-        client.set_locale('id_ID')
-        client.set_country('ID')
-        client.set_country_code(62)
-        client.set_timezone_offset(25200)  # UTC+7
+        client.set_locale('en_SG')  # Singapore English locale
+        client.set_country('SG')    # Singapore country code
+        client.set_country_code(65) # Singapore country calling code
+        client.set_timezone_offset(28800)  # UTC+8 (Singapore timezone)
         client.set_device({
-            'manufacturer': random.choice(['samsung', 'oppo', 'vivo', 'xiaomi']),
-            'model': random.choice(['SM-A325F', 'CPH2113', 'V2027', 'M2006C3LG']),
-            'android_version': random.choice([28, 29, 30]),
-            'android_release': random.choice(['9.0', '10.0', '11.0'])
+            'manufacturer': random.choice(['samsung', 'apple', 'oppo', 'xiaomi']),
+            'model': random.choice(['SM-G991B', 'iPhone13,2', 'CPH2145', 'M2007J20CG']),
+            'android_version': random.choice([29, 30, 31]),
+            'android_release': random.choice(['10.0', '11.0', '12.0'])
         })
         client.delay_range = [1, 3]
         
