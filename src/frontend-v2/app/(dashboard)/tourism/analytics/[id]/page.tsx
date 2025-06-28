@@ -345,7 +345,7 @@ export default function TourismAnalyticsPage() {
                 <CardHeader>
                   <CardTitle>Statistics Summary</CardTitle>
                   <CardDescription>
-                    Performance metrics for the last {selectedHours} days
+                    Performance metrics for the last {selectedHours} hours
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
@@ -387,7 +387,7 @@ export default function TourismAnalyticsPage() {
               <CardHeader>
                 <CardTitle>Performance Metrics</CardTitle>
                 <CardDescription>
-                  Detailed analysis of engagement performance over {selectedHours} days
+                  Detailed analysis of engagement performance over {selectedHours} hours
                 </CardDescription>
               </CardHeader>
               <CardContent>
@@ -459,7 +459,7 @@ export default function TourismAnalyticsPage() {
               <CardHeader>
                 <CardTitle>Instagram Posts</CardTitle>
                 <CardDescription>
-                  Posts tagged with this tourism object ({selectedHours} days)
+                  Posts tagged with this tourism object ({selectedHours} hours)
                 </CardDescription>
               </CardHeader>
               <CardContent>
@@ -473,6 +473,14 @@ export default function TourismAnalyticsPage() {
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                     {statistics.posts.map((post, index) => (
                       <Card key={index} className="overflow-hidden">
+                        {/* Instagram Embed */}
+                        <div className="flex justify-center items-center p-4 min-h-[500px]">
+                          <div className="w-full max-w-[328px]">
+                            <InstagramEmbed
+                              permalink={`https://www.instagram.com/p/${post.shortcode}/`}
+                            />
+                          </div>
+                        </div>
                         <div className="p-4 border-b">
                           <div className="flex items-center justify-between mb-2">
                             <div className="flex items-center space-x-2">
@@ -518,14 +526,7 @@ export default function TourismAnalyticsPage() {
                           </p>
                         </div>
                         
-                        {/* Instagram Embed */}
-                        <div className="flex justify-center items-center p-4 min-h-[500px]">
-                          <div className="w-full max-w-[328px]">
-                            <InstagramEmbed
-                              permalink={`https://www.instagram.com/p/${post.shortcode}/`}
-                            />
-                          </div>
-                        </div>
+                        
                       </Card>
                     ))}
                   </div>
@@ -534,9 +535,9 @@ export default function TourismAnalyticsPage() {
                     <BarChart3 className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
                     <h3 className="text-lg font-semibold mb-2">No posts found</h3>
                     <p className="text-muted-foreground mb-4">
-                      No Instagram posts found for this tourism object in the last {selectedHours} days.
+                      No Instagram posts found for this tourism object in the last {selectedHours} hours.
                     </p>
-                    <Button variant="outline" onClick={() => router.push('/posts/add')}>
+                    <Button variant="outline" onClick={() => router.push('/tourism/add')}>
                       Create New Post
                     </Button>
                   </div>

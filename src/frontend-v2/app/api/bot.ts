@@ -112,7 +112,7 @@ export async function getTourismObjectsList() {
     method: 'GET',
     headers: {
       'Content-Type': 'application/json',
-      'Authorization': `Bearer ${localStorage.getItem('access_token')}`,
+      'Authorization': `Bearer ${localStorage.getItem('jwtToken')}`,
     },
   });
 
@@ -129,7 +129,7 @@ export async function getTourismObjectStatistics(objectId: number, hours: number
     method: 'GET',
     headers: {
       'Content-Type': 'application/json',
-      'Authorization': `Bearer ${localStorage.getItem('access_token')}`,
+      'Authorization': `Bearer ${localStorage.getItem('jwtToken')}`,
     },
   });
 
@@ -150,7 +150,7 @@ export async function getAllTourismStatistics(hours: number = 24): Promise<AllTo
     method: 'GET',
     headers: {
       'Content-Type': 'application/json',
-      'Authorization': `Bearer ${localStorage.getItem('access_token')}`,
+      'Authorization': `Bearer ${localStorage.getItem('jwtToken')}`,
     },
   });
 
@@ -176,7 +176,7 @@ export async function schedulePost(data: {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      'Authorization': `Bearer ${localStorage.getItem('access_token')}`,
+      'Authorization': `Bearer ${localStorage.getItem('jwtToken')}`,
     },
     body: JSON.stringify(data),
   });

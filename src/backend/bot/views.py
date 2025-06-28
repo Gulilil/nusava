@@ -1,6 +1,5 @@
-import json
 import os
-import tempfile
+import random
 from rest_framework.decorators import api_view, permission_classes, authentication_classes
 from rest_framework.response import Response
 from rest_framework_simplejwt.authentication import JWTAuthentication
@@ -9,9 +8,8 @@ from django.http import HttpResponse
 import requests
 import environ
 
-from .models import InstagramStatistics, Posts, ScheduledPost, User
+from .models import InstagramStatistics, Posts, ScheduledPost, TourismObject, User
 from .bot import InstagramBot
-from .session_manager import SessionManager
 from instagrapi import Client
 from rest_framework_simplejwt.tokens import RefreshToken
 import logging
@@ -21,15 +19,19 @@ from .serializers import ConfigurationSerializer, ActionLogSerializer
 from .models import Configuration, ActionLog
 from django.core.paginator import Paginator
 from .automation import automation_service
+from django.utils import timezone
+from datetime import timedelta
+from django.utils.dateparse import parse_datetime
+
 
 from dotenv import load_dotenv
 load_dotenv()
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger('views')
 env = environ.Env()
 max_interval = env('MAX_INTERVAL', default=900, cast=int)
 min_interval = env('MIN_INTERVAL', default=300, cast=int)
-user_bots = {}
+user_bots: dict[str, InstagramBot] = {}
 
 def proxy_image(request):
     url = request.GET.get('url')
@@ -70,13 +72,30 @@ def register_user(request):
         user.set_password(password)
         user.save()
         
-        # Use session manager to test Instagram login and save session
-        session_manager = SessionManager()
+        client = Client()
         
+        # Setup client configuration
+        client.set_locale('id_ID')
+        client.set_country('ID')
+        client.set_country_code(62)
+        client.set_timezone_offset(25200)  # UTC+7
+        client.set_device({
+            'manufacturer': random.choice(['samsung', 'oppo', 'vivo', 'xiaomi']),
+            'model': random.choice(['SM-A325F', 'CPH2113', 'V2027', 'M2006C3LG']),
+            'android_version': random.choice([28, 29, 30]),
+            'android_release': random.choice(['9.0', '10.0', '11.0'])
+        })
+        client.delay_range = [1, 3]
+        
+        proxy_url = env('PROXY_URL', default=None)
+        client.set_proxy(proxy_url)
+
         try:
             # Test Instagram login - this will save session to DB if successful
-            bot_client = session_manager.login_user(username, password, user)
-            user_bots[user.id] = bot_client
+            client.login(username, password)
+            bot = InstagramBot(user_obj=user, password=password)
+            bot.client = client
+            user_bots[user.id] = bot
             logger.info(f"Instagram login successful for registration: {username}")
             
         except Exception as login_error:
@@ -226,7 +245,7 @@ def like_post(request):
         except Exception as e:
             logger.error(f"Failed to initialize bot for user {user.id}: {str(e)}")
             return Response({"error": f"Bot initialization failed: {str(e)}"}, status=500)
-
+        
     try:
         bot.like_post(media_id, media_url)
         return Response({'status': 'success', 'message': 'Post liked'})
@@ -255,7 +274,7 @@ def follow_user(request):
         except Exception as e:
             logger.error(f"Failed to initialize bot for user {user.id}: {str(e)}")
             return Response({"error": f"Bot initialization failed: {str(e)}"}, status=500)
-        
+    
     try:
         bot.follow_user(target_username)
         return Response({'status': 'success', 'message': 'User followed'})
@@ -564,7 +583,6 @@ def update_instagram_statistics(request):
     try:
         # Get current statistics from Instagram
         current_stats = bot.get_account_statistics()
-        
         # Check if statistics already exist for this user
         existing_stats = InstagramStatistics.objects.filter(user=user).order_by('-created_at').first()
         
@@ -650,7 +668,8 @@ def schedule_post(request):
     caption = request.data.get('caption')
     scheduled_time = request.data.get('scheduled_time')  
     reason = request.data.get('reason', 'User scheduled post')
-    
+    tourism_object_id = request.data.get('tourism_object_id')
+
     if not image_url or not caption or not scheduled_time:
         return Response({
             "status": "error", 
@@ -658,12 +677,24 @@ def schedule_post(request):
         }, status=400)
     
     try:
+        parsed_time = parse_datetime(scheduled_time)
+        if parsed_time is None:
+            return Response({
+                "status": "error", 
+                "message": "Invalid scheduled_time format"
+            }, status=400)
+        
+        if parsed_time.tzinfo is None:
+            parsed_time = timezone.make_aware(parsed_time)
+            
+        tourism_object = TourismObject.objects.get(id=tourism_object_id)
         scheduled_post = ScheduledPost.objects.create(
             user=user,
             scheduled_time=scheduled_time,
             reason=reason,
             image_url=image_url,
             caption=caption,
+            tourism_object=tourism_object,
             is_posted=False
         )
         
@@ -737,30 +768,47 @@ def get_scheduled_posts(request):
             'has_previous': page_obj.has_previous(),
         }
     })
-
 @api_view(['GET'])
 @permission_classes([AllowAny])
 def get_tourism_objects(request):
-    """Get all tourism objects with simplified metrics"""
+    """Get all tourism objects with real metrics from database"""
     try:
-        from .models import TourismObject
-        import random
-        from datetime import datetime
+        from .models import TourismObject, Posts, PostStatistics
+        from django.db.models import Count, Sum, Avg
         
         # Get all tourism objects
         tourism_objects = TourismObject.objects.all().order_by('object_type', 'name')
         
-        # Create response data with simplified dummy metrics
+        # Create response data with real metrics
         objects_data = []
         for obj in tourism_objects:
-            # Generate dummy metrics - simplified to 5 fields only
-            total_posts = random.randint(5, 25)
-            total_likes = random.randint(100, 2000)
-            total_comments = random.randint(10, 200)
+            # Get real posts data for this tourism object
+            posts = Posts.objects.filter(tourism_object=obj)
             
-            # Generate percent increase for likes and comments (can be negative)
-            likes_percent_increase = round(random.uniform(-15.0, 25.0), 1)
-            comments_percent_increase = round(random.uniform(-10.0, 30.0), 1)
+            # Calculate real metrics
+            total_posts = posts.count()
+            total_likes = posts.aggregate(Sum('like_count'))['like_count__sum'] or 0
+            total_comments = posts.aggregate(Sum('comment_count'))['comment_count__sum'] or 0
+            
+            # Calculate growth rates from last 24 hours
+            twenty_four_hours_ago = timezone.now() - timedelta(hours=24)
+            recent_stats = PostStatistics.objects.filter(
+                tourism_object=obj,
+                recorded_at__gte=twenty_four_hours_ago
+            )
+            
+            # Calculate percentage changes
+            likes_percent_increase = 0
+            comments_percent_increase = 0
+            
+            if recent_stats.exists():
+                total_likes_change = recent_stats.aggregate(Sum('likes_change'))['likes_change__sum'] or 0
+                total_comments_change = recent_stats.aggregate(Sum('comments_change'))['comments_change__sum'] or 0
+                
+                if total_likes > 0:
+                    likes_percent_increase = round((total_likes_change / total_likes) * 100, 1)
+                if total_comments > 0:
+                    comments_percent_increase = round((total_comments_change / total_comments) * 100, 1)
             
             object_data = {
                 'id': obj.id,
@@ -776,7 +824,7 @@ def get_tourism_objects(request):
                     'likes_percent_increase': likes_percent_increase,
                     'comments_percent_increase': comments_percent_increase,
                 },
-                'last_updated': datetime.now().isoformat()
+                'last_updated': timezone.now().isoformat()
             }
             objects_data.append(object_data)
         
@@ -805,11 +853,10 @@ def get_tourism_objects(request):
 @api_view(['GET'])
 @permission_classes([AllowAny])
 def get_tourism_object_detail(request, object_id):
-    """Get detailed metrics for a specific tourism object"""
+    """Get detailed metrics for a specific tourism object using real data"""
     try:
-        from .models import TourismObject
-        import random
-        from datetime import datetime, timedelta
+        from .models import TourismObject, Posts, PostStatistics
+        from django.db.models import Sum
         
         # Get the specific tourism object
         try:
@@ -820,23 +867,69 @@ def get_tourism_object_detail(request, object_id):
                 'message': 'Tourism object not found'
             }, status=404)
         
-        # Generate simplified detailed dummy metrics
-        total_posts = random.randint(10, 50)
-        total_likes = random.randint(500, 5000)
-        total_comments = random.randint(50, 500)
-        likes_percent_increase = round(random.uniform(-15.0, 25.0), 1)
-        comments_percent_increase = round(random.uniform(-10.0, 30.0), 1)
+        # Get real posts for this tourism object
+        posts = Posts.objects.filter(tourism_object=tourism_object)
         
-        # Generate dummy historical data (last 7 days) - simplified
+        # Calculate real metrics
+        total_posts = posts.count()
+        total_likes = posts.aggregate(Sum('like_count'))['like_count__sum'] or 0
+        total_comments = posts.aggregate(Sum('comment_count'))['comment_count__sum'] or 0
+        
+        # Calculate growth rates from last 24 hours
+        twenty_four_hours_ago = timezone.now() - timedelta(hours=24)
+        recent_stats = PostStatistics.objects.filter(
+            tourism_object=tourism_object,
+            recorded_at__gte=twenty_four_hours_ago
+        )
+        
+        likes_percent_increase = 0
+        comments_percent_increase = 0
+        
+        if recent_stats.exists():
+            total_likes_change = recent_stats.aggregate(Sum('likes_change'))['likes_change__sum'] or 0
+            total_comments_change = recent_stats.aggregate(Sum('comments_change'))['comments_change__sum'] or 0
+            
+            if total_likes > 0:
+                likes_percent_increase = round((total_likes_change / total_likes) * 100, 1)
+            if total_comments > 0:
+                comments_percent_increase = round((total_comments_change / total_comments) * 100, 1)
+        
+        # Generate real historical data (last 7 days)
         historical_data = []
-        base_date = datetime.now() - timedelta(days=7)
-        
         for i in range(8):  # 8 days including today
-            date = base_date + timedelta(days=i)
+            date = timezone.now() - timedelta(days=7-i)
+            day_start = date.replace(hour=0, minute=0, second=0, microsecond=0)
+            day_end = day_start + timedelta(days=1)
+            
+            # Get statistics for this day
+            day_stats = PostStatistics.objects.filter(
+                tourism_object=tourism_object,
+                recorded_at__gte=day_start,
+                recorded_at__lt=day_end
+            )
+            
+            day_likes = day_stats.aggregate(Sum('like_count'))['like_count__sum'] or 0
+            day_comments = day_stats.aggregate(Sum('comment_count'))['comment_count__sum'] or 0
+            
             historical_data.append({
                 'date': date.strftime('%Y-%m-%d'),
-                'likes': random.randint(50, 300),
-                'comments': random.randint(5, 50),
+                'likes': day_likes,
+                'comments': day_comments,
+            })
+        
+        # Get top performing posts (real data)
+        top_posts = posts.order_by('-like_count')[:5]
+        top_performing_posts = []
+        
+        for post in top_posts:
+            top_performing_posts.append({
+                'id': post.id,
+                'shortcode': post.shortcode,
+                'media_id': post.media_id,
+                'likes': post.like_count,
+                'comments': post.comment_count,
+                'date': post.posted_at.strftime('%Y-%m-%d') if post.posted_at else None,
+                'caption': post.caption[:100] + "..." if len(post.caption) > 100 else post.caption
             })
         
         detailed_data = {
@@ -852,18 +945,11 @@ def get_tourism_object_detail(request, object_id):
                 'total_comments': total_comments,
                 'likes_percent_increase': likes_percent_increase,
                 'comments_percent_increase': comments_percent_increase,
+                'average_likes_per_post': round(total_likes / total_posts, 1) if total_posts > 0 else 0,
+                'average_comments_per_post': round(total_comments / total_posts, 1) if total_posts > 0 else 0,
             },
             'historical_data': historical_data,
-            'top_performing_posts': [
-                {
-                    'id': f'post_{i}',
-                    'shortcode': f'ABC{i}XYZ',
-                    'likes': random.randint(100, 500),
-                    'comments': random.randint(10, 50),
-                    'date': (datetime.now() - timedelta(days=random.randint(1, 30))).strftime('%Y-%m-%d')
-                }
-                for i in range(5)
-            ]
+            'top_performing_posts': top_performing_posts
         }
         
         return Response({
@@ -877,7 +963,7 @@ def get_tourism_object_detail(request, object_id):
             'status': 'error',
             'message': f'Failed to fetch tourism object details: {str(e)}'
         }, status=500)
-
+    
 @api_view(['POST'])
 @permission_classes([AllowAny])
 def post_photo(request):
@@ -908,7 +994,7 @@ def post_photo(request):
             "status": "success",
             "message": "Photo posted successfully",
             "data": {
-                "media_id": str(media.pk),
+                "media_id": media.id,
                 "shortcode": media.code,
                 "tourism_object_id": tourism_object_id
             }
@@ -1036,7 +1122,7 @@ def get_tourism_objects_list(request):
             data.append({
                 "id": obj.id,
                 "name": obj.name,
-                "type": obj.object_type,
+                "object_type": obj.object_type,
                 "location": obj.location
             })
         

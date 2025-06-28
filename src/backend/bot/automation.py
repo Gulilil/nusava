@@ -45,8 +45,7 @@ class DMAutomationService:
         try:
             user = User.objects.get(id=user_id)
             
-            bot = InstagramBot(user_obj=user, password=user.password, 
-                             session_settings=user.session_info)
+            bot = InstagramBot(user_obj=user, password=user.password)
             self.user_bots[user_id] = bot
             
             # Create stop flag for this user

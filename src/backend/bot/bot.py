@@ -1,10 +1,9 @@
-from datetime import timedelta, timezone
+from datetime import timedelta
 import json
 import random
 import time
 from instagrapi import Client
 from .models import PostStatistics, Posts, TourismObject, User, ActionLog
-from .session_manager import SessionManager
 from typing import List
 from instagrapi.types import DirectThread
 import requests
@@ -13,27 +12,101 @@ load_dotenv()
 import os
 import logging
 from .utils import download_image_from_url, cleanup_temp_file
+import environ
+from pathlib import Path
+from django.utils import timezone
 
-logger = logging.getLogger(__name__)
+BASE_DIR = Path(__file__).resolve().parent.parent
+logger = logging.getLogger('bot')
+env = environ.Env()
+environ.Env.read_env(os.path.join(BASE_DIR, '.env'))
 
 class InstagramBot:
-    def __init__(self, user_obj: User, password: str, session_settings=None):
+    def __init__(self, user_obj: User, password: str, client: Client = None):
         self.username = user_obj.username
         self.password = password
         self.user_obj = user_obj
-        self.session_manager = SessionManager()
-        self.client = Client()
+        self.client: Client = client
+
         try:
-            # Use the new session manager for proper session handling
-            self.client = self.session_manager.login_user(self.username, self.password, self.user_obj)
-            
-            # Session is automatically saved to database in login_user method
-            logger.info(f"Instagram bot initialized successfully for user: {self.username}")
-            
+            if (self.client):
+                self.client.set_settings(self.user_obj.session_info)
+                logger.info(f"Reusing existing client for user: {self.client.get_settings()}")
+            else:
+                self._initialize_client()
+                logger.info(f"Instagram bot initialized successfully for user: {self.username}")
         except Exception as e:
             logger.error(f"Failed to initialize Instagram bot for {self.username}: {str(e)}")
             raise e
+    
+    def _initialize_client(self) -> Client:
+        """Initialize and login the Instagram client with session management"""
+        self.client = Client()
+        
+        # Setup self.client configuration
+        self.client.set_locale('id_ID')
+        self.client.set_country('ID')
+        self.client.set_country_code(62)
+        self.client.set_timezone_offset(25200)  # UTC+7
+        self.client.set_device({
+            'manufacturer': random.choice(['samsung', 'oppo', 'vivo', 'xiaomi']),
+            'model': random.choice(['SM-A325F', 'CPH2113', 'V2027', 'M2006C3LG']),
+            'android_version': random.choice([28, 29, 30]),
+            'android_release': random.choice(['9.0', '10.0', '11.0'])
+        })
+        self.client.delay_range = [1, 3]
+        
+        proxy_url = env('PROXY_URL', default=None)
+        self.client.set_proxy(proxy_url)
+        
+        # Try to login with existing session first, then password
+        login_success = False
+        
+        # Method 1: Try existing session
+        if self.user_obj.session_info:
+            try:
+                self.client.set_settings(self.user_obj.session_info)
+                # self.client.login(self.username, self.password)
+                self.client.get_timeline_feed()
+                logger.info(f"Logged in via existing session: {self.username}")
+                login_success = True
+            except Exception as e:
+                logger.info(f"Session login failed for {self.username}: {str(e)}")
+        
+        # Method 2: Fresh login with password
+        if not login_success:
+            try:
+                if self.user_obj.session_info and 'uuids' in self.user_obj.session_info:
+                    self.client.set_uuids(self.user_obj.session_info['uuids'])
+                
+                self.client.login(self.username, self.password)
+                # Save new session to database
+                self.user_obj.session_info = self.client.get_settings()
+                self.user_obj.save()
+                logger.info(f"Logged in via password: {self.username}")
+                login_success = True
+            except Exception as e:
+                logger.error(f"Password login failed for {self.username}: {str(e)}")
+        
+        if not login_success:
+            raise Exception(f"All login methods failed for {self.username}")
 
+    def validate_session(self):
+        """Validate current session and re-login if necessary"""
+        try:
+            # Test session validity
+            self.client.get_timeline_feed()
+            return True
+        except Exception as e:
+            logger.warning(f"Session invalid for {self.username}: {str(e)}")
+            try:
+                # Try to re-login
+                self._initialize_client()
+                return True
+            except Exception as login_error:
+                logger.error(f"Failed to refresh session for {self.username}: {str(login_error)}")
+                return False
+ 
     def log(self, action_type, target, status, message):
         ActionLog.objects.create(
             user=self.user_obj,
@@ -55,6 +128,9 @@ class InstagramBot:
 
     def follow_user(self, target_username: str):
         try:
+            if not self.validate_session():
+                raise Exception("Unable to validate Instagram session")
+            
             user_id = self.client.user_id_from_username(target_username)
             self.client.user_follow(user_id)
             self.log("follow", target_username, "success", "Followed user")
@@ -80,16 +156,17 @@ class InstagramBot:
             if tourism_object_id:
                 try:
                     tourism_object = TourismObject.objects.get(id=tourism_object_id)
-                    Posts.objects.create(
+                    post_record = Posts.objects.create(
                         user=self.user_obj,
                         tourism_object=tourism_object,
-                        media_id=str(media.pk),
+                        media_id=media.id,
                         shortcode=media.code,
                         caption=caption,
                         like_count=0,  # Initial counts
                         comment_count=0,
                         posted_at=media.taken_at
                     )
+                    logger.info(f"Database record created: post_id={post_record.id}, tourism_object={tourism_object.name}")
                     self.log("post_photo", image_path, "success", f"Posted photo and linked to {tourism_object.name}")
                 except TourismObject.DoesNotExist:
                     self.log("post_photo", image_path, "warning", f"Tourism object {tourism_object_id} not found")
@@ -130,7 +207,7 @@ class InstagramBot:
                     Posts.objects.create(
                         user=self.user_obj,
                         tourism_object=tourism_object,
-                        media_id=str(media.pk),
+                        media_id=media.id,
                         shortcode=media.code,
                         caption=caption,
                         like_count=0,
@@ -143,12 +220,12 @@ class InstagramBot:
             else:
                 self.log("post_from_cloudinary", image_url, "success", "Posted from Cloudinary without tourism object link")
             
-            return True
+            return media
             
             
         except Exception as e:
             self.log("post_photo", temp_file_path, "failed", str(e))
-            return False
+            return None
             
         finally:
             # Clean up temporary file
@@ -365,62 +442,22 @@ class InstagramBot:
             return None
     
     # ============= STATISTICS ==============
-    def get_account_statistics(self):
-        """Get comprehensive account statistics using user_info_v1 and insights_account"""
-        try:
-            # Get basic account info
-            user_info = self.client.user_info_v1(self.client.user_id)
-            
-            # Get account insights
-            insights = self.client.insights_account()
-            
-            # Get all posts to calculate total likes and comments
-            all_medias = self.client.user_medias_v1(self.client.user_id, amount=0)  # 0 means all
-            
-            total_likes = sum(media.like_count for media in all_medias)
-            total_comments = sum(media.comment_count for media in all_medias)
-            
-            stats_data = {
-                'followers_count': user_info.follower_count,
-                'following_count': user_info.following_count,
-                'posts_count': user_info.media_count,
-                'all_likes_count': total_likes,
-                'all_comments_count': total_comments,
-                
-                # Account insights - Profile metrics
-                'profile_visits': insights.get('profile_visits', 0),
-                'profile_visits_delta': insights.get('profile_visits_delta', 0),
-                'website_visits': insights.get('website_visits', 0),
-                'website_visits_delta': insights.get('website_visits_delta', 0),
-                
-                # Content metrics
-                'impressions': insights.get('impressions', 0),
-                'impressions_delta': insights.get('impressions_delta', 0),
-                'reach': insights.get('reach'),
-                'reach_delta': insights.get('reach_delta'),
-            }
-            
-            return stats_data
-            
-        except Exception as e:
-            self.log("get_statistics", "", "failed", str(e))
-            raise e
-        
-    def update_post_statistics(self):
+    def update_post_statistics(self, all_medias = None):
         """
         Update statistics for posts linked to tourism objects
         Called by get_account_statistics to update post stats
         """
         try:
             # Get all posts from Instagram
-            all_medias = self.client.user_medias_v1(self.client.user_id, amount=50)
+            if (all_medias is None):
+                all_medias = self.client.user_medias_v1(self.client.user_id)
             
             updated_posts = 0
             new_statistics = 0
             
             for media in all_medias:
                 try:
-                    media_id = str(media.pk)
+                    media_id = media.id
                     current_likes = media.like_count
                     current_comments = media.comment_count
                     
@@ -449,11 +486,6 @@ class InstagramBot:
                     if previous_stat:
                         likes_change = current_likes - previous_stat.like_count
                         comments_change = current_comments - previous_stat.comment_count
-                        
-                        # Only create new record if there are changes or it's been more than 6 hours
-                        time_diff = timezone.now() - previous_stat.recorded_at
-                        if likes_change == 0 and comments_change == 0 and time_diff < timedelta(hours=1):
-                            continue   # Skip if no changes and recent record exists
                     
                     # Create new statistics record
                     PostStatistics.objects.create(
@@ -505,8 +537,9 @@ class InstagramBot:
             total_comments = sum(media.comment_count for media in all_medias)
             
             # Update post statistics for tourism objects
-            post_stats_result = self.update_post_statistics()
-            
+            post_stats_result = self.update_post_statistics(all_medias)
+            logger.info(f"Post statistics update result: {post_stats_result}")
+
             stats_data = {
                 'followers_count': user_info.follower_count,
                 'following_count': user_info.following_count,
@@ -525,9 +558,6 @@ class InstagramBot:
                 'impressions_delta': insights.get('impressions_delta', 0),
                 'reach': insights.get('reach'),
                 'reach_delta': insights.get('reach_delta'),
-                
-                # Post statistics update result
-                'post_stats_update': post_stats_result
             }
             
             return stats_data
@@ -537,65 +567,123 @@ class InstagramBot:
             raise e
 
     def get_tourism_object_stats(self, tourism_object_id: int, hours: int = 24):
-        """Get statistics for a specific tourism object"""
+        """Get statistics for a specific tourism object with historical data for the whole tourism object"""
         try:
             tourism_object = TourismObject.objects.get(id=tourism_object_id)
             since_date = timezone.now() - timedelta(hours=hours)
             
-            # Get all posts for this tourism object
-            posts = Posts.objects.filter(
-                user=self.user_obj, 
-                tourism_object=tourism_object
-            )
+            # Get all posts for this tourism object (all users, not just current user)
+            posts = Posts.objects.filter(tourism_object=tourism_object)
             
             if not posts.exists():
                 return {
                     "success": True,
                     "tourism_object": tourism_object.name,
-                    "message": "No posts found for this tourism object"
+                    "message": "No posts found for this tourism object",
+                    "summary": {
+                        "total_posts": 0,
+                        "total_likes": 0,
+                        "total_comments": 0,
+                        "average_likes": 0,
+                        "average_comments": 0,
+                        "likes_growth_rate": 0,
+                        "comments_growth_rate": 0
+                    },
+                    "posts": [],
+                    "historical_data": []
                 }
             
-            # Get latest statistics for each post
-            total_likes = 0
-            total_comments = 0
+            # ✅ INDIVIDUAL POSTS: Get current like/comment counts (not historical)
             posts_data = []
+            current_total_likes = 0
+            current_total_comments = 0
             
             for post in posts:
-                latest_stat = PostStatistics.objects.filter(
-                    post=post,
-                    recorded_at__gte=since_date
-                ).order_by('-recorded_at').first()
+                # Use the post's current stored counts
+                current_total_likes += post.like_count
+                current_total_comments += post.comment_count
                 
-                if latest_stat:
-                    total_likes += latest_stat.like_count
-                    total_comments += latest_stat.comment_count
-                    posts_data.append({
-                        "shortcode": post.shortcode,
-                        "media_id": post.media_id,
-                        "caption": post.caption[:100] + "..." if len(post.caption) > 100 else post.caption,
-                        "likes": latest_stat.like_count,
-                        "comments": latest_stat.comment_count,
-                        "likes_change": latest_stat.likes_change,
-                        "comments_change": latest_stat.comments_change,
-                        "posted_at": post.posted_at,
-                        "last_updated": latest_stat.recorded_at
-                    })
+                posts_data.append({
+                    "shortcode": post.shortcode,
+                    "media_id": post.media_id,
+                    "caption": post.caption[:100] + "..." if len(post.caption) > 100 else post.caption,
+                    "likes": post.like_count,  # Current count only
+                    "comments": post.comment_count,  # Current count only
+                    "posted_at": post.posted_at,
+                    "last_updated": post.updated_at
+                })
+            
+            # ✅ HISTORICAL DATA: Aggregate statistics for the whole tourism object over time
+            # Get historical statistics grouped by day for the last 7 days
+            historical_data = []
+            for i in range(7):  # Last 7 days
+                date = timezone.now() - timedelta(days=6-i)  # Start from 6 days ago to today
+                day_start = date.replace(hour=0, minute=0, second=0, microsecond=0)
+                day_end = day_start + timedelta(days=1)
+                
+                # Get all statistics for this tourism object on this day
+                day_stats = PostStatistics.objects.filter(
+                    tourism_object=tourism_object,
+                    recorded_at__gte=day_start,
+                    recorded_at__lt=day_end
+                )
+                
+                # Aggregate likes and comments for this day
+                day_total_likes = 0
+                day_total_comments = 0
+                day_likes_change = 0
+                day_comments_change = 0
+                
+                if day_stats.exists():
+                    # Get the latest snapshot for each post on this day
+                    posts_in_day = day_stats.values_list('post', flat=True).distinct()
+                    for post_id in posts_in_day:
+                        latest_stat_for_post = day_stats.filter(post_id=post_id).order_by('-recorded_at').first()
+                        if latest_stat_for_post:
+                            day_total_likes += latest_stat_for_post.like_count
+                            day_total_comments += latest_stat_for_post.comment_count
+                            day_likes_change += latest_stat_for_post.likes_change
+                            day_comments_change += latest_stat_for_post.comments_change
+                
+                historical_data.append({
+                    "date": date.strftime('%Y-%m-%d'),
+                    "total_likes": day_total_likes,
+                    "total_comments": day_total_comments,
+                    "likes_change": day_likes_change,  # Growth for this day
+                    "comments_change": day_comments_change,  # Growth for this day
+                    "posts_count": len(posts_in_day) if day_stats.exists() else 0
+                })
+            
+            # ✅ GROWTH CALCULATION: Based on recent changes
+            recent_stats = PostStatistics.objects.filter(
+                tourism_object=tourism_object,
+                recorded_at__gte=since_date
+            )
+            
+            total_likes_change = 0
+            total_comments_change = 0
+            
+            if recent_stats.exists():
+                # Sum up all the changes in the specified period
+                total_likes_change = sum(stat.likes_change for stat in recent_stats)
+                total_comments_change = sum(stat.comments_change for stat in recent_stats)
             
             # Calculate growth rates
-            likes_growth = 0
-            comments_growth = 0
+            likes_growth_rate = 0
+            comments_growth_rate = 0
             
-            if posts_data:
-                total_likes_change = sum(p["likes_change"] for p in posts_data)
-                total_comments_change = sum(p["comments_change"] for p in posts_data)
-                
-                if total_likes > 0:
-                    likes_growth = (total_likes_change / (total_likes - total_likes_change)) * 100 if (total_likes - total_likes_change) > 0 else 0
-                if total_comments > 0:
-                    comments_growth = (total_comments_change / (total_comments - total_comments_change)) * 100 if (total_comments - total_comments_change) > 0 else 0
+            if current_total_likes > 0:
+                previous_likes = current_total_likes - total_likes_change
+                if previous_likes > 0:
+                    likes_growth_rate = (total_likes_change / previous_likes) * 100
+            
+            if current_total_comments > 0:
+                previous_comments = current_total_comments - total_comments_change
+                if previous_comments > 0:
+                    comments_growth_rate = (total_comments_change / previous_comments) * 100
             
             self.log("get_tourism_stats", str(tourism_object_id), "success", 
-                   f"Retrieved stats for {tourism_object.name}")
+                f"Retrieved stats for {tourism_object.name}")
             
             return {
                 "success": True,
@@ -608,14 +696,17 @@ class InstagramBot:
                 "period_hours": hours,
                 "summary": {
                     "total_posts": len(posts_data),
-                    "total_likes": total_likes,
-                    "total_comments": total_comments,
-                    "average_likes": total_likes / len(posts_data) if posts_data else 0,
-                    "average_comments": total_comments / len(posts_data) if posts_data else 0,
-                    "likes_growth_rate": round(likes_growth, 2),
-                    "comments_growth_rate": round(comments_growth, 2)
+                    "total_likes": current_total_likes,
+                    "total_comments": current_total_comments,
+                    "average_likes": round(current_total_likes / len(posts_data), 1) if posts_data else 0,
+                    "average_comments": round(current_total_comments / len(posts_data), 1) if posts_data else 0,
+                    "likes_growth_rate": round(likes_growth_rate, 2),
+                    "comments_growth_rate": round(comments_growth_rate, 2),
+                    "recent_likes_change": total_likes_change,
+                    "recent_comments_change": total_comments_change
                 },
-                "posts": sorted(posts_data, key=lambda x: x["likes"], reverse=True)
+                "posts": sorted(posts_data, key=lambda x: x["likes"], reverse=True),  # Sort by current likes
+                "historical_data": historical_data  # 7 days of aggregated data
             }
             
         except TourismObject.DoesNotExist:

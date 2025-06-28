@@ -51,5 +51,5 @@ urlpatterns = [
     path('tourism-objects/list/', get_tourism_objects_list, name='get_tourism_objects_list'),
 
     path('tourism/stats/', get_all_tourism_statistics, name='get_all_tourism_statistics'),
-    path('tourism/stats/<int:object_id>/', get_tourism_statistics, name='get_tourism_statistics'),
+    path('tourism/stats/<int:tourism_object_id>/', get_tourism_statistics, name='get_tourism_statistics'),
 ]
