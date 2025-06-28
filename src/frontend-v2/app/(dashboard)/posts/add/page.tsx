@@ -2,7 +2,7 @@
 
 import type React from "react"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -11,11 +11,16 @@ import { Label } from "@/components/ui/label"
 import { toast } from "sonner"
 import { Upload } from "lucide-react"
 import Image from "next/image"
+import { TourismObject } from "@/types/types"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { useRouter } from "next/router"
+import { getTourismObjectsList } from "@/app/api/bot"
 
 const LLM_API = process.env.NEXT_PUBLIC_LLM_API_BASE_URL
 const API = process.env.NEXT_PUBLIC_API_BASE_URL
 
 export default function SchedulePostPage() {
+  const router = useRouter();
   const [imagePreview, setImagePreview] = useState<string | null>(null)
   const [isUploading, setIsUploading] = useState(false)
   const [uploadedImageUrl, setUploadedImageUrl] = useState<string | null>(null)
@@ -25,6 +30,29 @@ export default function SchedulePostPage() {
   const [generatedCaption, setGeneratedCaption] = useState<string>("")
   const [isGenerating, setIsGenerating] = useState(false)
   const [isScheduling, setIsScheduling] = useState(false)
+
+  // Tourism object selection
+  const [tourismObjects, setTourismObjects] = useState<TourismObject[]>([]);
+  const [selectedTourismObject, setSelectedTourismObject] = useState<string>("");
+  const [loadingTourismObjects, setLoadingTourismObjects] = useState(false);
+
+  // Fetch tourism objects on component mount
+  useEffect(() => {
+    const fetchTourismObjects = async () => {
+      setLoadingTourismObjects(true);
+      try {
+        const data = await getTourismObjectsList();
+        setTourismObjects(data);
+      } catch (error) {
+        console.error('Failed to fetch tourism objects:', error);
+        toast.error("Failed to load tourism objects.");
+      } finally {
+        setLoadingTourismObjects(false);
+      }
+    };
+
+    fetchTourismObjects();
+  }, [toast]);
 
   const handleImageChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
@@ -108,15 +136,6 @@ export default function SchedulePostPage() {
 
     setIsScheduling(true)
     try {
-      // const requestBody = {
-      //   image_path: uploadedImageUrl,
-      //   caption: generatedCaption,
-      // }
-      // const token = localStorage.getItem("jwtToken");
-      // if (!token) {
-      //   return
-      // }
-
       // Step 1: Hit LLM_API/post to get scheduling recommendation
       const llmRequestBody = {
         image_url: uploadedImageUrl,
@@ -176,6 +195,7 @@ export default function SchedulePostPage() {
       const postRequestBody = {
         image_path: uploadedImageUrl,
         caption: generatedCaption,
+        tourism_object_id: parseInt(selectedTourismObject)
       }
 
       const postResponse = await fetch(`${API}/post/`, {
@@ -204,7 +224,9 @@ export default function SchedulePostPage() {
       setImageDescription("")
       setAdditionalContext("")
       setGeneratedCaption("")
+      setSelectedTourismObject("")
       
+      router.push('/posts');
     } catch (error) {
       console.error('Schedule error:', error)
       toast.error("Failed to schedule post")
@@ -281,6 +303,28 @@ export default function SchedulePostPage() {
                   )}
                 </div>
               </div>
+              {/* Tourism Object Selection */}
+              <div className="space-y-2">
+                <Label htmlFor="tourism-object">Tourism Object (Optional)</Label>
+                <Select value={selectedTourismObject}
+                  onValueChange={setSelectedTourismObject}
+                  disabled={loadingTourismObjects}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder={loadingTourismObjects ? "Loading..." : "Select a tourism object to tag this post"} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {tourismObjects.map((obj) => (
+                      <SelectItem key={obj.id} value={obj.id.toString()}>
+                        {obj.name} - {obj.object_type}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <p className="text-sm text-muted-foreground">
+                  Tagging a tourism object helps track post performance for specific destinations or hotels.
+                </p>
+              </div>
             </div>
           </CardContent>
         </Card>
@@ -346,7 +390,7 @@ export default function SchedulePostPage() {
             <Button 
               onClick={handleGenerateCaption} 
               className="ml-auto"
-              disabled={isGenerating || isUploading || !keywords.trim() || !imageDescription.trim()}
+              disabled={isGenerating || isUploading || !keywords.trim() || !imageDescription.trim() || !selectedTourismObject.trim()}
             >
               {isGenerating ? "Generating..." : "Generate Caption"}
             </Button>

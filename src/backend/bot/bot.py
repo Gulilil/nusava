@@ -1,8 +1,9 @@
+from datetime import timedelta, timezone
 import json
 import random
 import time
 from instagrapi import Client
-from .models import User, ActionLog
+from .models import PostStatistics, Posts, TourismObject, User, ActionLog
 from .session_manager import SessionManager
 from typing import List
 from instagrapi.types import DirectThread
@@ -21,7 +22,7 @@ class InstagramBot:
         self.password = password
         self.user_obj = user_obj
         self.session_manager = SessionManager()
-        
+        self.client = Client()
         try:
             # Use the new session manager for proper session handling
             self.client = self.session_manager.login_user(self.username, self.password, self.user_obj)
@@ -71,15 +72,32 @@ class InstagramBot:
             self.log("comment", media_id, "failed", str(e))
             raise e
 
-    def post_photo(self, image_path: str, caption: str):
+    def post_photo(self, image_path: str, caption: str, tourism_object_id: int = None):
         try:
-            self.client.photo_upload(image_path, caption)
-            self.log("post_photo", image_path, "success", f"Posted photo")
+            media = self.client.photo_upload(image_path, caption)
+            
+            # Create Posts record if tourism_object is provided
+            if tourism_object_id:
+                try:
+                    tourism_object = TourismObject.objects.get(id=tourism_object_id)
+                    Posts.objects.create(
+                        user=self.user_obj,
+                        tourism_object=tourism_object,
+                        media_id=str(media.pk),
+                        shortcode=media.code,
+                        caption=caption,
+                        like_count=0,  # Initial counts
+                        comment_count=0,
+                        posted_at=media.taken_at
+                    )
+                    self.log("post_photo", image_path, "success", f"Posted photo and linked to {tourism_object.name}")
+                except TourismObject.DoesNotExist:
+                    self.log("post_photo", image_path, "warning", f"Tourism object {tourism_object_id} not found")
         except Exception as e:
             self.log("post_photo", image_path, "failed", str(e))
             raise e
     
-    def post_from_cloudinary(self, image_url: str, caption: str) -> bool:
+    def post_from_cloudinary(self, image_url: str, caption: str, tourism_object_id: int) -> bool:
         """
         Post image from Cloudinary URL to Instagram
         
@@ -106,8 +124,27 @@ class InstagramBot:
                 caption=caption
             )
             
-            self.log("post_photo", temp_file_path, "success", f"Posted photo from Cloudinary: {media.thumbnail_url}")
+            if tourism_object_id:
+                try:
+                    tourism_object = TourismObject.objects.get(id=tourism_object_id)
+                    Posts.objects.create(
+                        user=self.user_obj,
+                        tourism_object=tourism_object,
+                        media_id=str(media.pk),
+                        shortcode=media.code,
+                        caption=caption,
+                        like_count=0,
+                        comment_count=0,
+                        posted_at=media.taken_at
+                    )
+                    self.log("post_from_cloudinary", image_url, "success", f"Posted from Cloudinary and linked to {tourism_object.name}")
+                except TourismObject.DoesNotExist:
+                    self.log("post_from_cloudinary", image_url, "warning", f"Tourism object {tourism_object_id} not found")
+            else:
+                self.log("post_from_cloudinary", image_url, "success", "Posted from Cloudinary without tourism object link")
+            
             return True
+            
             
         except Exception as e:
             self.log("post_photo", temp_file_path, "failed", str(e))
@@ -136,23 +173,7 @@ class InstagramBot:
         except Exception as e:
             self.log("send_dm", username, "failed", str(e))
             raise e
-
-    def get_recent_posts(self):
-        try:
-            medias = self.client.user_medias_v1(self.client.user_id, 10)
-            return [
-                {
-                    "id": str(m.pk),
-                    "caption": m.caption_text,
-                    "like_count": m.like_count,
-                    "comment_count": m.comment_count,
-                    "shortcode": m.code,
-                } for m in medias
-            ]
-        except Exception as e:
-            self.log("get_posts", "", "failed", str(e))
-            return []
-
+        
     def get_settings(self):
         return self.client.get_settings()
 
@@ -384,3 +405,251 @@ class InstagramBot:
         except Exception as e:
             self.log("get_statistics", "", "failed", str(e))
             raise e
+        
+    def update_post_statistics(self):
+        """
+        Update statistics for posts linked to tourism objects
+        Called by get_account_statistics to update post stats
+        """
+        try:
+            # Get all posts from Instagram
+            all_medias = self.client.user_medias_v1(self.client.user_id, amount=50)
+            
+            updated_posts = 0
+            new_statistics = 0
+            
+            for media in all_medias:
+                try:
+                    media_id = str(media.pk)
+                    current_likes = media.like_count
+                    current_comments = media.comment_count
+                    
+                    # Find corresponding Posts record in our database
+                    try:
+                        post_record = Posts.objects.get(user=self.user_obj, media_id=media_id)
+                    except Posts.DoesNotExist:
+                        # Skip if this post is not linked to any tourism object
+                        continue
+                    
+                    # Update the post's current counts
+                    post_record.like_count = current_likes
+                    post_record.comment_count = current_comments
+                    post_record.save()
+                    updated_posts += 1
+                    
+                    # Get the most recent statistics record for this post
+                    previous_stat = PostStatistics.objects.filter(
+                        post=post_record
+                    ).order_by('-recorded_at').first()
+                    
+                    # Calculate changes
+                    likes_change = 0
+                    comments_change = 0
+                    
+                    if previous_stat:
+                        likes_change = current_likes - previous_stat.like_count
+                        comments_change = current_comments - previous_stat.comment_count
+                        
+                        # Only create new record if there are changes or it's been more than 6 hours
+                        time_diff = timezone.now() - previous_stat.recorded_at
+                        if likes_change == 0 and comments_change == 0 and time_diff < timedelta(hours=1):
+                            continue   # Skip if no changes and recent record exists
+                    
+                    # Create new statistics record
+                    PostStatistics.objects.create(
+                        tourism_object=post_record.tourism_object,
+                        post=post_record,
+                        like_count=current_likes,
+                        comment_count=current_comments,
+                        likes_change=likes_change,
+                        comments_change=comments_change,
+                        recorded_at=timezone.now()
+                    )
+                    new_statistics += 1
+                    
+                    self.log("update_post_stats", media_id, "success", 
+                           f"Updated stats for {post_record.tourism_object.name}")
+                    
+                except Exception as e:
+                    logger.error(f"Error processing media {media.pk}: {e}")
+                    continue
+            
+            logger.info(f"Post statistics updated: {updated_posts} posts, {new_statistics} new records")
+            return {
+                "success": True,
+                "updated_posts": updated_posts,
+                "new_statistics": new_statistics
+            }
+            
+        except Exception as e:
+            logger.error(f"Error updating post statistics: {e}")
+            self.log("update_post_stats", "", "failed", str(e))
+            return {
+                "success": False,
+                "error": str(e)
+            }
+    
+    def get_account_statistics(self):
+        """Get comprehensive account statistics and update post statistics"""
+        try:
+            # Get basic account info
+            user_info = self.client.user_info_v1(self.client.user_id)
+            
+            # Get account insights
+            insights = self.client.insights_account()
+            
+            # Get all posts to calculate total likes and comments
+            all_medias = self.client.user_medias_v1(self.client.user_id, amount=0)  # 0 means all
+            
+            total_likes = sum(media.like_count for media in all_medias)
+            total_comments = sum(media.comment_count for media in all_medias)
+            
+            # Update post statistics for tourism objects
+            post_stats_result = self.update_post_statistics()
+            
+            stats_data = {
+                'followers_count': user_info.follower_count,
+                'following_count': user_info.following_count,
+                'posts_count': user_info.media_count,
+                'all_likes_count': total_likes,
+                'all_comments_count': total_comments,
+                
+                # Account insights - Profile metrics
+                'profile_visits': insights.get('profile_visits', 0),
+                'profile_visits_delta': insights.get('profile_visits_delta', 0),
+                'website_visits': insights.get('website_visits', 0),
+                'website_visits_delta': insights.get('website_visits_delta', 0),
+                
+                # Content metrics
+                'impressions': insights.get('impressions', 0),
+                'impressions_delta': insights.get('impressions_delta', 0),
+                'reach': insights.get('reach'),
+                'reach_delta': insights.get('reach_delta'),
+                
+                # Post statistics update result
+                'post_stats_update': post_stats_result
+            }
+            
+            return stats_data
+            
+        except Exception as e:
+            self.log("get_statistics", "", "failed", str(e))
+            raise e
+
+    def get_tourism_object_stats(self, tourism_object_id: int, hours: int = 24):
+        """Get statistics for a specific tourism object"""
+        try:
+            tourism_object = TourismObject.objects.get(id=tourism_object_id)
+            since_date = timezone.now() - timedelta(hours=hours)
+            
+            # Get all posts for this tourism object
+            posts = Posts.objects.filter(
+                user=self.user_obj, 
+                tourism_object=tourism_object
+            )
+            
+            if not posts.exists():
+                return {
+                    "success": True,
+                    "tourism_object": tourism_object.name,
+                    "message": "No posts found for this tourism object"
+                }
+            
+            # Get latest statistics for each post
+            total_likes = 0
+            total_comments = 0
+            posts_data = []
+            
+            for post in posts:
+                latest_stat = PostStatistics.objects.filter(
+                    post=post,
+                    recorded_at__gte=since_date
+                ).order_by('-recorded_at').first()
+                
+                if latest_stat:
+                    total_likes += latest_stat.like_count
+                    total_comments += latest_stat.comment_count
+                    posts_data.append({
+                        "shortcode": post.shortcode,
+                        "media_id": post.media_id,
+                        "caption": post.caption[:100] + "..." if len(post.caption) > 100 else post.caption,
+                        "likes": latest_stat.like_count,
+                        "comments": latest_stat.comment_count,
+                        "likes_change": latest_stat.likes_change,
+                        "comments_change": latest_stat.comments_change,
+                        "posted_at": post.posted_at,
+                        "last_updated": latest_stat.recorded_at
+                    })
+            
+            # Calculate growth rates
+            likes_growth = 0
+            comments_growth = 0
+            
+            if posts_data:
+                total_likes_change = sum(p["likes_change"] for p in posts_data)
+                total_comments_change = sum(p["comments_change"] for p in posts_data)
+                
+                if total_likes > 0:
+                    likes_growth = (total_likes_change / (total_likes - total_likes_change)) * 100 if (total_likes - total_likes_change) > 0 else 0
+                if total_comments > 0:
+                    comments_growth = (total_comments_change / (total_comments - total_comments_change)) * 100 if (total_comments - total_comments_change) > 0 else 0
+            
+            self.log("get_tourism_stats", str(tourism_object_id), "success", 
+                   f"Retrieved stats for {tourism_object.name}")
+            
+            return {
+                "success": True,
+                "tourism_object": {
+                    "id": tourism_object.id,
+                    "name": tourism_object.name,
+                    "type": tourism_object.object_type,
+                    "location": tourism_object.location
+                },
+                "period_hours": hours,
+                "summary": {
+                    "total_posts": len(posts_data),
+                    "total_likes": total_likes,
+                    "total_comments": total_comments,
+                    "average_likes": total_likes / len(posts_data) if posts_data else 0,
+                    "average_comments": total_comments / len(posts_data) if posts_data else 0,
+                    "likes_growth_rate": round(likes_growth, 2),
+                    "comments_growth_rate": round(comments_growth, 2)
+                },
+                "posts": sorted(posts_data, key=lambda x: x["likes"], reverse=True)
+            }
+            
+        except TourismObject.DoesNotExist:
+            self.log("get_tourism_stats", str(tourism_object_id), "failed", "Tourism object not found")
+            return {"success": False, "error": "Tourism object not found"}
+        except Exception as e:
+            self.log("get_tourism_stats", str(tourism_object_id), "failed", str(e))
+            return {"success": False, "error": str(e)}
+
+    def get_all_tourism_stats(self, hours: int = 24):
+        """Get statistics for all tourism objects that have posts"""
+        try:
+            # Get all tourism objects that have posts from this user
+            tourism_objects_with_posts = TourismObject.objects.filter(
+                posts__user=self.user_obj
+            ).distinct()
+            
+            all_stats = []
+            
+            for tourism_object in tourism_objects_with_posts:
+                stats = self.get_tourism_object_stats(tourism_object.id, hours)
+                if stats["success"]:
+                    all_stats.append(stats)
+            
+            self.log("get_all_tourism_stats", "", "success", 
+                   f"Retrieved stats for {len(all_stats)} tourism objects")
+            
+            return {
+                "success": True,
+                "total_objects": len(all_stats),
+                "period_hours": hours,
+                "tourism_objects": all_stats
+            }
+            
+        except Exception as e:
+            self.log("get_all_tourism_stats", "", "failed", str(e))
+            return {"success": False, "error": str(e)}

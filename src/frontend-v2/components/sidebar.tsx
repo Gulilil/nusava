@@ -46,9 +46,9 @@ const routes = [
     color: "text-orange-500",
   },
   {
-    title: "Posts",
+    title: "Tourism Objects",
     icon: ImageIcon,
-    href: "/posts",
+    href: "/tourism",
     color: "text-green-500",
   },
   {

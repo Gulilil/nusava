@@ -4,13 +4,15 @@ from rest_framework_simplejwt.views import (
     TokenRefreshView,
 )
 from .views import (
-    login_bot, get_posts, proxy_image, register_user,
+    get_tourism_objects_list, login_bot, get_posts, proxy_image, register_user,
     like_post, follow_user, comment_post, post_photo,
     bot_configuration, action_logs,
     user_persona,
     automation_status, stop_dm_automation, start_dm_automation, admin_automation_overview,
     get_instagram_statistics, update_instagram_statistics,
-    schedule_post, get_scheduled_posts
+    schedule_post, get_scheduled_posts,
+    get_tourism_objects, get_tourism_object_detail, 
+    get_tourism_statistics, get_all_tourism_statistics
 )
 
 urlpatterns = [
@@ -43,4 +45,11 @@ urlpatterns = [
     # Scheduling
     path('schedule-post/', schedule_post, name='schedule_post'),
     path('scheduled-posts/', get_scheduled_posts, name='get_scheduled_posts'),
+
+    path('tourism/', get_tourism_objects, name='get_tourism_objects'),
+    path('tourism/<int:object_id>/', get_tourism_object_detail, name='get_tourism_object_detail'),
+    path('tourism-objects/list/', get_tourism_objects_list, name='get_tourism_objects_list'),
+
+    path('tourism/stats/', get_all_tourism_statistics, name='get_all_tourism_statistics'),
+    path('tourism/stats/<int:object_id>/', get_tourism_statistics, name='get_tourism_statistics'),
 ]

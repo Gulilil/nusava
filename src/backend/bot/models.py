@@ -123,6 +123,68 @@ class InstagramStatistics(models.Model):
             return round((self.impressions / self.followers_count) * 100, 2) if self.impressions > 0 else 0
         return 0
     
+class TourismObject(models.Model):
+    OBJECT_TYPES = [
+        ('hotel', 'Hotel'),
+        ('destination', 'Destination'),
+    ]
+    
+    id = models.BigAutoField(primary_key=True)
+    name = models.CharField(max_length=255)
+    object_type = models.CharField(max_length=20, choices=OBJECT_TYPES)
+    location = models.CharField(max_length=255)
+    rating = models.FloatField(null=True, blank=True)
+    image_url = models.URLField(blank=True)
+    def __str__(self):
+        return f"{self.name} ({self.object_type})"
+    
+class Posts(models.Model):
+    """Model to store actual posted Instagram content"""
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='posts')
+    tourism_object = models.ForeignKey(TourismObject, on_delete=models.CASCADE, related_name='posts')
+    media_id = models.CharField(max_length=100, unique=True)  # Instagram media pk
+    shortcode = models.CharField(max_length=50, unique=True)  # Instagram shortcode
+    caption = models.TextField()
+    like_count = models.IntegerField(default=0)  # Current like count
+    comment_count = models.IntegerField(default=0)  # Current comment count
+    posted_at = models.DateTimeField()  # When posted on Instagram
+    created_at = models.DateTimeField(auto_now_add=True)  # When record was created
+    updated_at = models.DateTimeField(auto_now=True)  # When record was last updated
+    
+    class Meta:
+        ordering = ['-posted_at']
+        indexes = [
+            models.Index(fields=['user', 'tourism_object']),
+            models.Index(fields=['media_id']),
+            models.Index(fields=['shortcode']),
+        ]
+    
+    def __str__(self):
+        return f"{self.user.username} - {self.shortcode} ({self.tourism_object.name})"
+
+class PostStatistics(models.Model):
+    """Historical statistics for posts linked to tourism objects"""
+    tourism_object = models.ForeignKey(TourismObject, on_delete=models.CASCADE, related_name='post_statistics')
+    post = models.ForeignKey(Posts, on_delete=models.CASCADE, related_name='statistics')
+    like_count = models.IntegerField(default=0)
+    comment_count = models.IntegerField(default=0)
+    recorded_at = models.DateTimeField(auto_now_add=True)
+    
+    # Track changes since last snapshot
+    likes_change = models.IntegerField(default=0)
+    comments_change = models.IntegerField(default=0)
+    
+    class Meta:
+        unique_together = ['post', 'recorded_at']
+        ordering = ['-recorded_at']
+        indexes = [
+            models.Index(fields=['tourism_object', 'recorded_at']),
+            models.Index(fields=['post', 'recorded_at']),
+        ]
+    
+    def __str__(self):
+        return f"{self.tourism_object.name} - {self.post.shortcode} ({self.recorded_at})"
+
 class ScheduledPost(models.Model):
     id = models.BigAutoField(primary_key=True)
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='scheduled_posts')
@@ -131,7 +193,8 @@ class ScheduledPost(models.Model):
     image_url = models.TextField()
     caption = models.TextField()
     is_posted = models.BooleanField(default=False)
-    
+    tourism_object = models.ForeignKey(TourismObject, on_delete=models.CASCADE, null=True, blank=True)
+
     # Metadata
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)

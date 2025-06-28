@@ -9,7 +9,7 @@ from django.http import HttpResponse
 import requests
 import environ
 
-from .models import InstagramStatistics, ScheduledPost, User
+from .models import InstagramStatistics, Posts, ScheduledPost, User
 from .bot import InstagramBot
 from .session_manager import SessionManager
 from instagrapi import Client
@@ -157,20 +157,6 @@ def login_bot(request):
                 "status": "error", 
                 "message": "Incorrect password"
             }, status=400)
-          # Use session manager for proper Instagram login
-        session_manager = SessionManager()
-        
-        try:
-            # Login using session manager (handles session validation automatically)
-            bot_client = session_manager.login_user(username, password, user)
-            
-            logger.info(f"Instagram login successful: {username}")
-            
-        except Exception as login_error:
-            logger.error(f"Instagram login failed for {username}: {str(login_error)}")
-            return Response({                "status": "error", 
-                "message": f"Instagram login failed: {str(login_error)}"
-            }, status=400)
         
         bot = user_bots.get(user.id)
         if not bot:
@@ -215,21 +201,6 @@ def login_bot(request):
             "status": "error", 
             "message": f"Login failed: {str(e)}"
         }, status=400)
-    
-@api_view(['GET'])
-@authentication_classes([JWTAuthentication])
-@permission_classes([IsAuthenticated])
-def get_posts(request):
-    user = request.user
-    bot = user_bots.get(user.id)
-    if not bot:
-        return Response({"error": "Bot not initialized for this user"}, status=400)
-    try:
-        posts = bot.get_recent_posts()
-        return Response(posts)
-    except Exception as e:
-        logger.error(f"Get posts error: {e}")
-        return Response({"error": "Failed to fetch posts"}, status=500)
 
 @api_view(['POST'])
 @permission_classes([AllowAny])
@@ -322,36 +293,6 @@ def comment_post(request):
         logger.error(f"Comment post error: {e}")
         return Response({'error': 'Failed to post comment'}, status=500)
 
-@api_view(['POST'])
-@permission_classes([AllowAny])
-def post_photo(request):
-    image_path = request.data.get('image_path')
-    caption = request.data.get('caption')
-    if not image_path or not caption:
-        return Response({"error": "image_path and caption are required"}, status=400)
-    
-    user_id = request.data.get('user_id')
-    if not user_id:
-        user = request.user
-    else:
-        user = User.objects.filter(id=user_id).first()
-
-    bot = user_bots.get(user.id)
-    if not bot:
-        try:
-            # Only create new bot if not in memory
-            bot = InstagramBot(user_obj=user, password=user.password)
-            user_bots[user.id] = bot
-        except Exception as e:
-            logger.error(f"Failed to initialize bot for user {user.id}: {str(e)}")
-            return Response({"error": f"Bot initialization failed: {str(e)}"}, status=500)
-    try:
-        bot.post_from_cloudinary(image_path, caption)
-        return Response({'status': 'success', 'message': 'Photo posted'})
-    except Exception as e:
-        logger.error(f"Post photo error: {e}")
-        return Response({'error': 'Failed to post photo'}, status=500)
-    
 @api_view(['GET', 'POST'])
 @authentication_classes([JWTAuthentication])
 @permission_classes([IsAuthenticated])
@@ -796,3 +737,317 @@ def get_scheduled_posts(request):
             'has_previous': page_obj.has_previous(),
         }
     })
+
+@api_view(['GET'])
+@permission_classes([AllowAny])
+def get_tourism_objects(request):
+    """Get all tourism objects with simplified metrics"""
+    try:
+        from .models import TourismObject
+        import random
+        from datetime import datetime
+        
+        # Get all tourism objects
+        tourism_objects = TourismObject.objects.all().order_by('object_type', 'name')
+        
+        # Create response data with simplified dummy metrics
+        objects_data = []
+        for obj in tourism_objects:
+            # Generate dummy metrics - simplified to 5 fields only
+            total_posts = random.randint(5, 25)
+            total_likes = random.randint(100, 2000)
+            total_comments = random.randint(10, 200)
+            
+            # Generate percent increase for likes and comments (can be negative)
+            likes_percent_increase = round(random.uniform(-15.0, 25.0), 1)
+            comments_percent_increase = round(random.uniform(-10.0, 30.0), 1)
+            
+            object_data = {
+                'id': obj.id,
+                'name': obj.name,
+                'object_type': obj.object_type,
+                'location': obj.location,
+                'rating': float(obj.rating) if obj.rating else 0.0,
+                'image_url': obj.image_url,
+                'metrics': {
+                    'total_posts': total_posts,
+                    'total_likes': total_likes,
+                    'total_comments': total_comments,
+                    'likes_percent_increase': likes_percent_increase,
+                    'comments_percent_increase': comments_percent_increase,
+                },
+                'last_updated': datetime.now().isoformat()
+            }
+            objects_data.append(object_data)
+        
+        # Group by object type
+        hotels = [obj for obj in objects_data if obj['object_type'] == 'hotel']
+        destinations = [obj for obj in objects_data if obj['object_type'] == 'destination']
+        
+        return Response({
+            'status': 'success',
+            'data': {
+                'hotels': hotels,
+                'destinations': destinations,
+                'total_count': len(objects_data),
+                'hotels_count': len(hotels),
+                'destinations_count': len(destinations)
+            }
+        })
+        
+    except Exception as e:
+        logger.error(f"Error fetching tourism objects: {str(e)}")
+        return Response({
+            'status': 'error',
+            'message': f'Failed to fetch tourism objects: {str(e)}'
+        }, status=500)
+
+@api_view(['GET'])
+@permission_classes([AllowAny])
+def get_tourism_object_detail(request, object_id):
+    """Get detailed metrics for a specific tourism object"""
+    try:
+        from .models import TourismObject
+        import random
+        from datetime import datetime, timedelta
+        
+        # Get the specific tourism object
+        try:
+            tourism_object = TourismObject.objects.get(id=object_id)
+        except TourismObject.DoesNotExist:
+            return Response({
+                'status': 'error',
+                'message': 'Tourism object not found'
+            }, status=404)
+        
+        # Generate simplified detailed dummy metrics
+        total_posts = random.randint(10, 50)
+        total_likes = random.randint(500, 5000)
+        total_comments = random.randint(50, 500)
+        likes_percent_increase = round(random.uniform(-15.0, 25.0), 1)
+        comments_percent_increase = round(random.uniform(-10.0, 30.0), 1)
+        
+        # Generate dummy historical data (last 7 days) - simplified
+        historical_data = []
+        base_date = datetime.now() - timedelta(days=7)
+        
+        for i in range(8):  # 8 days including today
+            date = base_date + timedelta(days=i)
+            historical_data.append({
+                'date': date.strftime('%Y-%m-%d'),
+                'likes': random.randint(50, 300),
+                'comments': random.randint(5, 50),
+            })
+        
+        detailed_data = {
+            'id': tourism_object.id,
+            'name': tourism_object.name,
+            'object_type': tourism_object.object_type,
+            'location': tourism_object.location,
+            'rating': float(tourism_object.rating) if tourism_object.rating else 0.0,
+            'image_url': tourism_object.image_url,
+            'metrics': {
+                'total_posts': total_posts,
+                'total_likes': total_likes,
+                'total_comments': total_comments,
+                'likes_percent_increase': likes_percent_increase,
+                'comments_percent_increase': comments_percent_increase,
+            },
+            'historical_data': historical_data,
+            'top_performing_posts': [
+                {
+                    'id': f'post_{i}',
+                    'shortcode': f'ABC{i}XYZ',
+                    'likes': random.randint(100, 500),
+                    'comments': random.randint(10, 50),
+                    'date': (datetime.now() - timedelta(days=random.randint(1, 30))).strftime('%Y-%m-%d')
+                }
+                for i in range(5)
+            ]
+        }
+        
+        return Response({
+            'status': 'success',
+            'data': detailed_data
+        })
+        
+    except Exception as e:
+        logger.error(f"Error fetching tourism object detail: {str(e)}")
+        return Response({
+            'status': 'error',
+            'message': f'Failed to fetch tourism object details: {str(e)}'
+        }, status=500)
+
+@api_view(['POST'])
+@permission_classes([AllowAny])
+def post_photo(request):
+    image_path = request.data.get('image_path')
+    caption = request.data.get('caption')
+    tourism_object_id = request.data.get('tourism_object_id')
+    if not image_path or not caption:
+        return Response({"error": "image_path and caption are required"}, status=400)
+    
+    user_id = request.data.get('user_id')
+    if not user_id:
+        user = request.user
+    else:
+        user = User.objects.filter(id=user_id).first()
+
+    bot = user_bots.get(user.id)
+    if not bot:
+        try:
+            # Only create new bot if not in memory
+            bot = InstagramBot(user_obj=user, password=user.password)
+            user_bots[user.id] = bot
+        except Exception as e:
+            logger.error(f"Failed to initialize bot for user {user.id}: {str(e)}")
+            return Response({"error": f"Bot initialization failed: {str(e)}"}, status=500)
+    try:
+        media = bot.post_from_cloudinary(image_path, caption, tourism_object_id)
+        return Response({
+            "status": "success",
+            "message": "Photo posted successfully",
+            "data": {
+                "media_id": str(media.pk),
+                "shortcode": media.code,
+                "tourism_object_id": tourism_object_id
+            }
+        })
+    except Exception as e:
+        logger.error(f"Post photo error: {e}")
+        return Response({'error': 'Failed to post photo'}, status=500)
+    
+@api_view(['GET'])
+@authentication_classes([JWTAuthentication])
+@permission_classes([IsAuthenticated])
+def get_posts(request):
+    """Get user's posts with tourism object information"""
+    try:
+        user = request.user
+        
+        posts = Posts.objects.filter(user=user).order_by('-posted_at')
+        
+        posts_data = []
+        for post in posts:
+            posts_data.append({
+                "id": post.id,
+                "media_id": post.media_id,
+                "shortcode": post.shortcode,
+                "caption": post.caption,
+                "like_count": post.like_count,
+                "comment_count": post.comment_count,
+                "posted_at": post.posted_at,
+                "tourism_object": {
+                    "id": post.tourism_object.id,
+                    "name": post.tourism_object.name,
+                    "type": post.tourism_object.object_type,
+                    "location": post.tourism_object.location
+                }
+            })
+        
+        return Response({
+            "status": "success",
+            "data": posts_data
+        })
+        
+    except Exception as e:
+        logger.error(f"Error in get_posts: {e}")
+        return Response({
+            "status": "error",
+            "message": str(e)
+        }, status=500)
+
+@api_view(['GET'])
+@authentication_classes([JWTAuthentication])
+@permission_classes([IsAuthenticated])
+def get_tourism_statistics(request, tourism_object_id):
+    """Get statistics for a specific tourism object using bot method"""
+    try:
+        user = request.user
+        hours = int(request.GET.get('hours', 24))
+        
+        bot = user_bots.get(user.id)
+        if not bot:
+            try:
+                # Only create new bot if not in memory
+                bot = InstagramBot(user_obj=user, password=user.password)
+                user_bots[user.id] = bot
+            except Exception as e:
+                logger.error(f"Failed to initialize bot for user {user.id}: {str(e)}")
+                return Response({"error": f"Bot initialization failed: {str(e)}"}, status=500)
+
+        result = bot.get_tourism_object_stats(tourism_object_id, hours)
+        
+        return Response({
+            "status": "success" if result["success"] else "error",
+            "data": result
+        })
+        
+    except Exception as e:
+        logger.error(f"Error in get_tourism_statistics: {e}")
+        return Response({
+            "status": "error",
+            "message": str(e)
+        }, status=500)
+
+@api_view(['GET'])
+@authentication_classes([JWTAuthentication])
+@permission_classes([IsAuthenticated])
+def get_all_tourism_statistics(request):
+    """Get statistics for all tourism objects"""
+    try:
+        user = request.user
+        hours = int(request.GET.get('hours', 24))
+        
+        bot = user_bots.get(user.id)
+        if not bot:
+            try:
+                # Only create new bot if not in memory
+                bot = InstagramBot(user_obj=user, password=user.password)
+                user_bots[user.id] = bot
+            except Exception as e:
+                logger.error(f"Failed to initialize bot for user {user.id}: {str(e)}")
+                return Response({"error": f"Bot initialization failed: {str(e)}"}, status=500)
+        
+        result = bot.get_all_tourism_stats(hours)
+        
+        return Response({
+            "status": "success" if result["success"] else "error",
+            "data": result
+        })
+        
+    except Exception as e:
+        logger.error(f"Error in get_all_tourism_statistics: {e}")
+        return Response({
+            "status": "error",
+            "message": str(e)
+        }, status=500)
+
+@api_view(['GET'])
+@permission_classes([AllowAny])
+def get_tourism_objects_list(request):
+    """Get list of tourism objects for dropdown"""
+    try:
+        from .models import TourismObject
+        tourism_objects = TourismObject.objects.all().order_by('name')
+        
+        data = []
+        for obj in tourism_objects:
+            data.append({
+                "id": obj.id,
+                "name": obj.name,
+                "type": obj.object_type,
+                "location": obj.location
+            })
+        
+        return Response({
+            "status": "success",
+            "data": data
+        })
+        
+    except Exception as e:
+        logger.error(f"Error in get_tourism_objects_list: {e}")
+        return Response({
+            "status": "error",
+            "message": str(e)
+        }, status=500)

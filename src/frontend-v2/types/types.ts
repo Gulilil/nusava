@@ -145,3 +145,70 @@ export interface AutomationStatus {
   next_run?: string;
   error?: string;
 }
+
+export interface TourismObjectMetrics {
+  total_posts: number;
+  total_likes: number;
+  total_comments: number;
+  likes_percent_increase: number;
+  comments_percent_increase: number;
+}
+
+export interface TourismObject {
+  id: number;
+  name: string;
+  object_type: 'hotel' | 'destination';
+  location: string;
+  rating: number;
+  image_url: string;
+  metrics: TourismObjectMetrics;
+  last_updated: string;
+}
+
+export interface TourismObjectsResponse {
+  hotels: TourismObject[];
+  destinations: TourismObject[];
+  total_count: number;
+  hotels_count: number;
+  destinations_count: number;
+}
+
+export interface TourismPost {
+  shortcode: string;
+  media_id: string;
+  caption: string;
+  likes: number;
+  comments: number;
+  likes_change: number;
+  comments_change: number;
+  posted_at: string;
+  last_updated: string;
+}
+
+export interface TourismStatistics {
+  success: boolean;
+  tourism_object: {
+    id: number;
+    name: string;
+    type: string;
+    location: string;
+  };
+  period_hours: number;  
+  summary: {
+    total_posts: number;
+    total_likes: number;
+    total_comments: number;
+    average_likes: number;
+    average_comments: number;
+    likes_growth_rate: number;
+    comments_growth_rate: number;
+  };
+  posts: TourismPost[];
+}
+
+export interface AllTourismStatistics {
+  success: boolean;
+  total_objects: number;
+  period_hours: number;  
+  tourism_objects: TourismStatistics[];
+}
