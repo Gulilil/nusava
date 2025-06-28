@@ -25,12 +25,12 @@ except Exception as e:
 if (user_id):
   try:
     url = f"{os.getenv('AUTOMATION_URL')}/api/stats/update/"
-    payload = json.dumps({
+    data = {
       "user_id": user_id
-    })
-    headers = {}
+    }
+    headers = {"Content-Type": "application/json"}
 
-    response = requests.request("POST", url, headers=headers, data=payload)
+    response = requests.request("POST", url, json=data, headers=headers)
 
     if (response.status_code == 200):
       print(f"[UPDATE STATISTICS] Response: {response.text}")
