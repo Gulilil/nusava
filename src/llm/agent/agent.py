@@ -20,6 +20,9 @@ class Agent():
   """
   General class that encapsulate all the components
   """
+
+  _search_top_k = 30
+  _search_threshold = 0.35
   
   def __init__(self):
     self.user_id = None
@@ -224,6 +227,22 @@ class Agent():
     return self.model_component.construct_retrieval_system(vector_store, storage_context, top_k)
 
   
+  def _similarity_search(self, namespace_name: str, prompt: str) -> list[dict]:
+    """
+    Get nodes by doing similarity search on certain namespace using certain prompt
+    """
+    try:
+      # Load the data
+      query_engine = self._construct_retrieval_system(namespace_name, self._search_top_k)
+      # Retrieve data
+      nodes = query_engine.retriever.retrieve(prompt)
+      selected_nodes = [node for node in nodes if node.score >= self._search_threshold]
+      return selected_nodes
+
+    except Exception as e:
+      print(f"[ERROR SIMILARITY SEARCH] Error occured in executing `similarity search`: {e}")
+      raise Exception(e)
+
 
   #########################################
   ######## EXTERNAL TRIGGER ACTION ########
@@ -417,13 +436,59 @@ class Agent():
       return answer
 
 
+  # async def action_schedule_post(self, img_url: str, caption_message: str) -> None:
+  #   """
+  #   Operate the action schedule post
+  #   """
+  #   try:
+  #     # Load posts in database pinecone
+  #     await self._load_tools_rag("posts", "rag_tools_for_post_data", "Used to provide examples of posts from Influencers", "self")
+      
+  #     # Initiate attempts
+  #     max_attempts = 3 
+  #     attempt = 0
+  #     while (attempt <= max_attempts):
+  #       # Generate prompt
+  #       prompt = self.prompt_generator_component.generate_prompt_choose_schedule_post(caption_message)
+      
+  #       # Ask the LLM
+  #       answer, contexts = await self.model_component.answer(prompt, tool_user_id="self")
+  #       print(f"[ACTION SCHEDULE POST] Attempt {attempt+1} of {max_attempts}. \nCaption: {caption_message} \nAnswer: {answer}")
+
+
+  #       # If the answer is not None, stop iteration
+  #       if (answer is not None):
+  #         for i, context  in enumerate(contexts):
+  #           context = context.replace("\n", " ")
+  #           if (len(context) <= 80):  context_to_display = context
+  #           else:   context_to_display = f"{context[:40]}...{context[-40:]}"
+  #           print(f"[ACTION SCHEDULE POST CONTEXT #{i+1}]: {context_to_display}")
+  #         break
+
+  #       # Increment attempt
+  #       attempt += 1
+  #       if (attempt == max_attempts):
+  #         raise Exception(f"Model cannot choose the schedule time")
+      
+  #     # Process answer
+  #     json_answer = json.loads(answer)
+  #     schedule_time = json_answer['schedule_time']
+  #     reason = json_answer['reason']
+
+  #     # Refresh tools
+  #     self.model_component.refresh_tools("self")
+  #     return schedule_time, reason
+  
+  #   except Exception as e:
+  #     print(f"[ERROR ACTION SCHEDULE POST] Error occured in executing `schedule post`: {e}")
+  #     return None, None
+
   async def action_schedule_post(self, img_url: str, caption_message: str) -> None:
     """
     Operate the action schedule post
     """
     try:
-      # Load posts in database pinecone
-      await self._load_tools_rag("posts", "rag_tools_for_post_data", "Used to provide examples of posts from Influencers", "self")
+
       
       # Initiate attempts
       max_attempts = 3 
@@ -463,7 +528,6 @@ class Agent():
     except Exception as e:
       print(f"[ERROR ACTION SCHEDULE POST] Error occured in executing `schedule post`: {e}")
       return None, None
-
 
   #########################################
   ######## INTERNAL TRIGGER ACTION ########
@@ -514,13 +578,33 @@ class Agent():
         raise Exception ("Invalid observation element: empty list")
 
       # Get the community
-      communities = self.choose_community()
+      # First, prepare the prompt
+      persona_str = self.persona_component.get_persona_str()
+      prompt = f"Choose the most suitable community out of this persona: \n {persona_str}"
+      # Do similarity search to get nodes
+      nodes = self._similarity_search("communities", prompt)
+      print(f"[COMMUNITY NODES] Fetched {len(nodes)} similiar communities")
+
+      # Get Communities data from Mongo
+      community_id_list = []
+      for i, node in enumerate(nodes):
+          # Display similarity score
+          similarity_score = round(node.score, 4)
+          community_str = node.text
+          community_id = int(community_str.split("\n")[0].split(":")[1].strip())
+          community_label = community_str.split("\n")[1].split(":")[1].strip()
+          print(f"[CHOOSE COMMUNITY {i+1}] Score: {similarity_score} ID | Label: {community_id} | {community_label}. ")
+          community_id_list.append(community_id)
+      
+      # Get Communities data from Mongo
+      get_filter_using_id = {"community_id": {"$in": community_id_list}}
+      communities = self.mongo_connector_component.get_data("communities", get_filter_using_id)
 
       # Max 5 times of action decision
       max_iteration = 5
       for itr in range(max_iteration):
         action, state = self.action_generator_component.decide_action(observations, itr)
-        print(f"[ACTION DECISION] {itr+1}.  action \"{action}\" in state \"{state}\"")
+        print(f"[ACTION DECISION] {itr+1}. action \"{action}\" in state \"{state}\"")
 
         if (action == "like"):
           await self.action_like(communities)
@@ -531,53 +615,14 @@ class Agent():
         else:
           return
         
-        # Give time delay
-        sleep_time = random.randint(60, 180)
-        print(f"[ACTION TIME SLEEP] Delay for {sleep_time} seconds")
-        time.sleep(sleep_time)
+        # # Give time delay
+        # sleep_time = random.randint(60, 180)
+        # print(f"[ACTION TIME SLEEP] Delay for {sleep_time} seconds")
+        # time.sleep(sleep_time)
 
     except Exception as e:
       print(f"[ERROR IN DECIDING ACTION] {e}")
       raise Exception (e)
-  
-
-  def choose_community(self, 
-                             top_k: int = 20, 
-                             threshold: float = 0.35) -> list[dict]:
-    """
-    LLM decide which community it wants to got into for actions like, follow, and comment
-    """
-    try:
-      # Load the data
-      query_engine = self._construct_retrieval_system("communities", top_k)
-
-      # Prepare to generate prompt
-      persona_str = self.persona_component.get_persona_str()
-      # prompt = self.prompt_generator_component.generate_prompt_choose_community(persona_str)
-      prompt = f"Choose the most suitable community out of this persona: \n {persona_str}"
-      
-      # Retrieve data
-      community_id_list = []
-      nodes = query_engine.retriever.retrieve(prompt)
-      for i, node in enumerate(nodes):
-          similarity_score = round(node.score, 4)
-          print(f"[CHOOSE COMMUNITY {i+1}] Score: {similarity_score}")
-          community_str = node.text
-          community_id = int(community_str.split("\n")[0].split(":")[1].strip())
-          community_label = community_str.split("\n")[1].split(":")[1].strip()
-          print(f"[CHOOSE COMMUNITY {i+1}] ID | Label: {community_id} | {community_label}")
-          if(similarity_score > threshold):
-            community_id_list.append(community_id)
-
-      # Get from mongodb
-      get_filter_using_id = {"community_id": {"$in": community_id_list}}
-      community_data = self.mongo_connector_component.get_data("communities", get_filter_using_id)
-      print(f"[CHOOSE COMMUNITY] Fetched {len(community_data)} similiar communities")
-      return community_data
-
-    except Exception as e:
-      print(f"[ERROR CHOOSE COMMUNITY] Error occured in executing `choose community`: {e}")
-      raise Exception(e)
 
 
   async def action_follow(self, communities: list[dict]) -> None:
