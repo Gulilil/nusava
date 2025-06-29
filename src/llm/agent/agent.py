@@ -13,7 +13,12 @@ from gateway.input import InputGateway
 from gateway.output import OutputGateway
 from generator.prompt import PromptGenerator
 from generator.action import ActionGenerator
-from utils.function import hotel_data_to_string_list, attraction_data_to_string_list, text_to_document, parse_documents, clean_quotation_string, sanitize_text_to_list
+from utils.function import (hotel_data_to_string_list, 
+                            attraction_data_to_string_list, 
+                            text_to_document, parse_documents, 
+                            clean_quotation_string, 
+                            sanitize_text_to_list, 
+                            adjust_scheduled_time)
 
 
 class Agent():
@@ -227,7 +232,7 @@ class Agent():
     return self.model_component.construct_retrieval_system(vector_store, storage_context, top_k)
 
   
-  def _similarity_search(self, namespace_name: str, prompt: str) -> list[dict]:
+  def _similarity_search(self, namespace_name: str, prompt: str) -> list:
     """
     Get nodes by doing similarity search on certain namespace using certain prompt
     """
@@ -436,79 +441,37 @@ class Agent():
       return answer
 
 
-  # async def action_schedule_post(self, img_url: str, caption_message: str) -> None:
-  #   """
-  #   Operate the action schedule post
-  #   """
-  #   try:
-  #     # Load posts in database pinecone
-  #     await self._load_tools_rag("posts", "rag_tools_for_post_data", "Used to provide examples of posts from Influencers", "self")
-      
-  #     # Initiate attempts
-  #     max_attempts = 3 
-  #     attempt = 0
-  #     while (attempt <= max_attempts):
-  #       # Generate prompt
-  #       prompt = self.prompt_generator_component.generate_prompt_choose_schedule_post(caption_message)
-      
-  #       # Ask the LLM
-  #       answer, contexts = await self.model_component.answer(prompt, tool_user_id="self")
-  #       print(f"[ACTION SCHEDULE POST] Attempt {attempt+1} of {max_attempts}. \nCaption: {caption_message} \nAnswer: {answer}")
-
-
-  #       # If the answer is not None, stop iteration
-  #       if (answer is not None):
-  #         for i, context  in enumerate(contexts):
-  #           context = context.replace("\n", " ")
-  #           if (len(context) <= 80):  context_to_display = context
-  #           else:   context_to_display = f"{context[:40]}...{context[-40:]}"
-  #           print(f"[ACTION SCHEDULE POST CONTEXT #{i+1}]: {context_to_display}")
-  #         break
-
-  #       # Increment attempt
-  #       attempt += 1
-  #       if (attempt == max_attempts):
-  #         raise Exception(f"Model cannot choose the schedule time")
-      
-  #     # Process answer
-  #     json_answer = json.loads(answer)
-  #     schedule_time = json_answer['schedule_time']
-  #     reason = json_answer['reason']
-
-  #     # Refresh tools
-  #     self.model_component.refresh_tools("self")
-  #     return schedule_time, reason
-  
-  #   except Exception as e:
-  #     print(f"[ERROR ACTION SCHEDULE POST] Error occured in executing `schedule post`: {e}")
-  #     return None, None
-
   async def action_schedule_post(self, img_url: str, caption_message: str) -> None:
     """
     Operate the action schedule post
     """
     try:
+      # Prepare the prompt
+      prompt = f"Choose the most similar post with this caption :{caption_message}"
 
+      # Prepare query engine
+      nodes = self._similarity_search("posts", prompt)
+
+      # Parse the nodes
+      reference_posts = []
+      for node in nodes:
+        text = node.text
+        text += "\n"
+        text += f"Similarity Score: {node.score}"
+        reference_posts.append(text)
       
       # Initiate attempts
       max_attempts = 3 
       attempt = 0
       while (attempt <= max_attempts):
         # Generate prompt
-        prompt = self.prompt_generator_component.generate_prompt_choose_schedule_post(caption_message)
-      
+        prompt = self.prompt_generator_component.generate_prompt_choose_schedule_post(caption_message, reference_posts)
         # Ask the LLM
-        answer, contexts = await self.model_component.answer(prompt, tool_user_id="self")
+        answer, _ = await self.model_component.answer(prompt, is_direct=True)
         print(f"[ACTION SCHEDULE POST] Attempt {attempt+1} of {max_attempts}. \nCaption: {caption_message} \nAnswer: {answer}")
-
 
         # If the answer is not None, stop iteration
         if (answer is not None):
-          for i, context  in enumerate(contexts):
-            context = context.replace("\n", " ")
-            if (len(context) <= 80):  context_to_display = context
-            else:   context_to_display = f"{context[:40]}...{context[-40:]}"
-            print(f"[ACTION SCHEDULE POST CONTEXT #{i+1}]: {context_to_display}")
           break
 
         # Increment attempt
@@ -518,7 +481,7 @@ class Agent():
       
       # Process answer
       json_answer = json.loads(answer)
-      schedule_time = json_answer['schedule_time']
+      schedule_time = adjust_scheduled_time(json_answer['schedule_time'])
       reason = json_answer['reason']
 
       # Refresh tools

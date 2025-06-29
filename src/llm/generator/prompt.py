@@ -1,5 +1,5 @@
 from llama_index.core.prompts import PromptTemplate
-from datetime import datetime
+from datetime import datetime, timezone, timedelta
 
 PROMPT_TEMPLATE = """Definition:
 {persona_subprompt}.
@@ -211,6 +211,8 @@ class PromptGenerator():
 
 
   ######## ACTION PROMPT ########
+  
+  ######## CHAT ########
 
   def generate_prompt_identify_chat_category(self, new_message: str): 
     """
@@ -292,6 +294,7 @@ class PromptGenerator():
                                   previous_iteration_notes_subprompt=previous_iteration_notes_subprompt,
                                   query_str=new_message)
 
+  ######## COMMENT ########
 
   def generate_prompt_comment(self, caption: str, previous_comments: list = []) -> str:
     """
@@ -326,6 +329,7 @@ class PromptGenerator():
                                   previous_iteration_notes_subprompt=previous_iteration_notes_subprompt,
                                   query_str=query_str)
 
+  ######## POST ########
 
   def generate_prompt_post_caption(self, img_description: str,  keywords: list[str], additional_context: str = None,  previous_iteration_notes: list[dict] = None) -> str:
     """
@@ -360,23 +364,25 @@ class PromptGenerator():
                                       query_str=query_str)
   
 
-  def generate_prompt_choose_schedule_post(self, caption_message: str) -> str:
+  def generate_prompt_choose_schedule_post(self, caption_message: str, reference_posts: list) -> str:
     
     """
     Generate a prompt for choosing schedule for uploading a post
     """
-    context_str =  f"You are about to upload a post in Instagram with this caption, \"{caption_message}\". You are expected to generate the ideal time to upload the post.\n" \
-                    "Later you are provided with tools using RAG to get some data about posts. " \
-                    "You might want to use the context from this tools as your references. " \
-                    "The post data will consist of: the post caption, the post created time, and the comments amount. "\
+    context_str =  f"You are about to upload a post in Instagram with this given caption, \"{caption_message}\". You are expected to generate the ideal time to upload the post.\n" \
+                    "Later you are provided with some data about posts as your references. " \
+                    "The post data will consist of: the post caption, the post created time, the comments amount, and its similarity with the given caption"\
                     "Focus on `Post Created Time` because this is the critical aspect you need to examine. " \
-                    "If possible, choose post data you think similar or relevan to the post caption or has more comments amount. " \
-                    "\n\n" \
-                    "You don't need to be so strict with searching similar post caption." \
-                    "Lower your threshold. You can choos a post as a reference even if it is just a slightly similar." \
+                    "If possible, choose post data you think similar or relevan to the post caption, has more comments amount, and its similarity score. " \
+                    "\n\n" 
+    for i, post in enumerate(reference_posts):
+      context_str += f"POST {i+1}:\n"
+      context_str += post     
+      context_str += "\n\n"  
 
     # Setup subprompts
-    current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    current_time = datetime.now(timezone.utc) + timedelta(hours=7)
+    current_time = current_time.strftime("%Y-%m-%d %H:%M:%S")
     persona_subprompt = self.generate_subprompt_persona()
     context_subprompt = self.generate_subprompt_context(context_str)
     additional_subprompt =  "Please write your chosen schedule in this time format: (%Y-%m-%d %H:%M:%S). " \
@@ -387,15 +393,17 @@ class PromptGenerator():
                             "\"reason\" : str\n" \
                             "}\n"\
                             f"Make sure to not return the schedule time earlier than current time. Current time is {current_time}. " \
+                            "Especially for the date, you must not return a date earlier than today's date in the given current_time. \n" \
+                            "Do not add any other word, character, or string outside the given format. "\
                             "\n\n" \
-                            "Here I provide you some methods if you cannot decide. This is ordered from the most prioritized to least prioritized: \n" \
-                            "1. If you think the provided data is not enough, please return the average time of the posts in the provided context \n" \
-                            "2. Identify on what time the post would be suitable uploaded. The ideal time would be listed as below: \n" \
-                            "   - In the morning is around breakfast time: 06.00 to 08.00 \n" \
-                            "   - In the afternoon it would be around lunch time : 12.00 to 13.00 \n" \
-                            "   - In the night it would be around the time people resting at their home 18:00 to 21:00\n" \
-                            "3. Choose one of these default values: [07.00, 12.30, 18.00] with the date of today or tomorrow. \n" \
-                            "Avoid not returning anything at any cost. "
+                            # "Here I provide you some methods if you cannot decide. This is ordered from the most prioritized to least prioritized: \n" \
+                            # "1. If you think the provided data is not enough, please return the average time of the posts in the provided context \n" \
+                            # "2. Identify on what time the post would be suitable uploaded. The ideal time would be listed as below: \n" \
+                            # "   - In the morning is around breakfast time: 06.00 to 08.00 \n" \
+                            # "   - In the afternoon it would be around lunch time : 12.00 to 13.00 \n" \
+                            # "   - In the night it would be around the time people resting at their home 18:00 to 21:00\n" \
+                            # "3. Choose one of these default values: [07.00, 12.30, 18.00] with the date of today or tomorrow. \n" \
+                            # "Avoid not returning anything at any cost. "
     previous_iteration_notes_subprompt = ""
     
     # Setup query string
