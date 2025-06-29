@@ -474,7 +474,7 @@ class Agent():
     Check for schedule in database
     """
     try:
-      post_to_schedule = self.postgres_connector_component.get_scheduled_post_data(self.user_id)
+      post_to_schedule = self.postgres_connector_component.get_scheduled_post_data()
       print(f"[CHECK SCHEDULE] Got {len(post_to_schedule)} scheduled post to be posted")
       # Handle no scheduled post
       if (len(post_to_schedule) == 0):
