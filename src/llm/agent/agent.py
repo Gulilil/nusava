@@ -891,7 +891,7 @@ class Agent():
     """
     Process data tourism places, "migrate" it from mongodb document to pinecone vector
     """
-    mongo_collection_name = "objek-wisata"
+    mongo_collection_name = "objek-wisata-v2"
     pinecone_namespace_name = "tourist_attractions"
 
     # Get attraction data from mongo
