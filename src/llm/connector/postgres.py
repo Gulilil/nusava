@@ -96,7 +96,7 @@ class PostgresConnector():
               WHERE scheduled_time < %s
                 AND is_posted = FALSE;
           """
-          self.cursor.execute(query, (current_time_gmt7))
+          self.cursor.execute(query, (current_time_gmt7,))
           data = self.cursor.fetchall()
           return data
       except Exception as e:
