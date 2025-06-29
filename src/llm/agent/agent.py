@@ -517,7 +517,8 @@ class Agent():
       communities = self.choose_community()
 
       # Max 5 times of action decision
-      for itr in range(5):
+      max_iteration = 5
+      for itr in range(max_iteration):
         action, state = self.action_generator_component.decide_action(observations, itr)
         print(f"[ACTION DECISION] {itr+1}.  action \"{action}\" in state \"{state}\"")
 
