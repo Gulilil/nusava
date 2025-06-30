@@ -98,7 +98,7 @@ class PostgresConnector():
           query = f"""
               SELECT {column_names}
               FROM {table_name}
-              WHERE scheduled_time < %s
+              WHERE scheduled_time <= %s
                 AND is_posted = FALSE;
           """
           self.cursor.execute(query, (current_time_gmt7,))
