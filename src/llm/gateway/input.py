@@ -1,6 +1,5 @@
 from flask import Flask, request, jsonify
 from flask_cors import CORS
-from agent.agent import Agent
 import os
 from dotenv import load_dotenv
 load_dotenv()
@@ -11,7 +10,7 @@ class InputGateway():
   Input gateway for other module
   """
   def __init__(self, 
-               agent_component: Agent, 
+               agent_component: object, 
                host : str = os.getenv("LLM_MODULE_HOST"), 
                port : str = os.getenv("LLM_MODULE_PORT")):
     """

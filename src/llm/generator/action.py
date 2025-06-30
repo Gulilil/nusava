@@ -39,7 +39,7 @@ class ActionGenerator:
         random.shuffle(observations)
 
         # Time based
-        
+        current_time = datetime.now(timezone.utc) + timedelta(hours=7)
         current_hour = current_time.hour
         if 5 <= current_hour < 12:
             observations.append("morning_time")

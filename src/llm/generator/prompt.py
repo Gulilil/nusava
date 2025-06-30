@@ -1,6 +1,5 @@
 from llama_index.core.prompts import PromptTemplate
 from datetime import datetime, timezone, timedelta
-from agent.persona import Persona
 
 PROMPT_TEMPLATE = """Definition:
 {persona_subprompt}.
@@ -19,7 +18,7 @@ Query: {query_str}
 class PromptGenerator():
 
   def __init__(self, 
-               persona_component: Persona):
+               persona_component: object):
     """
     Instantiate the template
     """
@@ -35,30 +34,6 @@ class PromptGenerator():
     persona_subprompt += " This is a crucial part of your identity, so make sure to always follow this persona in your responses."
     return persona_subprompt
 
-
-  def generate_subprompt_example(self, examples: list[dict]) -> str:
-    """
-    Prepare the example part of the prompt
-
-    Format of examples:
-    [
-      {"question": "...", "answer": "..."}, 
-      ..., 
-      {"question": "...", "answer": "..."}
-    ]
-    """
-    example_subprompt = "Examples:\n"
-    if (examples is None or len(examples) == 0):
-      example_subprompt += "I have no provided examples for this query."
-    else:
-      example_subprompt += "Here is some provided examples to guide you answer the question."
-      for i, example in enumerate(examples):
-        example_subprompt += "\n"
-        example_subprompt += f"Query {i+1}. {example['question']}"
-        example_subprompt += "\n"
-        example_subprompt += f"Answer {i+1}. {example['answer']}"
-    return example_subprompt
-  
 
   def generate_subprompt_context(self, context: str) -> str:
     """
@@ -84,6 +59,7 @@ class PromptGenerator():
       else:
         previous_iteration_notes_subprompt += "Here are some notes from your previous iterations. This notes are important to be considered in your answer.\n"
         previous_iteration_notes_subprompt += "Your answer are expected to pass the evaluator. But, here I provide some notes on your previous answers and the reason it does not pass the evaluator.\n"
+        previous_iteration_notes_subprompt += "You should and are expected to learn from this notes so you do not repeat the same mistake. \n"
         for notes in previous_iteration_notes:
           previous_iteration_notes_subprompt += "{\n"
           for key, value in notes.items():
@@ -297,7 +273,7 @@ class PromptGenerator():
 
   ######## COMMENT ########
 
-  def generate_prompt_comment(self, caption: str, previous_comments: list = []) -> str:
+  def generate_prompt_comment(self, caption: str, previous_comments: list = [], previous_iteration_notes: list[dict] = []) -> str:
     """
     Generate a prompt for making a comment on Instagram post
     """
@@ -312,7 +288,7 @@ class PromptGenerator():
     persona_subprompt = self.generate_subprompt_persona()
     context_subprompt = self.generate_subprompt_context(context_str)
     additional_subprompt = ""
-    previous_iteration_notes_subprompt = ""
+    previous_iteration_notes_subprompt = self.generate_subprompt_previous_iteration_notes(previous_iteration_notes)
     
     # Setup query string
     query_str = "Make a comment for Instagram post based on the context. " \

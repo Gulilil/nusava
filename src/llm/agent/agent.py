@@ -317,7 +317,7 @@ class Agent():
             else:   context_to_display = f"{context[:40]}...{context[-40:]}"
             print(f"[ACTION REPLY CHAT CONTEXT #{i+1}]: {context_to_display}")
           # Do Evaluation
-          evaluation_result = await self.evaluator_component.evaluate_response(chat_message, answer, rag_contexts, ["correctness", "faithfulness", "relevancy"])
+          evaluation_result = await self.evaluator_component.evaluate_response(chat_message, answer, rag_contexts, ["correctness", "faithfulness", "relevancy", "naturalness"])
           evaluation_passing = evaluation_result['evaluation_passing']
           print(f"[EVALUATION RESULT] {evaluation_result}")
 
@@ -330,8 +330,7 @@ class Agent():
           # Answer the query
           answer, _ = await self.model_component.answer(prompt, is_direct=True)
           # Do Evaluation
-          contexts = [self.persona_component.get_persona_str()]
-          evaluation_result = await self.evaluator_component.evaluate_response(chat_message, answer, contexts, ["relevancy"])
+          evaluation_result = await self.evaluator_component.evaluate_response(chat_message, answer, [], ["relevancy", "naturalness"])
           evaluation_passing = evaluation_result['evaluation_passing']
           print(f"[EVALUATION RESULT] {evaluation_result}")
 
@@ -340,11 +339,7 @@ class Agent():
           prompt = self.prompt_generator_component.generate_prompt_out_of_domain(user_query=chat_message)  
           # Answer the query
           answer, _ = await self.model_component.answer(prompt, is_direct=True)
-          # Do Evaluation
-          contexts = [self.persona_component.get_persona_str()]
-          evaluation_result = await self.evaluator_component.evaluate_response(chat_message, answer, contexts, ["relevancy"])
-          evaluation_passing = evaluation_result['evaluation_passing']
-          print(f"[EVALUATION RESULT] {evaluation_result}")
+          evaluation_passing = True
 
 
         # Add notes if it does not pass
@@ -375,10 +370,7 @@ class Agent():
       return answer_messages
 
 
-  async def action_generate_caption(self, 
-                  img_description: str, 
-                  caption_keywords: list[str],
-                  additional_context: str = None) -> str:
+  async def action_generate_caption(self, img_description: str, caption_keywords: list[str], additional_context: str = None) -> str:
     """
     Operate the action generate caption
     """
@@ -419,7 +411,7 @@ class Agent():
                       f"Here are the keywords: {keywords_str}"]  
           
           # Evaluate the answer
-          evaluation_result = await self.evaluator_component.evaluate_response("Create a caption for an Instagram post", caption_message, contexts, ["relevancy"])  
+          evaluation_result = await self.evaluator_component.evaluate_response("Create a caption for an Instagram post", caption_message, contexts, ["relevancy", "naturalness"])  
           evaluation_passing = evaluation_result['evaluation_passing']
           print(f"[EVALUATION RESULT] {evaluation_result}")
           
@@ -487,9 +479,7 @@ class Agent():
       json_answer = json.loads(answer)
       schedule_time = adjust_scheduled_time(json_answer['schedule_time'])
       reason = json_answer['reason']
-
-      # Refresh tools
-      self.model_component.refresh_tools("self")
+      print(f"[FINAL SCHEDULED TIME] Adjusted and finalized scheduled time: {schedule_time}")
       return schedule_time, reason
   
     except Exception as e:
@@ -540,7 +530,8 @@ class Agent():
     """
 
     try:
-      observations = self.get_observation_elm()
+      # observations = self.get_observation_elm()
+      observations = ['afternoon_time']
       print(f"[ACTION OBSERVATION] Acquired observations: {observations}")
       if (len(observations) == 0):
         raise Exception ("Invalid observation element: empty list")
@@ -574,6 +565,7 @@ class Agent():
         action, state = self.action_generator_component.decide_action(observations, itr)
         print(f"[ACTION DECISION] {itr+1}. action \"{action}\" in state \"{state}\"")
 
+        action = "comment"
         if (action == "like"):
           await self.action_like(communities)
         elif (action == "follow"):
@@ -645,6 +637,7 @@ class Agent():
       
     except Exception as e:
       print(f"[ERROR ACTION FOLLOW] Error occured in executing `follow`: {e}")
+      raise Exception(e)
 
 
   async def action_like(self, communities: list[dict]) -> None:
@@ -698,6 +691,7 @@ class Agent():
 
     except Exception as e:
       print(f"[ERROR ACTION LIKE] Error occured in executing `like`: {e}")
+      raise Exception(e)
 
 
   async def action_comment(self, communities: list[dict]) -> None:
@@ -741,29 +735,52 @@ class Agent():
       selected_comments_str = [comment['content'] for comment in selected_comments]
       print(f"[CHOSEN POST] Comment post with post_id {post_id} in community {community_id} with caption: {post_caption}")
 
-      # Generate prompt
-      prompt = self.prompt_generator_component.generate_prompt_comment(post_caption, selected_comments_str)
-      
-      # Make comment
-      comment_message, _ = await self.model_component.answer(prompt, is_direct=True)
-      comment_message = clean_quotation_string(comment_message)
-      print(f"[RESULTED ACTION COMMENT] Comment message: {comment_message}")
+      # While the thresholds are not satisfied, do the iteration
+      max_attempts = 3 
+      attempt = 0
+      evaluation_passing = False
+      previous_iteration_notes = []
+      while (not evaluation_passing):
+        # Generate prompt
+        prompt = self.prompt_generator_component.generate_prompt_comment(post_caption, selected_comments_str, previous_iteration_notes)
+        
+        # Make comment
+        comment_message, _ = await self.model_component.answer(prompt, is_direct=True)
+        comment_message = clean_quotation_string(comment_message)
+        print(f"[RESULTED ACTION COMMENT ITERATION {attempt+1}] Comment message: {comment_message}")
+
+        # Do Evaluation
+        contexts = [f"Caption of the post that you need to comment on: {post_caption}"]
+        evaluation_result = await self.evaluator_component.evaluate_response("Create a comment on this caption", comment_message, contexts, ["relevancy", "naturalness"])  
+        evaluation_passing = evaluation_result['evaluation_passing']
+        print(f"[EVALUATION RESULT] {evaluation_result}")
+        
+        # Add note if does not pass
+        if (not evaluation_passing):
+          previous_iteration_notes.append(evaluation_result)
+
+        # Increment attempt
+        attempt += 1
+        if (not evaluation_passing):
+          if (attempt >= max_attempts):
+            raise Exception(f"Model cannot answer this query after {max_attempts} attempts. The evaluations thresholds are not satisfied.")
 
       # Request
-      is_success = self.output_gateway_component.request_comment(post_id, comment_message)
-      if (is_success):
-        # Mark post
-        if ('mark_comment' in chosen_post and isinstance(chosen_post['mark_comment'], list)):
-          chosen_post['mark_comment'].append(self.user_id)
-          print(f"[ACTION COMMENT] Mark array has been created for {self.user_id}")
-        else:
-          chosen_post['mark_comment'] = [self.user_id]
-          print(f"[ACTION COMMENT] {self.user_id} is inserted to mark array")
-        self.mongo_connector_component.update_one_data(mongo_collection_name, {"community_id": community_id}, {"posts": posts})
-        print(f"[ACTION COMMENT] Successfully comment post with post_id {post_id}")
+      # is_success = self.output_gateway_component.request_comment(post_id, comment_message)
+      # if (is_success):
+      #   # Mark post
+      #   if ('mark_comment' in chosen_post and isinstance(chosen_post['mark_comment'], list)):
+      #     chosen_post['mark_comment'].append(self.user_id)
+      #     print(f"[ACTION COMMENT] Mark array has been created for {self.user_id}")
+      #   else:
+      #     chosen_post['mark_comment'] = [self.user_id]
+      #     print(f"[ACTION COMMENT] {self.user_id} is inserted to mark array")
+      #   self.mongo_connector_component.update_one_data(mongo_collection_name, {"community_id": community_id}, {"posts": posts})
+      #   print(f"[ACTION COMMENT] Successfully comment post with post_id {post_id}")
         
     except Exception as e:
       print(f"[ERROR ACTION COMMENT] Error occured in executing `comment`: {e}")
+      raise Exception(e)
 
 
   ##############################

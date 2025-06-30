@@ -1,4 +1,3 @@
-from llama_index.core.memory import ChatMemoryBuffer
 from datetime import datetime
 
 class Memory():

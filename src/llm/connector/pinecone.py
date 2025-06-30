@@ -1,6 +1,5 @@
 from llama_index.core import StorageContext, VectorStoreIndex
 from llama_index.vector_stores.pinecone import PineconeVectorStore
-from agent.model import Model
 from typing import Tuple
 
 from pinecone import Pinecone
@@ -14,7 +13,7 @@ class PineconeConnector():
   """
   Connecting component to Pinecone : VectorDB for LLM and RAG
   """
-  def __init__(self, model_component: Model): 
+  def __init__(self, model_component: object): 
     """
     Instantiate the database client
     """
