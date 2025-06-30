@@ -1,5 +1,6 @@
 from llama_index.core import Document
 from llama_index.core.node_parser import SimpleNodeParser
+from datetime import datetime, timedelta, timezone
 
 def json_to_string_list(data: dict, prefix: str, result_arr: list, max_limit_arr: int = 20):
   """
@@ -175,3 +176,30 @@ def attraction_data_to_string_list(data: dict, max_limit_arr: int = 20) -> list[
   data_list.extend(opening_hours_list)
   data_list = [info for info in data_list if info.strip() != ""]  # Remove empty strings
   return data_list
+
+
+def adjust_scheduled_time(scheduled_time_str: str) -> datetime:
+    """
+    Adjust the scheduled time so it does not return time earlier then current time.
+    If it is earlier, return the date to be tomorrow's date but leave the hour as it is
+    """
+    # Define UTC+7 timezone
+    utc_plus_7 = timezone(timedelta(hours=7))
+
+    # Parse input time and make it timezone-aware in UTC+7
+    scheduled_time = datetime.strptime(scheduled_time_str, "%Y-%m-%d %H:%M:%S")
+    scheduled_time = scheduled_time.replace(tzinfo=utc_plus_7)
+
+    # Get current time in UTC+7
+    current_time = datetime.now(timezone.utc).astimezone(utc_plus_7)
+
+    # Compare and adjust if needed
+    if scheduled_time < current_time:
+      scheduled_time = scheduled_time.replace(
+          year=current_time.year,
+          month=current_time.month,
+          day=current_time.day
+      ) + timedelta(days=1)
+      return scheduled_time.strftime("%Y-%m-%d %H:%M:%S")
+    else:
+      return scheduled_time

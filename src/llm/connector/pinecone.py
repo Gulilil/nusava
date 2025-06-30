@@ -13,7 +13,7 @@ class PineconeConnector():
   """
   Connecting component to Pinecone : VectorDB for LLM and RAG
   """
-  def __init__(self, model_component): 
+  def __init__(self, model_component: object): 
     """
     Instantiate the database client
     """

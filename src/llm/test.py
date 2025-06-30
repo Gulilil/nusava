@@ -7,25 +7,24 @@ async def test(nusava: Agent) -> None:
 
   # # Setup (IMPORTANT)
   user_id = 1
-  # user_id = 3
   await nusava.set_user(user_id)
 
 
   # # Test action chat
   # # General
   # print(await nusava.action_reply_chat("Hi There!", "gulilii"))
-  print(await nusava.action_reply_chat("What is your favorite color?", "gulilii"))
-  print(await nusava.action_reply_chat("What do you do for a living?", "gulilii"))
+  # print(await nusava.action_reply_chat("What is your favorite color?", "gulilii"))
+  # print(await nusava.action_reply_chat("What do you do for a living?", "gulilii"))
   # # Tourism
-  # print(await nusava.action_reply_chat("Give me general informations of Tanto hotel.", "gulilii"))
+  print(await nusava.action_reply_chat("Give me general informations of Tanto hotel.", "gulilii"))
   print(await nusava.action_reply_chat("Give me your 5 recommended Hotels in Nusa Tenggara. Please list it down along the name of the hotels", "gulilii"))
-  # print(await nusava.action_reply_chat("Tell me the exact location of Tanto Hotel", "gulilii"))
+  print(await nusava.action_reply_chat("Tell me the exact location of Tanto Hotel", "gulilii"))
   # print(await nusava.action_reply_chat("Summarize me some reviews of Tanto Hotel. State the ratings and the description of some of the reviews too.", "gulilii"))
   # print(await nusava.action_reply_chat("Tell me the check-in and check-out time of Siola Hotel", "gulilii"))
-  print(await nusava.action_reply_chat("Based on Harbour Shuttle by Bajo Taxi tourist attractions. Give me some of your recommended hotels.", "gulilii"))
+  # print(await nusava.action_reply_chat("Based on Harbour Shuttle by Bajo Taxi tourist attractions. Give me some of your recommended hotels.", "gulilii"))
   # # Other
   # print(await nusava.action_reply_chat("Can you explain me more about the differences between JavaScript and Python?", "gulilii"))
-  print(await nusava.action_reply_chat("Provide me a recipe details to make Nasi Goreng", "gulilii"))
+  # print(await nusava.action_reply_chat("Provide me a recipe details to make Nasi Goreng", "gulilii"))
 
 
   # # Tourist attraction  
@@ -49,10 +48,6 @@ async def test(nusava: Agent) -> None:
   # await nusava.action_schedule_post("", caption_message)
   # caption_message = await nusava.action_generate_caption("Image of Machu Picchu ruins with misty mountains in the background", ["Peru", "MachuPicchu", "history", "nature", "hiking", "awe"], "Make it reflective and respectful.")
   # await nusava.action_schedule_post("", caption_message)
-
-
-  # Test choose community
-  # nusava.choose_community()
 
 
   # Test decision maker, include like, follow, post

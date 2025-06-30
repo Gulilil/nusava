@@ -1,5 +1,5 @@
 from llama_index.core.prompts import PromptTemplate
-from datetime import datetime
+from datetime import datetime, timezone, timedelta
 
 PROMPT_TEMPLATE = """Definition:
 {persona_subprompt}.
@@ -35,30 +35,6 @@ class PromptGenerator():
     return persona_subprompt
 
 
-  def generate_subprompt_example(self, examples: list[dict]) -> str:
-    """
-    Prepare the example part of the prompt
-
-    Format of examples:
-    [
-      {"question": "...", "answer": "..."}, 
-      ..., 
-      {"question": "...", "answer": "..."}
-    ]
-    """
-    example_subprompt = "Examples:\n"
-    if (examples is None or len(examples) == 0):
-      example_subprompt += "I have no provided examples for this query."
-    else:
-      example_subprompt += "Here is some provided examples to guide you answer the question."
-      for i, example in enumerate(examples):
-        example_subprompt += "\n"
-        example_subprompt += f"Query {i+1}. {example['question']}"
-        example_subprompt += "\n"
-        example_subprompt += f"Answer {i+1}. {example['answer']}"
-    return example_subprompt
-  
-
   def generate_subprompt_context(self, context: str) -> str:
     """
     Prepare the context part of the prompt
@@ -83,6 +59,7 @@ class PromptGenerator():
       else:
         previous_iteration_notes_subprompt += "Here are some notes from your previous iterations. This notes are important to be considered in your answer.\n"
         previous_iteration_notes_subprompt += "Your answer are expected to pass the evaluator. But, here I provide some notes on your previous answers and the reason it does not pass the evaluator.\n"
+        previous_iteration_notes_subprompt += "You should and are expected to learn from this notes so you do not repeat the same mistake. \n"
         for notes in previous_iteration_notes:
           previous_iteration_notes_subprompt += "{\n"
           for key, value in notes.items():
@@ -211,6 +188,8 @@ class PromptGenerator():
 
 
   ######## ACTION PROMPT ########
+  
+  ######## CHAT ########
 
   def generate_prompt_identify_chat_category(self, new_message: str): 
     """
@@ -283,7 +262,7 @@ class PromptGenerator():
                             "Do not explain other things that are not related the message from user. You would like to answer straight to the point. " \
                             "Do not answer in bullet points. On the other hand, try to explain it narratively. " \
                             "Do not forget to give your opinion according to the message as if you are a user in Instagram chatting with other people. " \
-                            "You have to state your answer in the same language as the one user uses. "
+                            "You have to state your answer in the same language as the one user uses. \n" 
     
     previous_iteration_notes_subprompt = self.generate_subprompt_previous_iteration_notes(previous_iteration_notes)
     return self._prompt_template.format(persona_subprompt=persona_subprompt,
@@ -292,8 +271,9 @@ class PromptGenerator():
                                   previous_iteration_notes_subprompt=previous_iteration_notes_subprompt,
                                   query_str=new_message)
 
+  ######## COMMENT ########
 
-  def generate_prompt_comment(self, caption: str, previous_comments: list = []) -> str:
+  def generate_prompt_comment(self, caption: str, previous_comments: list = [], previous_iteration_notes: list[dict] = []) -> str:
     """
     Generate a prompt for making a comment on Instagram post
     """
@@ -308,15 +288,15 @@ class PromptGenerator():
     persona_subprompt = self.generate_subprompt_persona()
     context_subprompt = self.generate_subprompt_context(context_str)
     additional_subprompt = ""
-    previous_iteration_notes_subprompt = ""
+    previous_iteration_notes_subprompt = self.generate_subprompt_previous_iteration_notes(previous_iteration_notes)
     
     # Setup query string
-    query_str = "Make a comment for Instagram post based on the context. " \
-                "Do not use any hashtags in making the comment. " \
+    query_str = "Make a comment for Instagram post based on the context. \n" \
                 "Long comment is not preferable and is bot-like. " \
-                "Comments longer than 2 sentences are not allowed. Avoid using long and complex sentences. Keep the sentences short and concise. " \
+                "Comments longer than 2 sentences are not allowed. However, if possible, 1 sentence comment is preferable. "\
+                "Avoid using long and complex sentences. Keep the sentences short and concise. \n" \
                 "Try to make the comment as natural as you can. You can use informal tone to suit your persona. " \
-                "Users are rarely use emoji in making comments. You may use 1 and 2 if you think it is necessary to suit to your persona. " \
+                "Users are rarely use emoji in making comments. You may use 1 and 2 if you think it is necessary to suit to your persona. \n" \
                 "You should avoid using hashtags unless it is really necessary and related to your persona. \n" \
                 "You should and have to make the comment in the same language as the post caption. "
 
@@ -326,6 +306,7 @@ class PromptGenerator():
                                   previous_iteration_notes_subprompt=previous_iteration_notes_subprompt,
                                   query_str=query_str)
 
+  ######## POST ########
 
   def generate_prompt_post_caption(self, img_description: str,  keywords: list[str], additional_context: str = None,  previous_iteration_notes: list[dict] = None) -> str:
     """
@@ -360,23 +341,25 @@ class PromptGenerator():
                                       query_str=query_str)
   
 
-  def generate_prompt_choose_schedule_post(self, caption_message: str) -> str:
+  def generate_prompt_choose_schedule_post(self, caption_message: str, reference_posts: list) -> str:
     
     """
     Generate a prompt for choosing schedule for uploading a post
     """
-    context_str =  f"You are about to upload a post in Instagram with this caption, \"{caption_message}\". You are expected to generate the ideal time to upload the post.\n" \
-                    "Later you are provided with tools using RAG to get some data about posts. " \
-                    "You might want to use the context from this tools as your references. " \
-                    "The post data will consist of: the post caption, the post created time, and the comments amount. "\
+    context_str =  f"You are about to upload a post in Instagram with this given caption, \"{caption_message}\". You are expected to generate the ideal time to upload the post.\n" \
+                    "Later you are provided with some data about posts as your references. " \
+                    "The post data will consist of: the post caption, the post created time, the comments amount, and its similarity with the given caption"\
                     "Focus on `Post Created Time` because this is the critical aspect you need to examine. " \
-                    "If possible, choose post data you think similar or relevan to the post caption or has more comments amount. " \
-                    "\n\n" \
-                    "You don't need to be so strict with searching similar post caption." \
-                    "Lower your threshold. You can choos a post as a reference even if it is just a slightly similar." \
+                    "If possible, choose post data you think similar or relevan to the post caption, has more comments amount, and its similarity score. " \
+                    "\n\n" 
+    for i, post in enumerate(reference_posts):
+      context_str += f"POST {i+1}:\n"
+      context_str += post     
+      context_str += "\n\n"  
 
     # Setup subprompts
-    current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    current_time = datetime.now(timezone.utc) + timedelta(hours=7)
+    current_time = current_time.strftime("%Y-%m-%d %H:%M:%S")
     persona_subprompt = self.generate_subprompt_persona()
     context_subprompt = self.generate_subprompt_context(context_str)
     additional_subprompt =  "Please write your chosen schedule in this time format: (%Y-%m-%d %H:%M:%S). " \
@@ -387,15 +370,17 @@ class PromptGenerator():
                             "\"reason\" : str\n" \
                             "}\n"\
                             f"Make sure to not return the schedule time earlier than current time. Current time is {current_time}. " \
+                            "Especially for the date, you must not return a date earlier than today's date in the given current_time. \n" \
+                            "Do not add any other word, character, or string outside the given format. "\
                             "\n\n" \
-                            "Here I provide you some methods if you cannot decide. This is ordered from the most prioritized to least prioritized: \n" \
-                            "1. If you think the provided data is not enough, please return the average time of the posts in the provided context \n" \
-                            "2. Identify on what time the post would be suitable uploaded. The ideal time would be listed as below: \n" \
-                            "   - In the morning is around breakfast time: 06.00 to 08.00 \n" \
-                            "   - In the afternoon it would be around lunch time : 12.00 to 13.00 \n" \
-                            "   - In the night it would be around the time people resting at their home 18:00 to 21:00\n" \
-                            "3. Choose one of these default values: [07.00, 12.30, 18.00] with the date of today or tomorrow. \n" \
-                            "Avoid not returning anything at any cost. "
+                            # "Here I provide you some methods if you cannot decide. This is ordered from the most prioritized to least prioritized: \n" \
+                            # "1. If you think the provided data is not enough, please return the average time of the posts in the provided context \n" \
+                            # "2. Identify on what time the post would be suitable uploaded. The ideal time would be listed as below: \n" \
+                            # "   - In the morning is around breakfast time: 06.00 to 08.00 \n" \
+                            # "   - In the afternoon it would be around lunch time : 12.00 to 13.00 \n" \
+                            # "   - In the night it would be around the time people resting at their home 18:00 to 21:00\n" \
+                            # "3. Choose one of these default values: [07.00, 12.30, 18.00] with the date of today or tomorrow. \n" \
+                            # "Avoid not returning anything at any cost. "
     previous_iteration_notes_subprompt = ""
     
     # Setup query string

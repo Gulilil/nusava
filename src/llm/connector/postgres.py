@@ -77,14 +77,19 @@ class PostgresConnector():
   def get_scheduled_post_data(self) -> tuple:
       """
       Get scheduled post data that is ready to post:
-      - id of post
+      - id
+      - img_url
+      - caption_message
+      - user_id 
+      - tourism_object_id 
+
+      That is
       - scheduled_time is before current time (GMT+7)
       - is_posted is False
-      - user_id 
       """
       try:
           table_name = "bot_scheduledpost"
-          column_names = "id, image_url, caption, user_id"
+          column_names = "id, image_url, caption, user_id, tourism_object_id"
 
           # Get current time in GMT+7
           current_time_gmt7 = datetime.now(timezone.utc) + timedelta(hours=7)

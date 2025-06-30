@@ -13,13 +13,21 @@ from gateway.input import InputGateway
 from gateway.output import OutputGateway
 from generator.prompt import PromptGenerator
 from generator.action import ActionGenerator
-from utils.function import hotel_data_to_string_list, attraction_data_to_string_list, text_to_document, parse_documents, clean_quotation_string, sanitize_text_to_list
+from utils.function import (hotel_data_to_string_list, 
+                            attraction_data_to_string_list, 
+                            text_to_document, parse_documents, 
+                            clean_quotation_string, 
+                            sanitize_text_to_list, 
+                            adjust_scheduled_time)
 
 
 class Agent():
   """
   General class that encapsulate all the components
   """
+
+  _search_top_k = 30
+  _search_threshold = 0.35
   
   def __init__(self):
     self.user_id = None
@@ -34,7 +42,7 @@ class Agent():
     self.pinecone_connector_component = PineconeConnector(self.model_component)
     print("[AGENT INITIALIZED] Connector component(s) initialized")
     # Instantiate Evaluator
-    self.evaluator_component = Evaluator(self.model_component.llm_model)
+    self.evaluator_component = Evaluator(self.model_component, self.persona_component)
     print("[AGENT INITIALIZED] Evaluator component(s) initialized")
     # Instantiate Gateway
     self.input_gateway_component = InputGateway(self)
@@ -224,6 +232,22 @@ class Agent():
     return self.model_component.construct_retrieval_system(vector_store, storage_context, top_k)
 
   
+  def _similarity_search(self, namespace_name: str, prompt: str) -> list:
+    """
+    Get nodes by doing similarity search on certain namespace using certain prompt
+    """
+    try:
+      # Load the data
+      query_engine = self._construct_retrieval_system(namespace_name, self._search_top_k)
+      # Retrieve data
+      nodes = query_engine.retriever.retrieve(prompt)
+      selected_nodes = [node for node in nodes if node.score >= self._search_threshold]
+      return selected_nodes
+
+    except Exception as e:
+      print(f"[ERROR SIMILARITY SEARCH] Error occured in executing `similarity search`: {e}")
+      raise Exception(e)
+
 
   #########################################
   ######## EXTERNAL TRIGGER ACTION ########
@@ -293,7 +317,7 @@ class Agent():
             else:   context_to_display = f"{context[:40]}...{context[-40:]}"
             print(f"[ACTION REPLY CHAT CONTEXT #{i+1}]: {context_to_display}")
           # Do Evaluation
-          evaluation_result = await self.evaluator_component.evaluate_response(chat_message, answer, rag_contexts, ["correctness", "faithfulness", "relevancy"])
+          evaluation_result = await self.evaluator_component.evaluate_response(chat_message, answer, rag_contexts, ["correctness", "faithfulness", "relevancy", "naturalness"])
           evaluation_passing = evaluation_result['evaluation_passing']
           print(f"[EVALUATION RESULT] {evaluation_result}")
 
@@ -306,8 +330,7 @@ class Agent():
           # Answer the query
           answer, _ = await self.model_component.answer(prompt, is_direct=True)
           # Do Evaluation
-          contexts = [self.persona_component.get_persona_str()]
-          evaluation_result = await self.evaluator_component.evaluate_response(chat_message, answer, contexts, ["relevancy"])
+          evaluation_result = await self.evaluator_component.evaluate_response(chat_message, answer, [], ["relevancy", "naturalness"])
           evaluation_passing = evaluation_result['evaluation_passing']
           print(f"[EVALUATION RESULT] {evaluation_result}")
 
@@ -347,10 +370,7 @@ class Agent():
       return answer_messages
 
 
-  async def action_generate_caption(self, 
-                  img_description: str, 
-                  caption_keywords: list[str],
-                  additional_context: str = None) -> str:
+  async def action_generate_caption(self, img_description: str, caption_keywords: list[str], additional_context: str = None) -> str:
     """
     Operate the action generate caption
     """
@@ -391,7 +411,7 @@ class Agent():
                       f"Here are the keywords: {keywords_str}"]  
           
           # Evaluate the answer
-          evaluation_result = await self.evaluator_component.evaluate_response("Create a caption for an Instagram post", caption_message, contexts, ["relevancy"])  
+          evaluation_result = await self.evaluator_component.evaluate_response("Create a caption for an Instagram post", caption_message, contexts, ["relevancy", "naturalness"])  
           evaluation_passing = evaluation_result['evaluation_passing']
           print(f"[EVALUATION RESULT] {evaluation_result}")
           
@@ -422,28 +442,32 @@ class Agent():
     Operate the action schedule post
     """
     try:
-      # Load posts in database pinecone
-      await self._load_tools_rag("posts", "rag_tools_for_post_data", "Used to provide examples of posts from Influencers", "self")
+      # Prepare the prompt
+      prompt = f"Choose the most similar post with this caption :{caption_message}"
+
+      # Prepare query engine
+      nodes = self._similarity_search("posts", prompt)
+
+      # Parse the nodes
+      reference_posts = []
+      for node in nodes:
+        text = node.text
+        text += "\n"
+        text += f"Similarity Score: {node.score}"
+        reference_posts.append(text)
       
       # Initiate attempts
       max_attempts = 3 
       attempt = 0
       while (attempt <= max_attempts):
         # Generate prompt
-        prompt = self.prompt_generator_component.generate_prompt_choose_schedule_post(caption_message)
-      
+        prompt = self.prompt_generator_component.generate_prompt_choose_schedule_post(caption_message, reference_posts)
         # Ask the LLM
-        answer, contexts = await self.model_component.answer(prompt, tool_user_id="self")
+        answer, _ = await self.model_component.answer(prompt, is_direct=True)
         print(f"[ACTION SCHEDULE POST] Attempt {attempt+1} of {max_attempts}. \nCaption: {caption_message} \nAnswer: {answer}")
-
 
         # If the answer is not None, stop iteration
         if (answer is not None):
-          for i, context  in enumerate(contexts):
-            context = context.replace("\n", " ")
-            if (len(context) <= 80):  context_to_display = context
-            else:   context_to_display = f"{context[:40]}...{context[-40:]}"
-            print(f"[ACTION SCHEDULE POST CONTEXT #{i+1}]: {context_to_display}")
           break
 
         # Increment attempt
@@ -453,17 +477,14 @@ class Agent():
       
       # Process answer
       json_answer = json.loads(answer)
-      schedule_time = json_answer['schedule_time']
+      schedule_time = adjust_scheduled_time(json_answer['schedule_time'])
       reason = json_answer['reason']
-
-      # Refresh tools
-      self.model_component.refresh_tools("self")
+      print(f"[FINAL SCHEDULED TIME] Adjusted and finalized scheduled time: {schedule_time}")
       return schedule_time, reason
   
     except Exception as e:
       print(f"[ERROR ACTION SCHEDULE POST] Error occured in executing `schedule post`: {e}")
       return None, None
-
 
   #########################################
   ######## INTERNAL TRIGGER ACTION ########
@@ -487,7 +508,8 @@ class Agent():
         img_url = post[1]
         caption = post[2]
         user_id = post[3]
-        success = self.output_gateway_component.request_post(img_url, caption, user_id)
+        tourism_object_id = post[4]
+        success = self.output_gateway_component.request_post(img_url, caption, user_id, tourism_object_id)
         if (success):
           self.postgres_connector_component.mark_posts_as_posted(id)
 
@@ -514,14 +536,35 @@ class Agent():
         raise Exception ("Invalid observation element: empty list")
 
       # Get the community
-      communities = self.choose_community()
+      # First, prepare the prompt
+      persona_str = self.persona_component.get_persona_str()
+      prompt = f"Choose the most suitable community out of this persona: \n {persona_str}"
+      # Do similarity search to get nodes
+      nodes = self._similarity_search("communities", prompt)
+      print(f"[COMMUNITY NODES] Fetched {len(nodes)} similiar communities")
+
+      # Get Communities data from Mongo
+      community_id_list = []
+      for i, node in enumerate(nodes):
+          # Display similarity score
+          similarity_score = round(node.score, 4)
+          community_str = node.text
+          community_id = int(community_str.split("\n")[0].split(":")[1].strip())
+          community_label = community_str.split("\n")[1].split(":")[1].strip()
+          print(f"[CHOOSE COMMUNITY {i+1}] Score: {similarity_score} ID | Label: {community_id} | {community_label}. ")
+          community_id_list.append(community_id)
+      
+      # Get Communities data from Mongo
+      get_filter_using_id = {"community_id": {"$in": community_id_list}}
+      communities = self.mongo_connector_component.get_data("communities", get_filter_using_id)
 
       # Max 5 times of action decision
       max_iteration = 5
       for itr in range(max_iteration):
         action, state = self.action_generator_component.decide_action(observations, itr)
-        print(f"[ACTION DECISION] {itr+1}.  action \"{action}\" in state \"{state}\"")
+        print(f"[ACTION DECISION] {itr+1}. action \"{action}\" in state \"{state}\"")
 
+        action = "comment"
         if (action == "like"):
           await self.action_like(communities)
         elif (action == "follow"):
@@ -539,45 +582,6 @@ class Agent():
     except Exception as e:
       print(f"[ERROR IN DECIDING ACTION] {e}")
       raise Exception (e)
-  
-
-  def choose_community(self, 
-                             top_k: int = 20, 
-                             threshold: float = 0.35) -> list[dict]:
-    """
-    LLM decide which community it wants to got into for actions like, follow, and comment
-    """
-    try:
-      # Load the data
-      query_engine = self._construct_retrieval_system("communities", top_k)
-
-      # Prepare to generate prompt
-      persona_str = self.persona_component.get_persona_str()
-      # prompt = self.prompt_generator_component.generate_prompt_choose_community(persona_str)
-      prompt = f"Choose the most suitable community out of this persona: \n {persona_str}"
-      
-      # Retrieve data
-      community_id_list = []
-      nodes = query_engine.retriever.retrieve(prompt)
-      for i, node in enumerate(nodes):
-          similarity_score = round(node.score, 4)
-          print(f"[CHOOSE COMMUNITY {i+1}] Score: {similarity_score}")
-          community_str = node.text
-          community_id = int(community_str.split("\n")[0].split(":")[1].strip())
-          community_label = community_str.split("\n")[1].split(":")[1].strip()
-          print(f"[CHOOSE COMMUNITY {i+1}] ID | Label: {community_id} | {community_label}")
-          if(similarity_score > threshold):
-            community_id_list.append(community_id)
-
-      # Get from mongodb
-      get_filter_using_id = {"community_id": {"$in": community_id_list}}
-      community_data = self.mongo_connector_component.get_data("communities", get_filter_using_id)
-      print(f"[CHOOSE COMMUNITY] Fetched {len(community_data)} similiar communities")
-      return community_data
-
-    except Exception as e:
-      print(f"[ERROR CHOOSE COMMUNITY] Error occured in executing `choose community`: {e}")
-      raise Exception(e)
 
 
   async def action_follow(self, communities: list[dict]) -> None:
@@ -632,6 +636,7 @@ class Agent():
       
     except Exception as e:
       print(f"[ERROR ACTION FOLLOW] Error occured in executing `follow`: {e}")
+      raise Exception(e)
 
 
   async def action_like(self, communities: list[dict]) -> None:
@@ -685,6 +690,7 @@ class Agent():
 
     except Exception as e:
       print(f"[ERROR ACTION LIKE] Error occured in executing `like`: {e}")
+      raise Exception(e)
 
 
   async def action_comment(self, communities: list[dict]) -> None:
@@ -728,13 +734,35 @@ class Agent():
       selected_comments_str = [comment['content'] for comment in selected_comments]
       print(f"[CHOSEN POST] Comment post with post_id {post_id} in community {community_id} with caption: {post_caption}")
 
-      # Generate prompt
-      prompt = self.prompt_generator_component.generate_prompt_comment(post_caption, selected_comments_str)
-      
-      # Make comment
-      comment_message, _ = await self.model_component.answer(prompt, is_direct=True)
-      comment_message = clean_quotation_string(comment_message)
-      print(f"[RESULTED ACTION COMMENT] Comment message: {comment_message}")
+      # While the thresholds are not satisfied, do the iteration
+      max_attempts = 3 
+      attempt = 0
+      evaluation_passing = False
+      previous_iteration_notes = []
+      while (not evaluation_passing):
+        # Generate prompt
+        prompt = self.prompt_generator_component.generate_prompt_comment(post_caption, selected_comments_str, previous_iteration_notes)
+        
+        # Make comment
+        comment_message, _ = await self.model_component.answer(prompt, is_direct=True)
+        comment_message = clean_quotation_string(comment_message)
+        print(f"[RESULTED ACTION COMMENT ITERATION {attempt+1}] Comment message: {comment_message}")
+
+        # Do Evaluation
+        contexts = [f"Caption of the post that you need to comment on: {post_caption}"]
+        evaluation_result = await self.evaluator_component.evaluate_response("Create a comment on this caption", comment_message, contexts, ["relevancy", "naturalness"])  
+        evaluation_passing = evaluation_result['evaluation_passing']
+        print(f"[EVALUATION RESULT] {evaluation_result}")
+        
+        # Add note if does not pass
+        if (not evaluation_passing):
+          previous_iteration_notes.append(evaluation_result)
+
+        # Increment attempt
+        attempt += 1
+        if (not evaluation_passing):
+          if (attempt >= max_attempts):
+            raise Exception(f"Model cannot answer this query after {max_attempts} attempts. The evaluations thresholds are not satisfied.")
 
       # Request
       is_success = self.output_gateway_component.request_comment(post_id, comment_message)
@@ -745,12 +773,13 @@ class Agent():
           print(f"[ACTION COMMENT] Mark array has been created for {self.user_id}")
         else:
           chosen_post['mark_comment'] = [self.user_id]
-          print(f"[ACTION LIKE] {self.user_id} is inserted to mark array")
+          print(f"[ACTION COMMENT] {self.user_id} is inserted to mark array")
         self.mongo_connector_component.update_one_data(mongo_collection_name, {"community_id": community_id}, {"posts": posts})
         print(f"[ACTION COMMENT] Successfully comment post with post_id {post_id}")
         
     except Exception as e:
       print(f"[ERROR ACTION COMMENT] Error occured in executing `comment`: {e}")
+      raise Exception(e)
 
 
   ##############################
