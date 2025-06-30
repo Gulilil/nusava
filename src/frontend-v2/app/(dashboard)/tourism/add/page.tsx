@@ -196,37 +196,40 @@ export default function SchedulePostPage() {
         const errorData = await scheduleResponse.json()
         throw new Error(errorData.message || `Schedule API failed: ${scheduleResponse.statusText}`)
       }
-
       const scheduleData = await scheduleResponse.json()
       console.log('Schedule response:', scheduleData)
+      
+      toast.success("Post scheduled successfully! It will be posted at the optimal time.")
+      // const scheduleData = await scheduleResponse.json()
+      // console.log('Schedule response:', scheduleData)
 
-      // Step 3: Post directly to Instagram (for testing)
-      toast.info("Posting to Instagram...")
-      const postRequestBody = {
-        image_path: uploadedImageUrl,
-        caption: generatedCaption,
-        tourism_object_id: parseInt(selectedTourismObject)
-      }
+      // // Step 3: Post directly to Instagram (for testing)
+      // toast.info("Posting to Instagram...")
+      // const postRequestBody = {
+      //   image_path: uploadedImageUrl,
+      //   caption: generatedCaption,
+      //   tourism_object_id: parseInt(selectedTourismObject)
+      // }
 
-      const postResponse = await fetch(`${API}/post/`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify(postRequestBody),
-      })
+      // const postResponse = await fetch(`${API}/post/`, {
+      //   method: 'POST',
+      //   headers: {
+      //     'Content-Type': 'application/json',
+      //     'Authorization': `Bearer ${token}`
+      //   },
+      //   body: JSON.stringify(postRequestBody),
+      // })
 
-      if (!postResponse.ok) {
-        const errorData = await postResponse.json()
-        console.warn('Instagram posting failed:', errorData)
-        // Don't throw error here, just warn - the scheduling was successful
-        toast.warning("Post scheduled successfully, but Instagram posting failed. Will retry later.")
-      } else {
-        const postData = await postResponse.json()
-        console.log('Instagram post response:', postData)
-        toast.success("Post scheduled and posted to Instagram successfully!")
-      }
+      // if (!postResponse.ok) {
+      //   const errorData = await postResponse.json()
+      //   console.warn('Instagram posting failed:', errorData)
+      //   // Don't throw error here, just warn - the scheduling was successful
+      //   toast.warning("Post scheduled successfully, but Instagram posting failed. Will retry later.")
+      // } else {
+      //   const postData = await postResponse.json()
+      //   console.log('Instagram post response:', postData)
+      //   toast.success("Post scheduled and posted to Instagram successfully!")
+      // }
       // Reset form after successful scheduling
       setImagePreview(null)
       setUploadedImageUrl(null)
