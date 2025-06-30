@@ -299,7 +299,7 @@ class Agent():
           # Answer the query
           # Skip if the answer is None
           answer, rag_contexts = await self.model_component.answer(prompt, tool_user_id=sender_id)
-          print(f"[ACTION REPLY CHAT] Attempt {attempt+1} of {max_attempts}.")
+          print(f"[ACTION REPLY CHAT] Attempt {attempt+1} of {max_attempts}. ")
 
           if (answer is None):
             previous_iteration_notes.append({
@@ -362,6 +362,7 @@ class Agent():
       # Clean answer
       answer = clean_quotation_string(answer)
       answer_messages = sanitize_text_to_list(answer)
+      print(f"[ACTION REPLY CHAT ANSWER] Answer: {answer_messages}")
       # Store in bot's reply memory
       await self.memory_component.store(sender_id, {"role": "bot", "content" : answer})
       # Refresh tools after use
