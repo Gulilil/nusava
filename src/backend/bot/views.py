@@ -235,7 +235,18 @@ def like_post(request):
         user = User.objects.filter(id=user_id).first()
         if not user:
             return Response({"error": "User not found"}, status=404)
-        
+    
+    recent_actions = ActionLog.objects.filter(
+        user=user,
+        action_type='like',
+        timestamp__gte=timezone.now() - timedelta(minutes=5)
+    ).count()
+    
+    if recent_actions >= 3:  # Max 3 likes per 5 minutes
+        return Response({
+            "error": "Rate limit exceeded. Please wait before liking more posts."
+        }, status=429)
+    
     bot = user_bots.get(user.id)
     if not bot:
         try:
@@ -265,6 +276,16 @@ def follow_user(request):
     else:
         user = User.objects.filter(id=user_id).first()
     
+    recent_actions = ActionLog.objects.filter(
+        user=user,
+        action_type='follow',
+        timestamp__gte=timezone.now() - timedelta(minutes=5)
+    ).count()
+    
+    if recent_actions >= 4:  # Max 3 follow per 5 minutes
+        return Response({
+            "error": "Rate limit exceeded. Please wait before following"
+        }, status=429)
     bot = user_bots.get(user.id)
     if not bot:
         try:
@@ -296,6 +317,17 @@ def comment_post(request):
     else:
         user = User.objects.filter(id=user_id).first()
 
+    recent_actions = ActionLog.objects.filter(
+        user=user,
+        action_type='comment',
+        timestamp__gte=timezone.now() - timedelta(minutes=5)
+    ).count()
+    
+    if recent_actions >= 3:  # Max 3 comment per 5 minutes
+        return Response({
+            "error": "Rate limit exceeded. Please wait before commenting more posts."
+        }, status=429)
+    
     bot = user_bots.get(user.id)
     if not bot:
         try:
@@ -1044,8 +1076,7 @@ def get_posts(request):
         }, status=500)
 
 @api_view(['GET'])
-@authentication_classes([JWTAuthentication])
-@permission_classes([IsAuthenticated])
+@permission_classes([AllowAny])
 def get_tourism_statistics(request, tourism_object_id):
     """Get statistics for a specific tourism object using bot method"""
     try:
@@ -1077,8 +1108,7 @@ def get_tourism_statistics(request, tourism_object_id):
         }, status=500)
 
 @api_view(['GET'])
-@authentication_classes([JWTAuthentication])
-@permission_classes([IsAuthenticated])
+@permission_classes([AllowAny])
 def get_all_tourism_statistics(request):
     """Get statistics for all tourism objects"""
     try:
