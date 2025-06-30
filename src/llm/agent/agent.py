@@ -504,12 +504,13 @@ class Agent():
         return
       # Iterate post to be scheduled
       for post in post_to_schedule: 
-        print(f"[DOING POST] Post for post_id {id} of user_id {user_id}")
         id = post[0]
         img_url = post[1]
         caption = post[2]
         user_id = post[3]
         tourism_object_id = post[4]
+        print(f"[DOING POST] Post for post_id {id} of user_id {user_id}")
+
         success = self.output_gateway_component.request_post(img_url, caption, user_id, tourism_object_id)
         if (success):
           self.postgres_connector_component.mark_posts_as_posted(id)
