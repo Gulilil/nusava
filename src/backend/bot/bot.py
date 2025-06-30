@@ -252,7 +252,7 @@ class InstagramBot:
             self.log("post_photo", image_path, "failed", str(e))
             raise e
     
-    def post_from_cloudinary(self, image_url: str, caption: str, tourism_object_id: int) -> bool:
+    def post_from_cloudinary(self, image_url: str, caption: str, tourism_object_id: int):
         """
         Post image from Cloudinary URL to Instagram
         
