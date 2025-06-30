@@ -130,7 +130,7 @@ class InstagramBot:
     def validate_session(self):
         """Validate current session and re-login if necessary"""
         try:
-            if hasattr(self, '_last_validation'):
+            if hasattr(self, '_last_validation') and self._last_validation is not None:
                 time_since_last = time.time() - self._last_validation
                 if time_since_last < 300:  # Don't validate more than once per 5 minutes
                     return True
@@ -140,7 +140,7 @@ class InstagramBot:
             return True
         except Exception as e:
             logger.warning(f"Session invalid for {self.username}: {str(e)}")
-
+            self._last_validation = None
             if "challenge_required" in str(e).lower():
                 logger.error(f"Account {self.username} requires challenge - manual intervention needed")
                 return False
