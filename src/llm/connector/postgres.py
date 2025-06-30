@@ -120,7 +120,7 @@ class PostgresConnector():
               SET is_posted = TRUE
               WHERE id = %s;
           """
-          self.cursor.execute(query, (id))
+          self.cursor.execute(query, (id,))
           self.connection.commit()
           print(f"[MARK IS POSTED] Marked posts as posted for id={id}")
       except Exception as e:
