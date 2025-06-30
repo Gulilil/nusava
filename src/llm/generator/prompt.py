@@ -1,5 +1,6 @@
 from llama_index.core.prompts import PromptTemplate
 from datetime import datetime, timezone, timedelta
+from agent.persona import Persona
 
 PROMPT_TEMPLATE = """Definition:
 {persona_subprompt}.
@@ -18,7 +19,7 @@ Query: {query_str}
 class PromptGenerator():
 
   def __init__(self, 
-               persona_component: object):
+               persona_component: Persona):
     """
     Instantiate the template
     """

@@ -1,5 +1,6 @@
 from llama_index.core.evaluation import FaithfulnessEvaluator, RelevancyEvaluator, CorrectnessEvaluator
-from typing import Any
+from agent.model import Model
+from agent.persona import Persona
 
 
 class Evaluator():
@@ -8,13 +9,15 @@ class Evaluator():
   It uses various evaluators such as faithfulness and relevancy to assess the agent's responses.
   """
 
-  def __init__(self, llm_model: Any):
+  def __init__(self, model_component: Model, persona_component: Persona):
     """
     Initialize the evaluators for correctness, faithfulness, and relevancy.
     """
-    self.correctness_evaluator = CorrectnessEvaluator(llm=llm_model)
-    self.faithfulness_evaluator = FaithfulnessEvaluator(llm=llm_model)
-    self.relevancy_evaluator = RelevancyEvaluator(llm=llm_model)
+    self._model_component = model_component
+    self._persona_compnent = persona_component
+    self.correctness_evaluator = CorrectnessEvaluator(llm=self._model_component.llm_model)
+    self.faithfulness_evaluator = FaithfulnessEvaluator(llm=self._model_component.llm_model)
+    self.relevancy_evaluator = RelevancyEvaluator(llm=self._model_component.llm_model)
 
 
   async def _evaluate_correctness(self, query: str, response:str, contexts: list) -> dict:
@@ -39,12 +42,31 @@ class Evaluator():
     return {"passing": faithfulness.passing, "reason": faithfulness.feedback}
   
 
-  async def _evaluate_relevancy(self, query: str, response: str, contexts: list) -> dict:
+  async def _evaluate_relevancy(self, query: str, response: str, additional_contexts: list = []) -> dict:
     """
     Evaluate the relevancy of a response based on the query.
     """
+    contexts = [query]
+    if (len(additional_contexts) > 0):
+      contexts.extend(additional_contexts)
+    
     relevancy = await self.relevancy_evaluator.aevaluate(query=query, response=response, contexts=contexts)
     return {"passing": relevancy.passing, "reason": relevancy.feedback}
+  
+
+  async def _evaluate_naturalness(self, query: str, response: str) -> dict:
+    """
+    Evaluate the naturalness of a response based on the query.
+    """
+
+
+    contexts = [query]
+    if (len(additional_contexts) > 0):
+      contexts.extend(additional_contexts)
+    
+    relevancy = await self.relevancy_evaluator.aevaluate(query=query, response=response, contexts=contexts)
+    return {"passing": relevancy.passing, "reason": relevancy.feedback}
+  
   
 
   async def evaluate_response(self, query: str, response: str, contexts: list[str], evaluation_aspect: list[str]) -> dict:

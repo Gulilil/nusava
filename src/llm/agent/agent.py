@@ -42,7 +42,7 @@ class Agent():
     self.pinecone_connector_component = PineconeConnector(self.model_component)
     print("[AGENT INITIALIZED] Connector component(s) initialized")
     # Instantiate Evaluator
-    self.evaluator_component = Evaluator(self.model_component.llm_model)
+    self.evaluator_component = Evaluator(self.model_component, self.persona_component)
     print("[AGENT INITIALIZED] Evaluator component(s) initialized")
     # Instantiate Gateway
     self.input_gateway_component = InputGateway(self)
@@ -340,7 +340,11 @@ class Agent():
           prompt = self.prompt_generator_component.generate_prompt_out_of_domain(user_query=chat_message)  
           # Answer the query
           answer, _ = await self.model_component.answer(prompt, is_direct=True)
-          evaluation_passing = True
+          # Do Evaluation
+          contexts = [self.persona_component.get_persona_str()]
+          evaluation_result = await self.evaluator_component.evaluate_response(chat_message, answer, contexts, ["relevancy"])
+          evaluation_passing = evaluation_result['evaluation_passing']
+          print(f"[EVALUATION RESULT] {evaluation_result}")
 
 
         # Add notes if it does not pass
@@ -754,7 +758,7 @@ class Agent():
           print(f"[ACTION COMMENT] Mark array has been created for {self.user_id}")
         else:
           chosen_post['mark_comment'] = [self.user_id]
-          print(f"[ACTION LIKE] {self.user_id} is inserted to mark array")
+          print(f"[ACTION COMMENT] {self.user_id} is inserted to mark array")
         self.mongo_connector_component.update_one_data(mongo_collection_name, {"community_id": community_id}, {"posts": posts})
         print(f"[ACTION COMMENT] Successfully comment post with post_id {post_id}")
         

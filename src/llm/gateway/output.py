@@ -1,6 +1,7 @@
 import requests
-from typing import Optional
 import os
+from typing import Optional
+from agent.agent import Agent
 from dotenv import load_dotenv
 load_dotenv()
 
@@ -8,7 +9,7 @@ class OutputGateway():
   """
   Output gateway to other module
   """
-  def __init__(self, agent):
+  def __init__(self, agent: Agent):
     """
     Instantiate output gateway to call the API of other module
     """
