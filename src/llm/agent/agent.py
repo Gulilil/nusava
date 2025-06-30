@@ -530,8 +530,7 @@ class Agent():
     """
 
     try:
-      # observations = self.get_observation_elm()
-      observations = ['afternoon_time']
+      observations = self.get_observation_elm()
       print(f"[ACTION OBSERVATION] Acquired observations: {observations}")
       if (len(observations) == 0):
         raise Exception ("Invalid observation element: empty list")
@@ -575,10 +574,10 @@ class Agent():
         else:
           return
         
-        # # Give time delay
-        # sleep_time = random.randint(60, 180)
-        # print(f"[ACTION TIME SLEEP] Delay for {sleep_time} seconds")
-        # time.sleep(sleep_time)
+        # Give time delay
+        sleep_time = random.randint(60, 180)
+        print(f"[ACTION TIME SLEEP] Delay for {sleep_time} seconds")
+        time.sleep(sleep_time)
 
     except Exception as e:
       print(f"[ERROR IN DECIDING ACTION] {e}")
@@ -766,17 +765,17 @@ class Agent():
             raise Exception(f"Model cannot answer this query after {max_attempts} attempts. The evaluations thresholds are not satisfied.")
 
       # Request
-      # is_success = self.output_gateway_component.request_comment(post_id, comment_message)
-      # if (is_success):
-      #   # Mark post
-      #   if ('mark_comment' in chosen_post and isinstance(chosen_post['mark_comment'], list)):
-      #     chosen_post['mark_comment'].append(self.user_id)
-      #     print(f"[ACTION COMMENT] Mark array has been created for {self.user_id}")
-      #   else:
-      #     chosen_post['mark_comment'] = [self.user_id]
-      #     print(f"[ACTION COMMENT] {self.user_id} is inserted to mark array")
-      #   self.mongo_connector_component.update_one_data(mongo_collection_name, {"community_id": community_id}, {"posts": posts})
-      #   print(f"[ACTION COMMENT] Successfully comment post with post_id {post_id}")
+      is_success = self.output_gateway_component.request_comment(post_id, comment_message)
+      if (is_success):
+        # Mark post
+        if ('mark_comment' in chosen_post and isinstance(chosen_post['mark_comment'], list)):
+          chosen_post['mark_comment'].append(self.user_id)
+          print(f"[ACTION COMMENT] Mark array has been created for {self.user_id}")
+        else:
+          chosen_post['mark_comment'] = [self.user_id]
+          print(f"[ACTION COMMENT] {self.user_id} is inserted to mark array")
+        self.mongo_connector_component.update_one_data(mongo_collection_name, {"community_id": community_id}, {"posts": posts})
+        print(f"[ACTION COMMENT] Successfully comment post with post_id {post_id}")
         
     except Exception as e:
       print(f"[ERROR ACTION COMMENT] Error occured in executing `comment`: {e}")

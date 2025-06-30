@@ -262,7 +262,7 @@ class PromptGenerator():
                             "Do not explain other things that are not related the message from user. You would like to answer straight to the point. " \
                             "Do not answer in bullet points. On the other hand, try to explain it narratively. " \
                             "Do not forget to give your opinion according to the message as if you are a user in Instagram chatting with other people. " \
-                            "You have to state your answer in the same language as the one user uses. "
+                            "You have to state your answer in the same language as the one user uses. \n" 
     
     previous_iteration_notes_subprompt = self.generate_subprompt_previous_iteration_notes(previous_iteration_notes)
     return self._prompt_template.format(persona_subprompt=persona_subprompt,
@@ -291,12 +291,12 @@ class PromptGenerator():
     previous_iteration_notes_subprompt = self.generate_subprompt_previous_iteration_notes(previous_iteration_notes)
     
     # Setup query string
-    query_str = "Make a comment for Instagram post based on the context. " \
-                "Do not use any hashtags in making the comment. " \
+    query_str = "Make a comment for Instagram post based on the context. \n" \
                 "Long comment is not preferable and is bot-like. " \
-                "Comments longer than 2 sentences are not allowed. Avoid using long and complex sentences. Keep the sentences short and concise. " \
+                "Comments longer than 2 sentences are not allowed. However, if possible, 1 sentence comment is preferable. "\
+                "Avoid using long and complex sentences. Keep the sentences short and concise. \n" \
                 "Try to make the comment as natural as you can. You can use informal tone to suit your persona. " \
-                "Users are rarely use emoji in making comments. You may use 1 and 2 if you think it is necessary to suit to your persona. " \
+                "Users are rarely use emoji in making comments. You may use 1 and 2 if you think it is necessary to suit to your persona. \n" \
                 "You should avoid using hashtags unless it is really necessary and related to your persona. \n" \
                 "You should and have to make the comment in the same language as the post caption. "
 
