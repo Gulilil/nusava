@@ -11,8 +11,8 @@ async def process(nusava: Agent) -> None:
   nusava.process_data_hotel()
   nusava.process_data_post()
   nusava.process_data_association_rule()
-  await nusava.process_data_tourist_attraction()
-  nusava.process_labelling_communities()
+  nusava.process_data_tourist_attraction()
+  await nusava.process_labelling_communities()
 
 
 

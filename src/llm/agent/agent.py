@@ -474,7 +474,7 @@ class Agent():
     Check for schedule in database
     """
     try:
-      post_to_schedule = self.postgres_connector_component.get_scheduled_post_data(self.user_id)
+      post_to_schedule = self.postgres_connector_component.get_scheduled_post_data()
       print(f"[CHECK SCHEDULE] Got {len(post_to_schedule)} scheduled post to be posted")
       # Handle no scheduled post
       if (len(post_to_schedule) == 0):
@@ -517,7 +517,8 @@ class Agent():
       communities = self.choose_community()
 
       # Max 5 times of action decision
-      for itr in range(5):
+      max_iteration = 5
+      for itr in range(max_iteration):
         action, state = self.action_generator_component.decide_action(observations, itr)
         print(f"[ACTION DECISION] {itr+1}.  action \"{action}\" in state \"{state}\"")
 
@@ -890,7 +891,7 @@ class Agent():
     """
     Process data tourism places, "migrate" it from mongodb document to pinecone vector
     """
-    mongo_collection_name = "objek-wisata"
+    mongo_collection_name = "objek-wisata-v2"
     pinecone_namespace_name = "tourist_attractions"
 
     # Get attraction data from mongo
