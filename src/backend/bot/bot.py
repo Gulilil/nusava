@@ -27,6 +27,7 @@ class InstagramBot:
         self.password = password
         self.user_obj = user_obj
         self.client: Client = client
+        self._last_validation = None
 
         try:
             if (self.client):
@@ -44,20 +45,33 @@ class InstagramBot:
         self.client = Client()
         
         # Setup self.client configuration
-        self.client.set_locale('en_SG')  # Singapore English locale
-        self.client.set_country('SG')    # Singapore country code
-        self.client.set_country_code(65) # Singapore country calling code
-        self.client.set_timezone_offset(28800)  # UTC+8 (Singapore timezone)
+        manufacturers = ['samsung', 'oppo', 'vivo', 'xiaomi', 'realme']
+        models = {
+            'samsung': ['SM-G991B', 'SM-A525F', 'SM-G996B', 'SM-A725F'],
+            'oppo': ['CPH2145', 'CPH2113', 'CPH2239', 'CPH2205'],
+            'vivo': ['V2027', 'V2026', 'V2023', 'V2025'],
+            'xiaomi': ['M2007J20CG', 'M2006C3LG', 'M2101K7BG', 'M2012K11AG'],
+            'realme': ['RMX3085', 'RMX3151', 'RMX3161', 'RMX3195']
+        }
+        
+        manufacturer = random.choice(manufacturers)
+        model = random.choice(models[manufacturer])
+        
+        # Setup client configuration
+        self.client.set_locale('en_SG')
+        self.client.set_country('SG')
+        self.client.set_country_code(65)
+        self.client.set_timezone_offset(28800)
         self.client.set_device({
-            'manufacturer': random.choice(['samsung', 'apple', 'oppo', 'xiaomi']),
-            'model': random.choice(['SM-G991B', 'iPhone13,2', 'CPH2145', 'M2007J20CG']),
-            'android_version': random.choice([29, 30, 31]),
-            'android_release': random.choice(['10.0', '11.0', '12.0'])
+            'manufacturer': manufacturer,
+            'model': model,
+            'android_version': random.choice([28, 29, 30, 31]),
+            'android_release': random.choice(['9.0', '10.0', '11.0', '12.0'])
         })
-        self.client.delay_range = [1, 3]
         
         proxy_url = env('PROXY_URL', default=None)
         self.client.set_proxy(proxy_url)
+        self.client.delay_range = [2, 5]
         
         # Try to login with existing session first, then password
         login_success = False
@@ -66,26 +80,47 @@ class InstagramBot:
         if self.user_obj.session_info:
             try:
                 self.client.set_settings(self.user_obj.session_info)
-                # self.client.login(self.username, self.password)
                 self.client.get_timeline_feed()
                 logger.info(f"Logged in via existing session: {self.username}")
                 login_success = True
             except Exception as e:
-                logger.info(f"Session login failed for {self.username}: {str(e)}")
+                logger.warning(f"Existing session invalid for {self.username}: {str(e)}")
+                # Clear invalid session data
+                self.client = Client()  # Reset client
+                # Reapply configuration
+                self.client.set_locale('en_SG')
+                self.client.set_country('SG')
+                self.client.set_country_code(65)
+                self.client.set_timezone_offset(28800)
+                self.client.set_device({
+                    'manufacturer': manufacturer,
+                    'model': model,
+                    'android_version': random.choice([28, 29, 30, 31]),
+                    'android_release': random.choice(['9.0', '10.0', '11.0', '12.0'])
+                })
+                if proxy_url:
+                    self.client.set_proxy(proxy_url)
+                self.client.delay_range = [2, 5]
         
         # Method 2: Fresh login with password
         if not login_success:
             try:
                 if self.user_obj.session_info and 'uuids' in self.user_obj.session_info:
                     self.client.set_uuids(self.user_obj.session_info['uuids'])
-                
-                self.client.login(self.username, self.password, relogin=True)
-                # Save new session to database\
-                self.user_obj.refresh_from_db()
-                self.user_obj.session_info = self.client.get_settings()
-                self.user_obj.save()
-                logger.info(f"Logged in via password: {self.username}")
-                login_success = True
+                login_delay = random.uniform(2, 5)
+                time.sleep(login_delay)
+
+                login_result = self.client.login(self.username, self.password)
+            
+                if login_result:
+                    # Save new session to database
+                    self.user_obj.refresh_from_db()
+                    self.user_obj.session_info = self.client.get_settings()
+                    self.user_obj.save()
+                    logger.info(f"Fresh login successful for {self.username}")
+                    login_success = True
+                else:
+                    logger.error(f"Login returned False for {self.username}")
             except Exception as e:
                 logger.error(f"Password login failed for {self.username}: {str(e)}")
         
@@ -95,13 +130,27 @@ class InstagramBot:
     def validate_session(self):
         """Validate current session and re-login if necessary"""
         try:
+            if hasattr(self, '_last_validation'):
+                time_since_last = time.time() - self._last_validation
+                if time_since_last < 300:  # Don't validate more than once per 5 minutes
+                    return True
             # Test session validity
             self.client.get_timeline_feed()
+            self._last_validation = time.time()
             return True
         except Exception as e:
             logger.warning(f"Session invalid for {self.username}: {str(e)}")
+
+            if "challenge_required" in str(e).lower():
+                logger.error(f"Account {self.username} requires challenge - manual intervention needed")
+                return False
+            
             try:
                 # Try to re-login
+                retry_delay = random.uniform(30, 60)  # 30-60 seconds
+                logger.info(f"Waiting {retry_delay:.1f} seconds before retry...")
+                time.sleep(retry_delay)
+
                 self._initialize_client()
                 return True
             except Exception as login_error:
@@ -122,10 +171,17 @@ class InstagramBot:
             if not self.validate_session():
                 raise Exception("Unable to validate Instagram session")
             
+            delay = random.uniform(3, 8)  # 3-8 seconds
+            logger.info(f"Waiting {delay:.1f} seconds before liking...")
+            time.sleep(delay)
+
             if media_url:
                 media_id = self.client.media_pk_from_url(media_url)
             self.client.media_like(media_id)
             self.log("like", media_id, "success", "Liked post")
+
+            post_delay = random.uniform(2, 5)
+            time.sleep(post_delay)
         except Exception as e:
             self.log("like", media_id, "failed", str(e))
             raise e
@@ -135,9 +191,16 @@ class InstagramBot:
             if not self.validate_session():
                 raise Exception("Unable to validate Instagram session")
             
+            delay = random.uniform(3, 8)  # 3-8 seconds
+            logger.info(f"Waiting {delay:.1f} seconds before follow...")
+            time.sleep(delay)
+
             user_id = self.client.user_id_from_username(target_username)
             self.client.user_follow(user_id)
             self.log("follow", target_username, "success", "Followed user")
+
+            post_delay = random.uniform(8, 15)
+            time.sleep(post_delay)
         except Exception as e:
             self.log("follow", target_username, "failed", str(e))
             raise e
@@ -147,10 +210,17 @@ class InstagramBot:
             if not self.validate_session():
                     raise Exception("Unable to validate Instagram session")
             
+            delay = random.uniform(5, 12)  # 3-8 seconds
+            logger.info(f"Waiting {delay:.1f} seconds before comment...")
+            time.sleep(delay)
+
             if media_url:
                 media_id = self.client.media_pk_from_url(media_url)
             self.client.media_comment(media_id, comment)
             self.log("comment", media_id, "success", f"Commented: {comment}")
+
+            post_delay = random.uniform(8, 15)
+            time.sleep(post_delay)
         except Exception as e:
             self.log("comment", media_id, "failed", str(e))
             raise e
@@ -177,6 +247,7 @@ class InstagramBot:
                     self.log("post_photo", image_path, "success", f"Posted photo and linked to {tourism_object.name}")
                 except TourismObject.DoesNotExist:
                     self.log("post_photo", image_path, "warning", f"Tourism object {tourism_object_id} not found")
+            
         except Exception as e:
             self.log("post_photo", image_path, "failed", str(e))
             raise e
@@ -230,9 +301,10 @@ class InstagramBot:
             else:
                 self.log("post_from_cloudinary", image_url, "success", "Posted from Cloudinary without tourism object link")
             
+            
+            post_delay = random.uniform(8, 15)
+            time.sleep(post_delay)
             return media
-            
-            
         except Exception as e:
             self.log("post_photo", temp_file_path, "failed", str(e))
             return None
