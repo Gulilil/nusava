@@ -200,6 +200,4 @@ def adjust_scheduled_time(scheduled_time_str: str) -> datetime:
           month=current_time.month,
           day=current_time.day
       ) + timedelta(days=1)
-      return scheduled_time.strftime("%Y-%m-%d %H:%M:%S")
-    else:
-      return scheduled_time
+    return scheduled_time.strftime("%Y-%m-%d %H:%M:%S")

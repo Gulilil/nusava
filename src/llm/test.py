@@ -16,9 +16,9 @@ async def test(nusava: Agent) -> None:
   # print(await nusava.action_reply_chat("What is your favorite color?", "gulilii"))
   # print(await nusava.action_reply_chat("What do you do for a living?", "gulilii"))
   # # Tourism
-  print(await nusava.action_reply_chat("Give me general informations of Tanto hotel.", "gulilii"))
-  print(await nusava.action_reply_chat("Give me your 5 recommended Hotels in Nusa Tenggara. Please list it down along the name of the hotels", "gulilii"))
-  print(await nusava.action_reply_chat("Tell me the exact location of Tanto Hotel", "gulilii"))
+  # print(await nusava.action_reply_chat("Give me general informations of Tanto hotel.", "gulilii"))
+  # print(await nusava.action_reply_chat("Give me your 5 recommended Hotels in Nusa Tenggara. Please list it down along the name of the hotels", "gulilii"))
+  # print(await nusava.action_reply_chat("Tell me the exact location of Tanto Hotel", "gulilii"))
   # print(await nusava.action_reply_chat("Summarize me some reviews of Tanto Hotel. State the ratings and the description of some of the reviews too.", "gulilii"))
   # print(await nusava.action_reply_chat("Tell me the check-in and check-out time of Siola Hotel", "gulilii"))
   # print(await nusava.action_reply_chat("Based on Harbour Shuttle by Bajo Taxi tourist attractions. Give me some of your recommended hotels.", "gulilii"))
@@ -34,8 +34,8 @@ async def test(nusava: Agent) -> None:
 
 
   # # Test action post
-  # caption_message = await nusava.action_generate_caption("Image of Kuta beach in Bali when sunset", ["beach", "holiday", "beautiful", "nature", "pretty", "sunkissed"], "Make it short and simple. Do not use hashtags.")
-  # await nusava.action_schedule_post("https://www.balimagictour.com/wp-content/uploads/kuta-beach.jpg", caption_message)
+  caption_message = await nusava.action_generate_caption("Image of Kuta beach in Bali when sunset", ["beach", "holiday", "beautiful", "nature", "pretty", "sunkissed"], "Make it short and simple. Do not use hashtags.")
+  print(await nusava.action_schedule_post("https://www.balimagictour.com/wp-content/uploads/kuta-beach.jpg", caption_message))
   # caption_message = await nusava.action_generate_caption("Images of destination places in Singapore consists of Universal Studio, Merlion, and Orchard Road", ["holiday", "fun", "friends", "urban travel", "city"])
   # await nusava.action_schedule_post("", caption_message)
   # caption_message = await nusava.action_generate_caption("Image of the Eiffel Tower during golden hour", ["Paris", "Eiffel", "romantic", "city", "travel", "light"], "Simple and charming. Avoid clichés.")
