@@ -15,6 +15,7 @@ from .utils import download_image_from_url, cleanup_temp_file
 import environ
 from pathlib import Path
 from django.utils import timezone
+from instagrapi.exceptions import LoginRequired
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 logger = logging.getLogger('bot')
@@ -110,7 +111,7 @@ class InstagramBot:
                 login_delay = random.uniform(2, 5)
                 time.sleep(login_delay)
 
-                login_result = self.client.login(self.username, self.password)
+                login_result = self.client.login(self.username, self.password, relogin=True)
             
                 if login_result:
                     # Save new session to database
@@ -138,6 +139,27 @@ class InstagramBot:
             self.client.get_timeline_feed()
             self._last_validation = time.time()
             return True
+        except LoginRequired:
+            # ✅ SPECIFIC: Handle login required separately
+            logger.info(f"Login required for {self.username}, attempting re-login...")
+            self._last_validation = None
+            
+            try:
+                # Immediate re-login without delay for LoginRequired
+                self.client.login(self.username, self.password, relogin=True)
+                
+                # Update session in database
+                self.user_obj.refresh_from_db()
+                self.user_obj.session_info = self.client.get_settings()
+                self.user_obj.save()
+                
+                self._last_validation = time.time()
+                logger.info(f"Re-login successful for {self.username}")
+                return True
+                
+            except Exception as login_error:
+                logger.error(f"Re-login failed for {self.username}: {str(login_error)}")
+                return False
         except Exception as e:
             logger.warning(f"Session invalid for {self.username}: {str(e)}")
             self._last_validation = None
