@@ -514,7 +514,8 @@ class Agent():
         img_url = post[1]
         caption = post[2]
         user_id = post[3]
-        success = self.output_gateway_component.request_post(img_url, caption, user_id)
+        tourism_object_id = post[4]
+        success = self.output_gateway_component.request_post(img_url, caption, user_id, tourism_object_id)
         if (success):
           self.postgres_connector_component.mark_posts_as_posted(id)
 
