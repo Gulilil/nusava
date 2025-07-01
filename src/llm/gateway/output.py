@@ -117,8 +117,7 @@ class OutputGateway():
       if (response.status_code == 200):
         return True
       else:
-        response_json = response.json()
-        print(f"[ERROR REQUEST POST] Status code: {response.status_code}. Error : {response_json['error']}")
+        print(f"[ERROR REQUEST POST] Status code: {response.status_code}. Response : {response.text}")
         return False
 
     except Exception as e:

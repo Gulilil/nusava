@@ -90,10 +90,11 @@ class PostgresConnector():
       try:
           table_name = "bot_scheduledpost"
           column_names = "id, image_url, caption, user_id, tourism_object_id"
-
+          
           # Get current time in GMT+7
           current_time_gmt7 = datetime.now(timezone.utc) + timedelta(hours=7)
-          
+          print(f"[CURRENT TIME] {current_time_gmt7}")
+
           # Use parameterized query to prevent SQL injection
           query = f"""
               SELECT {column_names}
@@ -123,7 +124,7 @@ class PostgresConnector():
               SET is_posted = TRUE
               WHERE id = %s;
           """
-          self.cursor.execute(query, (id))
+          self.cursor.execute(query, (id,))
           self.connection.commit()
           print(f"[MARK IS POSTED] Marked posts as posted for id={id}")
       except Exception as e:
