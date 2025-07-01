@@ -1,6 +1,7 @@
 from llama_index.core import Document
 from llama_index.core.node_parser import SimpleNodeParser
 from datetime import datetime, timedelta, timezone
+from typing import Optional, Tuple
 
 def json_to_string_list(data: dict, prefix: str, result_arr: list, max_limit_arr: int = 20):
   """
@@ -84,7 +85,7 @@ def clean_quotation_string(text: str) -> str:
     return text
   
 
-def hotel_data_to_string_list(data: dict, max_limit_arr: int = 20) -> list[str]:
+def hotel_data_to_string_list(data: dict, max_limit_arr: int = 30) -> list[str]:
   """
   Convert hotel data to list of string
   """
@@ -133,15 +134,45 @@ def hotel_data_to_string_list(data: dict, max_limit_arr: int = 20) -> list[str]:
   return data_list
 
 
-def attraction_data_to_string_list(data: dict, max_limit_arr: int = 20) -> list[str]:
+def get_province_from_location(location:str) -> Optional[str]:
+  """
+  Determine the province based on the location
+  """
+  ntt_substr = ['NUSA TENGGARA TIM', "EAST NUSA TENGGARA"]
+  ntb_substr = ['NUSA TENGGARA BAR', "WEST NUSA TENGGARA"]
+
+  for substr in ntt_substr:
+    if (substr in location.upper()):
+      return "ntt"
+    
+  for substr in ntb_substr:
+    if (substr in location.upper()):
+      return "ntb"
+
+  print(f"NONE OF BOTH: {location}")
+  return None
+
+
+def attraction_data_to_string_list(data: dict, max_limit_arr: int = 30) -> Tuple[Optional[list[str]], Optional[str]]:
   """
   Convert hotel data to list of string
   """
   # Delete unnecessary columns
-  del data["_id"]
+  if (data.get("_id")): 
+    del data["_id"] 
+  else:
+    print(f"[NO ID FOUND TOURIST ATTRACTION] This is safe error. Only used as a log")
+
   # Use title as id, assuming it is unique for all data
-  name = data["title"]
+  # If there is no title, then skip 
+  name = data.get("title", None)
+  if (name is None):
+    return None, None
   del data["title"]
+
+  # Determined the location of attraction
+  location = data['locationText'] if "locationText" in data else data['location']
+  province = get_province_from_location(location)
 
   # Define fields to be extracted
   general_info_fields = ["locationText", "location", "url", "contact", "phoneNumberText", "description", "rating", "label"]
@@ -175,7 +206,7 @@ def attraction_data_to_string_list(data: dict, max_limit_arr: int = 20) -> list[
   data_list.extend(reviews_list)
   data_list.extend(opening_hours_list)
   data_list = [info for info in data_list if info.strip() != ""]  # Remove empty strings
-  return data_list
+  return data_list, province
 
 
 def adjust_scheduled_time(scheduled_time_str: str) -> datetime:

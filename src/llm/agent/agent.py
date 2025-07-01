@@ -284,8 +284,9 @@ class Agent():
           await self._load_tools_rag("hotels", "rag_tools_for_hotels_data", "Used to answer hotels-related query based on retrieved documents", sender_id)
           # Then asso-rules
           await self._load_tools_rag("association_rules", "rag_tools_for_association_rules_data", "Used to recommend system for hotel based on its antecedent-consequent relation based on retrieved documents", sender_id)
-          # Then tourist attractions
-          await self._load_tools_rag("tourist_attractions", "rag_tools_for_tourist_attractions_data", "Used to answer tourist-attractions-related query based on retrieved documents", sender_id)
+          # Then tourist attractions ntt and ntb
+          await self._load_tools_rag("tourist_attractions_ntt", "rag_tools_for_ntt_tourist_attractions_data", "Used to answer tourist-attractions-related query in Nusa Tenggara Timur (NTT) based on retrieved documents", sender_id)
+          await self._load_tools_rag("tourist_attractions_ntb", "rag_tools_for_ntb_tourist_attractions_data", "Used to answer tourist-attractions-related query in Nusa Tenggara Barat (NTB) based on retrieved documents", sender_id)
           # Load the long-term memory from pinecone
           chat_memory_namespace_name = f"chat_bot[{self.user_id}]_sender[{sender_id}]"
           if (self.pinecone_connector_component.is_namespace_exist(chat_memory_namespace_name)):
@@ -923,7 +924,8 @@ class Agent():
     Process data tourism places, "migrate" it from mongodb document to pinecone vector
     """
     mongo_collection_name = "objek-wisata-v2"
-    pinecone_namespace_name = "tourist_attractions"
+    pinecone_namespace_name_ntb = "tourist_attractions_ntb"
+    pinecone_namespace_name_ntt = "tourist_attractions_ntt"
 
     # Get attraction data from mongo
     attractions = self.mongo_connector_component.get_data(mongo_collection_name, {})
@@ -934,20 +936,32 @@ class Agent():
     length_per_batch = (len(attractions)//n_batch)+1
     while (idx < len(attractions)):
       # Set batch indices
-      attraction_docs = []
+      attraction_docs_ntb = []
+      attraction_docs_ntt = []
       upper_idx = min(idx+length_per_batch, len(attractions))
       curr_batch_attractions = attractions[idx : upper_idx]
 
       # Iterate data in the current batch list
       for attraction in curr_batch_attractions:
-        attraction_string_data = attraction_data_to_string_list(attraction)
-        documents_list = text_to_document(attraction_string_data)
-        attraction_docs.extend(documents_list)
+        attraction_string_data, province = attraction_data_to_string_list(attraction)
+        if (attraction_string_data and province):
+          documents_list = text_to_document(attraction_string_data)
+          if (province == "ntt"):
+            attraction_docs_ntt.extend(documents_list)
+          else:
+            attraction_docs_ntb.extend(documents_list)
       
-      # Parse attraction data
-      attraction_data_parsed = parse_documents(attraction_docs)
-      # Insert to pinecone
-      self.pinecone_connector_component.store_data(attraction_data_parsed, pinecone_namespace_name)         
+      # Parse attraction data and insert to Pinecone
+      if (len(attraction_docs_ntt) > 0):
+        attraction_data_ntt_parsed = parse_documents(attraction_docs_ntt)
+        self.pinecone_connector_component.store_data(attraction_data_ntt_parsed, pinecone_namespace_name_ntt) 
+        print(f"[BATCH PROGRESS] Processed {len(attraction_docs_ntt)} NTT nodes data")
+      
+      if (len(attraction_docs_ntb) > 0):
+        attraction_data_ntb_parsed = parse_documents(attraction_docs_ntb)
+        self.pinecone_connector_component.store_data(attraction_data_ntb_parsed, pinecone_namespace_name_ntb)         
+        print(f"[BATCH PROGRESS] Processed {len(attraction_docs_ntb)} NTB nodes data")
+      
       print(f'[BATCH PROGRESS] Successfully inserted data idx {idx} to {upper_idx}')
       
       # Increment idx
