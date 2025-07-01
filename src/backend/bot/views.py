@@ -8,7 +8,7 @@ from django.http import HttpResponse
 import requests
 import environ
 
-from .models import InstagramStatistics, Posts, ScheduledPost, TourismObject, User
+from .models import InstagramStatistics, PostStatistics, Posts, ScheduledPost, TourismObject, User
 from .bot import InstagramBot
 from instagrapi import Client
 from rest_framework_simplejwt.tokens import RefreshToken
@@ -1078,25 +1078,152 @@ def get_posts(request):
 @api_view(['GET'])
 @permission_classes([AllowAny])
 def get_tourism_statistics(request, tourism_object_id):
-    """Get statistics for a specific tourism object using bot method"""
+    """Get statistics for a specific tourism object using database queries"""
     try:
-        user = request.user
         hours = int(request.GET.get('hours', 24))
+        since_date = timezone.now() - timedelta(hours=hours)
         
-        bot = user_bots.get(user.id)
-        if not bot:
-            try:
-                # Only create new bot if not in memory
-                bot = InstagramBot(user_obj=user, password=user.password)
-                user_bots[user.id] = bot
-            except Exception as e:
-                logger.error(f"Failed to initialize bot for user {user.id}: {str(e)}")
-                return Response({"error": f"Bot initialization failed: {str(e)}"}, status=500)
-
-        result = bot.get_tourism_object_stats(tourism_object_id, hours)
+        try:
+            tourism_object = TourismObject.objects.get(id=tourism_object_id)
+        except TourismObject.DoesNotExist:
+            return Response({
+                "status": "error",
+                "message": "Tourism object not found"
+            }, status=404)
+        
+        # Get all posts for this tourism object (from all users)
+        posts = Posts.objects.filter(tourism_object=tourism_object)
+        
+        if not posts.exists():
+            return Response({
+                "status": "success",
+                "data": {
+                    "success": True,
+                    "tourism_object": {
+                        "id": tourism_object.id,
+                        "name": tourism_object.name,
+                        "type": tourism_object.object_type,
+                        "location": tourism_object.location
+                    },
+                    "period_hours": hours,
+                    "summary": {
+                        "total_posts": 0,
+                        "total_likes": 0,
+                        "total_comments": 0,
+                        "average_likes": 0,
+                        "average_comments": 0,
+                        "likes_growth_rate": 0,
+                        "comments_growth_rate": 0,
+                        "recent_likes_change": 0,
+                        "recent_comments_change": 0
+                    },
+                    "posts": [],
+                    "historical_data": []
+                }
+            })
+        
+        # Calculate current totals
+        current_total_likes = sum(post.like_count for post in posts)
+        current_total_comments = sum(post.comment_count for post in posts)
+        
+        # Get posts data
+        posts_data = []
+        for post in posts:
+            posts_data.append({
+                "shortcode": post.shortcode,
+                "media_id": post.media_id,
+                "caption": post.caption[:100] + "..." if len(post.caption) > 100 else post.caption,
+                "likes": post.like_count,
+                "comments": post.comment_count,
+                "posted_at": post.posted_at,
+                "last_updated": post.updated_at
+            })
+        
+        # Get historical data for the last 7 days
+        historical_data = []
+        for i in range(7):
+            date = timezone.now() - timedelta(days=6-i)
+            day_start = date.replace(hour=0, minute=0, second=0, microsecond=0)
+            day_end = day_start + timedelta(days=1)
+            
+            day_stats = PostStatistics.objects.filter(
+                tourism_object=tourism_object,
+                recorded_at__gte=day_start,
+                recorded_at__lt=day_end
+            )
+            
+            day_total_likes = 0
+            day_total_comments = 0
+            day_likes_change = 0
+            day_comments_change = 0
+            
+            if day_stats.exists():
+                posts_in_day = day_stats.values_list('post', flat=True).distinct()
+                for post_id in posts_in_day:
+                    latest_stat_for_post = day_stats.filter(post_id=post_id).order_by('-recorded_at').first()
+                    if latest_stat_for_post:
+                        day_total_likes += latest_stat_for_post.like_count
+                        day_total_comments += latest_stat_for_post.comment_count
+                        day_likes_change += latest_stat_for_post.likes_change
+                        day_comments_change += latest_stat_for_post.comments_change
+            
+            historical_data.append({
+                "date": date.strftime('%Y-%m-%d'),
+                "total_likes": day_total_likes,
+                "total_comments": day_total_comments,
+                "likes_change": day_likes_change,
+                "comments_change": day_comments_change,
+                "posts_count": len(posts_in_day) if day_stats.exists() else 0
+            })
+        
+        # Calculate growth rates
+        recent_stats = PostStatistics.objects.filter(
+            tourism_object=tourism_object,
+            recorded_at__gte=since_date
+        )
+        
+        total_likes_change = sum(stat.likes_change for stat in recent_stats) if recent_stats.exists() else 0
+        total_comments_change = sum(stat.comments_change for stat in recent_stats) if recent_stats.exists() else 0
+        
+        likes_growth_rate = 0
+        comments_growth_rate = 0
+        
+        if current_total_likes > 0:
+            previous_likes = current_total_likes - total_likes_change
+            if previous_likes > 0:
+                likes_growth_rate = (total_likes_change / previous_likes) * 100
+        
+        if current_total_comments > 0:
+            previous_comments = current_total_comments - total_comments_change
+            if previous_comments > 0:
+                comments_growth_rate = (total_comments_change / previous_comments) * 100
+        
+        result = {
+            "success": True,
+            "tourism_object": {
+                "id": tourism_object.id,
+                "name": tourism_object.name,
+                "type": tourism_object.object_type,
+                "location": tourism_object.location
+            },
+            "period_hours": hours,
+            "summary": {
+                "total_posts": len(posts_data),
+                "total_likes": current_total_likes,
+                "total_comments": current_total_comments,
+                "average_likes": round(current_total_likes / len(posts_data), 1) if posts_data else 0,
+                "average_comments": round(current_total_comments / len(posts_data), 1) if posts_data else 0,
+                "likes_growth_rate": round(likes_growth_rate, 2),
+                "comments_growth_rate": round(comments_growth_rate, 2),
+                "recent_likes_change": total_likes_change,
+                "recent_comments_change": total_comments_change
+            },
+            "posts": sorted(posts_data, key=lambda x: x["likes"], reverse=True),
+            "historical_data": historical_data
+        }
         
         return Response({
-            "status": "success" if result["success"] else "error",
+            "status": "success",
             "data": result
         })
         
@@ -1110,25 +1237,83 @@ def get_tourism_statistics(request, tourism_object_id):
 @api_view(['GET'])
 @permission_classes([AllowAny])
 def get_all_tourism_statistics(request):
-    """Get statistics for all tourism objects"""
+    """Get statistics for all tourism objects using database queries"""
     try:
-        user = request.user
         hours = int(request.GET.get('hours', 24))
         
-        bot = user_bots.get(user.id)
-        if not bot:
-            try:
-                # Only create new bot if not in memory
-                bot = InstagramBot(user_obj=user, password=user.password)
-                user_bots[user.id] = bot
-            except Exception as e:
-                logger.error(f"Failed to initialize bot for user {user.id}: {str(e)}")
-                return Response({"error": f"Bot initialization failed: {str(e)}"}, status=500)
+        # Get all tourism objects that have posts
+        tourism_objects_with_posts = TourismObject.objects.filter(
+            posts__isnull=False
+        ).distinct()
         
-        result = bot.get_all_tourism_stats(hours)
+        all_stats = []
+        
+        for tourism_object in tourism_objects_with_posts:
+            # Use the same logic as get_tourism_statistics but inline
+            posts = Posts.objects.filter(tourism_object=tourism_object)
+            
+            if not posts.exists():
+                continue
+            
+            current_total_likes = sum(post.like_count for post in posts)
+            current_total_comments = sum(post.comment_count for post in posts)
+            
+            # Calculate growth rates
+            since_date = timezone.now() - timedelta(hours=hours)
+            recent_stats = PostStatistics.objects.filter(
+                tourism_object=tourism_object,
+                recorded_at__gte=since_date
+            )
+            
+            total_likes_change = sum(stat.likes_change for stat in recent_stats) if recent_stats.exists() else 0
+            total_comments_change = sum(stat.comments_change for stat in recent_stats) if recent_stats.exists() else 0
+            
+            likes_growth_rate = 0
+            comments_growth_rate = 0
+            
+            if current_total_likes > 0:
+                previous_likes = current_total_likes - total_likes_change
+                if previous_likes > 0:
+                    likes_growth_rate = (total_likes_change / previous_likes) * 100
+            
+            if current_total_comments > 0:
+                previous_comments = current_total_comments - total_comments_change
+                if previous_comments > 0:
+                    comments_growth_rate = (total_comments_change / previous_comments) * 100
+            
+            tourism_stats = {
+                "success": True,
+                "tourism_object": {
+                    "id": tourism_object.id,
+                    "name": tourism_object.name,
+                    "type": tourism_object.object_type,
+                    "location": tourism_object.location
+                },
+                "period_hours": hours,
+                "summary": {
+                    "total_posts": posts.count(),
+                    "total_likes": current_total_likes,
+                    "total_comments": current_total_comments,
+                    "average_likes": round(current_total_likes / posts.count(), 1) if posts.count() > 0 else 0,
+                    "average_comments": round(current_total_comments / posts.count(), 1) if posts.count() > 0 else 0,
+                    "likes_growth_rate": round(likes_growth_rate, 2),
+                    "comments_growth_rate": round(comments_growth_rate, 2),
+                    "recent_likes_change": total_likes_change,
+                    "recent_comments_change": total_comments_change
+                }
+            }
+            
+            all_stats.append(tourism_stats)
+        
+        result = {
+            "success": True,
+            "total_objects": len(all_stats),
+            "period_hours": hours,
+            "tourism_objects": all_stats
+        }
         
         return Response({
-            "status": "success" if result["success"] else "error",
+            "status": "success",
             "data": result
         })
         
