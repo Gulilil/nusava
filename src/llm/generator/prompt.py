@@ -80,9 +80,11 @@ class PromptGenerator():
     """
     Generate a prompt for error message
     """
-    context_str = "You are expected to answer the user query, but you cannot answer this query due to some error."
-    context_str += f"\nHere is the user query: \"{user_query}\""
-
+    context_str = "You are expected to answer the user query, but you cannot answer this query due to some reason. \n" \
+                  f"Here is the user query: \"{user_query}\" \n" \
+                  "The reason on why you cannot answer this question is because you are not provided with enough data or maybe you require more context to understand user's query. " \
+                  "You may explain this reason to user moderately. "\
+                  
     # Setup subprompts
     persona_subprompt = self.generate_subprompt_persona()
     context_subprompt = self.generate_subprompt_context(context_str)
@@ -102,8 +104,9 @@ class PromptGenerator():
     """
     Generate a prompt for out of domain message
     """
-    context_str = "You are expected to answer the user query, but you cannot answer this query because it is outside your domain of expertise."
-    context_str += f"\nHere is the user query: \"{user_query}\""
+    context_str = "You are expected to answer the user query, but you cannot answer this query because you think that the query is outside your domain of expertise. \n" \
+                  f"\nHere is the user query: \"{user_query}\" \n" \
+                  "You can explain that your expertise domain is tourism. You can also tell the user if they think that the query is in tourism domain, you might require more context to answer it. \n"
 
     # Setup subprompts
     persona_subprompt = self.generate_subprompt_persona()
@@ -245,6 +248,9 @@ class PromptGenerator():
       context += "Aside for the previous recent messages that you are provided. You will also be provided with some tools. "
       context += "You should and have to use the tools in answering the question using RAG method. The usage of the tools is critical on this aspect. "
       context += "The tools can be used to inquire information related to tourism. Furthermore, you might also be provided with tools to see the summarization of your previous messages. "
+      context += "You need and have to utilize all the tools that are provided. In doing action, please do iteration to all the tools you think is related to the query. "
+      context += "Do not use only one tools. You should check bot tools for Nusa Tenggara Timur and Nusa Tenggara Barat to answer the questions. "
+
 
     # Setup subprompts
     persona_subprompt = self.generate_subprompt_persona()
