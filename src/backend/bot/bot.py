@@ -468,7 +468,7 @@ class InstagramBot:
                     print(f"typing delay: {typing_delay:.1f} seconds...")
                     time.sleep(typing_delay)
 
-            self.log("dm_reply", username, "success", f"Replied to {username}")
+            self.log("dm_reply", username, "success", f"Replied to {username} with {reply_messages}")
             # Mark as seen after all messages are sent
             self.client.direct_send_seen(thread_id)
             print(f"✅ All messages sent to {username}")
@@ -784,9 +784,6 @@ class InstagramBot:
                 if previous_comments > 0:
                     comments_growth_rate = (total_comments_change / previous_comments) * 100
             
-            self.log("get_tourism_stats", str(tourism_object_id), "success", 
-                f"Retrieved stats for {tourism_object.name}")
-            
             return {
                 "success": True,
                 "tourism_object": {
@@ -812,10 +809,8 @@ class InstagramBot:
             }
             
         except TourismObject.DoesNotExist:
-            self.log("get_tourism_stats", str(tourism_object_id), "failed", "Tourism object not found")
             return {"success": False, "error": "Tourism object not found"}
         except Exception as e:
-            self.log("get_tourism_stats", str(tourism_object_id), "failed", str(e))
             return {"success": False, "error": str(e)}
 
     def get_all_tourism_stats(self, hours: int = 24):
@@ -833,9 +828,6 @@ class InstagramBot:
                 if stats["success"]:
                     all_stats.append(stats)
             
-            self.log("get_all_tourism_stats", "", "success", 
-                   f"Retrieved stats for {len(all_stats)} tourism objects")
-            
             return {
                 "success": True,
                 "total_objects": len(all_stats),
@@ -844,5 +836,4 @@ class InstagramBot:
             }
             
         except Exception as e:
-            self.log("get_all_tourism_stats", "", "failed", str(e))
             return {"success": False, "error": str(e)}
