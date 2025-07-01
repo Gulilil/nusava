@@ -373,14 +373,14 @@ class PromptGenerator():
                             "Especially for the date, you must not return a date earlier than today's date in the given current_time. \n" \
                             "Do not add any other word, character, or string outside the given format. "\
                             "\n\n" \
-                            # "Here I provide you some methods if you cannot decide. This is ordered from the most prioritized to least prioritized: \n" \
-                            # "1. If you think the provided data is not enough, please return the average time of the posts in the provided context \n" \
-                            # "2. Identify on what time the post would be suitable uploaded. The ideal time would be listed as below: \n" \
-                            # "   - In the morning is around breakfast time: 06.00 to 08.00 \n" \
-                            # "   - In the afternoon it would be around lunch time : 12.00 to 13.00 \n" \
-                            # "   - In the night it would be around the time people resting at their home 18:00 to 21:00\n" \
-                            # "3. Choose one of these default values: [07.00, 12.30, 18.00] with the date of today or tomorrow. \n" \
-                            # "Avoid not returning anything at any cost. "
+                            "Here I provide you some methods if you cannot decide. This is ordered from the most prioritized to least prioritized: \n" \
+                            "1. If you think the provided data is not enough, please return the average time of the posts in the provided context \n" \
+                            "2. Identify on what time the post would be suitable uploaded. The ideal time would be listed as below: \n" \
+                            "   - In the morning is around breakfast time: 06.00 to 08.00 \n" \
+                            "   - In the afternoon it would be around lunch time : 12.00 to 13.00 \n" \
+                            "   - In the night it would be around the time people resting at their home 18:00 to 21:00\n" \
+                            "3. Choose one of these default values: [07.00, 12.30, 18.00] with the date of today or tomorrow. \n" \
+                            "Avoid not returning anything at any cost. "
     previous_iteration_notes_subprompt = ""
     
     # Setup query string

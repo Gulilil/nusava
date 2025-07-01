@@ -91,14 +91,18 @@ class PostgresConnector():
           table_name = "bot_scheduledpost"
           column_names = "id, image_url, caption, user_id, tourism_object_id"
           
+          # Get current time in GMT+7
+          current_time_gmt7 = datetime.now(timezone.utc) + timedelta(hours=7)
+          print(f"[CURRENT TIME] {current_time_gmt7}")
+
           # Use parameterized query to prevent SQL injection
           query = f"""
               SELECT {column_names}
               FROM {table_name}
-              WHERE scheduled_time <= (NOW() AT TIME ZONE 'UTC+7')
+              WHERE scheduled_time <= %s
                 AND is_posted = FALSE;
           """
-          self.cursor.execute(query)
+          self.cursor.execute(query, (current_time_gmt7,))
           data = self.cursor.fetchall()
           return data
       except Exception as e:
