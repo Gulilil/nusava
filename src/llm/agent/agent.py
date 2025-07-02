@@ -342,10 +342,17 @@ class Agent():
 
         else: # cateogry == "other"
           # Generate prompt
-          prompt = self.prompt_generator_component.generate_prompt_out_of_domain(user_query=chat_message)  
+          prompt = self.prompt_generator_component.generate_prompt_out_of_domain(
+            user_query=chat_message,
+            previous_iteration_notes=previous_iteration_notes)  
           # Answer the query
           answer, _ = await self.model_component.answer(prompt, is_direct=True)
-          evaluation_passing = True
+          print(f"[ACTION REPLY CHAT] Temporary answer: {answer}. ")
+
+          # Do Evaluation
+          evaluation_result = await self.evaluator_component.evaluate_response(chat_message, answer, [], ["naturalness"])
+          evaluation_passing = evaluation_result['evaluation_passing']
+          print(f"[EVALUATION RESULT] {evaluation_result}")
 
 
         # Add notes if it does not pass

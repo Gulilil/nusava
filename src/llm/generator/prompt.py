@@ -100,7 +100,7 @@ class PromptGenerator():
                                   query_str=query_str)
   
 
-  def generate_prompt_out_of_domain(self, user_query: str) -> str:
+  def generate_prompt_out_of_domain(self, user_query: str, previous_iteration_notes: list = []) -> str:
     """
     Generate a prompt for out of domain message
     """
@@ -113,7 +113,7 @@ class PromptGenerator():
     context_subprompt = self.generate_subprompt_context(context_str)
     additional_subprompt =  "You are expected to explain to user concisely yet informative." \
                             "Make sure to not answer more than 1 paragraph."
-    previous_iteration_notes_subprompt = ""
+    previous_iteration_notes_subprompt = self.generate_subprompt_previous_iteration_notes(previous_iteration_notes)
     query_str = "Explain to user that you cannot answer this query because it is not what you are expert on"
 
     return self._prompt_template.format(persona_subprompt=persona_subprompt,
