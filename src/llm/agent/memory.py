@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timezone, timedelta
 
 class Memory():
   """
@@ -70,8 +70,8 @@ class Memory():
 
       """
       # Store as short term memory
-      timestamp = datetime.now()
-      memory_data["timestamp"] = timestamp
+      current_time = datetime.now(timezone.utc) + timedelta(hours=7)
+      memory_data["timestamp"] = current_time
       # Create a list if it is a new sender_id
       if (sender_id not in self._memory):
          self._memory[sender_id] = []

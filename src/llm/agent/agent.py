@@ -572,7 +572,6 @@ class Agent():
         action, state = self.action_generator_component.decide_action(observations, itr)
         print(f"[ACTION DECISION] {itr+1}. action \"{action}\" in state \"{state}\"")
 
-        action = "comment"
         if (action == "like"):
           await self.action_like(communities)
         elif (action == "follow"):
