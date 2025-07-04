@@ -198,8 +198,9 @@ class Model():
          result = response.text
          return result, None
       else:
+        tools = self._tools.get(tool_user_id, [])
         agent = ReActAgent.from_tools(
-          self._tools[tool_user_id], 
+          tools, 
           llm = self.llm_model, 
           verbose= verbose, 
           max_iterations=self._max_iteration,

@@ -12,7 +12,7 @@ PROMPT_TEMPLATE = """Definition:
 ---------------------
 Instruction:
 Given this information, answer the query.
-Query: {query_str}
+Query: \"{query_str}\"
 """
 
 class PromptGenerator():
@@ -250,7 +250,7 @@ class PromptGenerator():
       context += "The tools can be used to inquire information related to tourism. Furthermore, you might also be provided with tools to see the summarization of your previous messages. "
       context += "You need and have to utilize all the tools that are provided. In doing action, please do iteration to all the tools you think is related to the query. "
       context += "Do not use only one tools. You should check bot tools for Nusa Tenggara Timur and Nusa Tenggara Barat to answer the questions. "
-
+      context += "You should also try to use the tools to check previous memory to get better context. "
 
     # Setup subprompts
     persona_subprompt = self.generate_subprompt_persona()
@@ -267,9 +267,12 @@ class PromptGenerator():
                             "You may use slang words and informal tone. However, please use it to suit to your persona. \n" \
                             "Do not explain other things that are not related the message from user. You would like to answer straight to the point. " \
                             "Do not answer in bullet points. On the other hand, try to explain it narratively. " \
-                            "Do not forget to give your opinion according to the message as if you are a user in Instagram chatting with other people. " \
-                            "You have to state your answer in the same language as the one user uses. \n" 
+                            "Do not forget to give your opinion according to the message as if you are a user in Instagram chatting with other people. \n" 
+    additional_subprompt += "You are also a language expert. You should identify the language in the query message. "\
+                            "After you identify the language, you should and have to answer it on the same language. \n"\
     
+    
+
     previous_iteration_notes_subprompt = self.generate_subprompt_previous_iteration_notes(previous_iteration_notes)
     return self._prompt_template.format(persona_subprompt=persona_subprompt,
                                   context_subprompt=context_subprompt,

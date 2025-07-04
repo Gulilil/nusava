@@ -293,7 +293,7 @@ class Agent():
           # Load the long-term memory from pinecone
           chat_memory_namespace_name = f"chat_bot[{self.user_id}]_sender[{sender_id}]"
           if (self.pinecone_connector_component.is_namespace_exist(chat_memory_namespace_name)):
-            await self._load_tools_rag(chat_memory_namespace_name, f"rag_tools_for_memory_chat_with_{sender_id}", f"Used to help answering question from {sender_id} based on previous occurences", sender_id)
+            await self._load_tools_rag(chat_memory_namespace_name, f"rag_tools_for_memory_chat_with_{sender_id}", f"Used to help answering question from {sender_id} based on previous memory of occurences", sender_id)
 
           # Generate prompt
           prompt = self.prompt_generator_component.generate_prompt_reply_chat(
@@ -320,20 +320,42 @@ class Agent():
             if (len(context) <= 80):  context_to_display = context
             else:   context_to_display = f"{context[:40]}...{context[-40:]}"
             print(f"[ACTION REPLY CHAT CONTEXT #{i+1}]: {context_to_display}")
+
           # Do Evaluation
           evaluation_result = await self.evaluator_component.evaluate_response(chat_message, answer, rag_contexts, ["correctness", "faithfulness", "relevancy", "naturalness"])
           evaluation_passing = evaluation_result['evaluation_passing']
           print(f"[EVALUATION RESULT] {evaluation_result}")
 
         elif (category == "general"):
+           # Load the long-term memory from pinecone
+          chat_memory_namespace_name = f"chat_bot[{self.user_id}]_sender[{sender_id}]"
+          if (self.pinecone_connector_component.is_namespace_exist(chat_memory_namespace_name)):
+            await self._load_tools_rag(chat_memory_namespace_name, f"rag_tools_for_memory_chat_with_{sender_id}", f"Used to help answering question from {sender_id} based on previous occurences", sender_id)
+          
           # Generate prompt
           prompt = self.prompt_generator_component.generate_prompt_reply_chat(
             new_message=chat_message,
             previous_messages=self.memory_component.retrieve(sender_id),
             previous_iteration_notes=previous_iteration_notes)  
           # Answer the query
-          answer, _ = await self.model_component.answer(prompt, is_direct=True)
+          answer, rag_contexts = await self.model_component.answer(prompt, tool_user_id=sender_id)
           print(f"[ACTION REPLY CHAT] Temporary answer: {answer}. ")
+
+          if (answer is None):
+            previous_iteration_notes.append({
+              "iteration": attempt,
+              "your_answer" : None,
+              "evaluator": "model",
+              "evaluation_score": None,
+              "reason_of_rejection": "Model cannot answer this query."
+            })
+
+          # Display contexts
+          for i, context  in enumerate(rag_contexts):
+            context = context.replace("\n", " ")
+            if (len(context) <= 80):  context_to_display = context
+            else:   context_to_display = f"{context[:40]}...{context[-40:]}"
+            print(f"[ACTION REPLY CHAT CONTEXT #{i+1}]: {context_to_display}")
 
           # Do Evaluation
           evaluation_result = await self.evaluator_component.evaluate_response(chat_message, answer, [], ["relevancy", "naturalness"])
