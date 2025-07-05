@@ -96,6 +96,7 @@ class Agent():
         self.set_persona()
     except Exception as e:
       print(f"[ERROR SETTING UP USER] Error in setting up user: {e}")
+      raise Exception(e)
 
 
   def set_persona(self) -> None:
