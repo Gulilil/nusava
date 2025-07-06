@@ -57,9 +57,11 @@ class PromptGenerator():
       if (len(previous_iteration_notes) == 0):
          previous_iteration_notes_subprompt += "I have no provided notes from the previous iteration. This is your first iteration"
       else:
-        previous_iteration_notes_subprompt += "Here are some notes from your previous iterations. This notes are important to be considered in your answer.\n"
+        previous_iteration_notes_subprompt += "Here are some notes from your previous iterations. This notes are important to be considered in your answer. "
         previous_iteration_notes_subprompt += "Your answer are expected to pass the evaluator. But, here I provide some notes on your previous answers and the reason it does not pass the evaluator.\n"
-        previous_iteration_notes_subprompt += "You should and are expected to learn from this notes so you do not repeat the same mistake. \n"
+        previous_iteration_notes_subprompt += "You should and are expected to learn from this notes so you do not repeat the same mistake. "
+        previous_iteration_notes_subprompt += "The field `your_answer` is the answer that you provided in the previous iteration. \n"
+        previous_iteration_notes_subprompt += "You should not repeate the same answer as the ones in `your_answer` fields. At least, you should parafrase and choose different words from your previous answer. Make it as natural as you can. \n"
         for notes in previous_iteration_notes:
           previous_iteration_notes_subprompt += "{\n"
           for key, value in notes.items():

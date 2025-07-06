@@ -105,6 +105,7 @@ class Agent():
     """
     persona_data = self.postgres_connector_component.get_persona_data(self.user_id)
     self.persona_component.load_persona(persona_data)
+    self.model_component.set_model()
 
   
   def set_config(self) -> None:
@@ -324,6 +325,7 @@ class Agent():
 
           # Do Evaluation
           evaluation_result = await self.evaluator_component.evaluate_response(chat_message, answer, rag_contexts, ["correctness", "faithfulness", "relevancy", "naturalness"])
+          evaluation_result['your_answer'] = answer
           evaluation_passing = evaluation_result['evaluation_passing']
           print(f"[EVALUATION RESULT] {evaluation_result}")
 
@@ -360,6 +362,7 @@ class Agent():
 
           # Do Evaluation
           evaluation_result = await self.evaluator_component.evaluate_response(chat_message, answer, [], ["relevancy", "naturalness"])
+          evaluation_result['your_answer'] = answer
           evaluation_passing = evaluation_result['evaluation_passing']
           print(f"[EVALUATION RESULT] {evaluation_result}")
 
@@ -374,6 +377,7 @@ class Agent():
 
           # Do Evaluation
           evaluation_result = await self.evaluator_component.evaluate_response(chat_message, answer, [], ["naturalness"])
+          evaluation_result['your_answer'] = answer
           evaluation_passing = evaluation_result['evaluation_passing']
           print(f"[EVALUATION RESULT] {evaluation_result}")
 
@@ -426,6 +430,7 @@ class Agent():
           additional_context=additional_context,
           previous_iteration_notes=previous_iteration_notes
           )
+        print(prompt)
 
         # Generate caption message
         # Skip is the caption message is None
@@ -436,7 +441,7 @@ class Agent():
           previous_iteration_notes.append({
             "iteration": attempt,
             "your_answer" : None,
-            "evaluator": "model",
+            "evaluator": "system",
             "reason_of_rejection": "Model cannot generate caption."
           })
 
@@ -448,7 +453,8 @@ class Agent():
                       f"Here are the keywords: {keywords_str}"]  
           
           # Evaluate the answer
-          evaluation_result = await self.evaluator_component.evaluate_response("Create a caption for an Instagram post", caption_message, contexts, ["relevancy", "naturalness"])  
+          evaluation_result = await self.evaluator_component.evaluate_response("Create a caption for an Instagram post", caption_message, contexts, ["relevancy", "naturalness"]) 
+          evaluation_result['your_answer'] = caption_message 
           evaluation_passing = evaluation_result['evaluation_passing']
           print(f"[EVALUATION RESULT] {evaluation_result}")
           
@@ -788,6 +794,7 @@ class Agent():
         # Do Evaluation
         contexts = [f"Caption of the post that you need to comment on: {post_caption}"]
         evaluation_result = await self.evaluator_component.evaluate_response("Create a comment on this caption", comment_message, contexts, ["relevancy", "naturalness"])  
+        evaluation_result['your_answer'] = comment_message
         evaluation_passing = evaluation_result['evaluation_passing']
         print(f"[EVALUATION RESULT] {evaluation_result}")
         

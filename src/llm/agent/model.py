@@ -35,13 +35,8 @@ class Model():
     Initialization of the LLM and the embedding model
     """
     self._persona_component = persona_component
-    self.llm_model = OpenAI(model=self._llm_model_name,
-                            api_key=os.getenv("OPENAI_API_KEY"),
-                            temperature=self._temperature)
-    self.embed_model  = OpenAIEmbedding(model=self._embed_model_name,
-                                        api_key=os.getenv("OPENAI_API_KEY"))
-
-    print(f"[MODEL INITIALIZED] Model is initialized with llm_model: {self._llm_model_name} and embed_model: {self._embed_model_name}")
+    self.llm_model = None
+    self.embed_model  = None
 
   ######## SETUP ########
 
@@ -54,6 +49,25 @@ class Model():
     self._max_token = config_data[2]
     self._max_iteration = config_data[3]
     self.display_config()
+
+  def set_model(self) -> None:
+    """
+    Set the model based on the configuration
+    """
+    system_prompt = (
+        f"You are a user in Instagram who responds with clarity and purpose."
+        f"You have a certain persona on which you should follow strictly."
+        f"Here is the detail of your persona:\n"
+        f"{self._persona_component.get_persona_str()}\n\n"
+    )
+
+    self.llm_model = OpenAI(model=self._llm_model_name,
+                            api_key=os.getenv("OPENAI_API_KEY"),
+                            temperature=self._temperature,
+                            system_prompt=system_prompt)
+    self.embed_model  = OpenAIEmbedding(model=self._embed_model_name,
+                                        api_key=os.getenv("OPENAI_API_KEY"))
+    print(f"[MODEL SET] Model is set with llm_model: {self._llm_model_name} and embed_model: {self._embed_model_name}")
 
   ######## PRIVATE ########
 
@@ -186,12 +200,6 @@ class Model():
     Answer the prompt using the llm_model or agentic system
     If is_direct is True, it will use the llm_model directly.
     """
-    system_prompt = (
-        f"You are a user in Instagram who responds with clarity and purpose."
-        f"You have a certain persona on which you should follow strictly."
-        f"Here is the detaul of your persona:\n"
-        f"{self._persona_component.get_persona_str()}\n\n"
-    )
     try:
       if (is_direct):
          response = await self.llm_model.acomplete(prompt)
@@ -203,8 +211,7 @@ class Model():
           tools, 
           llm = self.llm_model, 
           verbose= verbose, 
-          max_iterations=self._max_iteration,
-          system_prompt=system_prompt
+          max_iterations=self._max_iteration
         )
         response = await agent.aquery(prompt)
         result = response.response
