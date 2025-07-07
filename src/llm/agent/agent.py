@@ -602,9 +602,20 @@ class Agent():
 
       # Max 5 times of action decision
       max_iteration = 5
+      actions = []
+      states = []
       for itr in range(max_iteration):
         action, state = self.action_generator_component.decide_action(observations, itr)
-        print(f"[ACTION DECISION] {itr+1}. action \"{action}\" in state \"{state}\"")
+        actions.append(action)
+        states.append(state)
+        if (action is None):
+          break
+      
+      print(f"[ACTION DECISION] Decided actions: {actions}")
+      for itr in range(len(actions)):
+        action = actions[itr]
+        state = states[itr]
+        print(f"[ACTION] {itr+1}. action \"{action}\" in state \"{state}\"")
 
         if (action == "like"):
           await self.action_like(communities)

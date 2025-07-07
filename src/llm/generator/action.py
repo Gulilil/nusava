@@ -42,11 +42,11 @@ class ActionGenerator:
         current_time = datetime.now(timezone.utc) + timedelta(hours=7)
         current_hour = current_time.hour
         if 5 <= current_hour < 12:
-            observations.append("morning_time")
+            observations.insert(0, "morning_time")
         elif 12 <= current_hour < 18:
-            observations.append("afternoon_time")
+            observations.insert(0, "afternoon_time")
         else:
-            observations.append("night_time")
+            observations.insert(0, "night_time")
 
         return observations
 
@@ -89,6 +89,8 @@ class ActionGenerator:
 
           # Predict hidden states from observation sequence
           state_sequence = model.predict(obs_sequence)
+          state_sequence_str = [self.hidden_states[state] for state in state_sequence]
+          print(f"[STATE SEQUENCE {iteration+1}] {state_sequence_str}")
           current_state = self.hidden_states[state_sequence[-1]]
 
           # Define simplified action policies
