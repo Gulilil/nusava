@@ -14,7 +14,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
-import { Search, MapPin, Star, TrendingUp, TrendingDown, Heart, MessageCircle, BarChart3, RefreshCw, Calendar } from "lucide-react";
+import { Search, MapPin, Star, TrendingUp, TrendingDown, Heart, MessageCircle, BarChart3, RefreshCw, Calendar, Plus } from "lucide-react";
 import { getTourismObjects, getAllTourismStatistics } from "@/app/api/bot";
 import { TourismObject, TourismObjectsResponse, AllTourismStatistics } from "@/types/types";
 import { useRouter } from 'next/navigation';
@@ -27,7 +27,7 @@ export default function TourismPage() {
   const [statsLoading, setStatsLoading] = useState(false);
   const [error, setError] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
-  const [selectedHours] = useState<number>(24);
+  const [selectedHours] = useState<number>(336);
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
   const router = useRouter();
 
@@ -95,18 +95,18 @@ export default function TourismPage() {
     return tourismStats.tourism_objects.find(stats => stats.tourism_object.id === objectId);
   };
 
-  const MetricCard = ({ 
-    title, 
-    value, 
-    percentChange, 
-    icon: Icon, 
+  const MetricCard = ({
+    title,
+    value,
+    percentChange,
+    icon: Icon,
     format = 'number',
     loading = false
-  }: { 
-    title: string; 
-    value: number; 
-    percentChange?: number; 
-    icon: React.ElementType; 
+  }: {
+    title: string;
+    value: number;
+    percentChange?: number;
+    icon: React.ElementType;
     format?: 'number' | 'percentage';
     loading?: boolean;
   }) => (
@@ -226,13 +226,13 @@ export default function TourismPage() {
   // Calculate overall statistics
   const calculateOverallStats = () => {
     if (!tourismStats?.tourism_objects) return null;
-    
+
     const totalPosts = tourismStats.tourism_objects.reduce((sum, obj) => sum + obj.summary.total_posts, 0);
     const totalLikes = tourismStats.tourism_objects.reduce((sum, obj) => sum + obj.summary.total_likes, 0);
     const totalComments = tourismStats.tourism_objects.reduce((sum, obj) => sum + obj.summary.total_comments, 0);
-    const avgLikesGrowth = tourismStats.tourism_objects.length > 0 ? 
+    const avgLikesGrowth = tourismStats.tourism_objects.length > 0 ?
       tourismStats.tourism_objects.reduce((sum, obj) => sum + obj.summary.likes_growth_rate, 0) / tourismStats.tourism_objects.length : 0;
-    const avgCommentsGrowth = tourismStats.tourism_objects.length > 0 ? 
+    const avgCommentsGrowth = tourismStats.tourism_objects.length > 0 ?
       tourismStats.tourism_objects.reduce((sum, obj) => sum + obj.summary.comments_growth_rate, 0) / tourismStats.tourism_objects.length : 0;
 
     return {
@@ -260,6 +260,14 @@ export default function TourismPage() {
                 </CardDescription>
               </div>
               <div className="flex items-center space-x-2">
+                <Button
+                  variant="default"
+                  size="sm"
+                  onClick={() => router.push('/tourism/add')}
+                >
+                  <Plus className="h-4 w-4 mr-1" />
+                  Add Post
+                </Button>
                 <Button
                   variant="outline"
                   size="sm"
@@ -379,7 +387,7 @@ export default function TourismPage() {
             </div>
 
             {loading && <p>Loading tourism objects...</p>}
-            
+
             {!loading && tourismData && (
               <Tabs defaultValue="all" className="mt-6">
                 <TabsList className="mb-4">
@@ -413,7 +421,7 @@ export default function TourismPage() {
                 </TabsContent>
               </Tabs>
             )}
-            
+
             {!loading && !tourismData && <p>No tourism objects available.</p>}
           </CardContent>
         </Card>

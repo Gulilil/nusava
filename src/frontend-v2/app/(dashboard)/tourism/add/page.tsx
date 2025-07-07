@@ -199,7 +199,18 @@ export default function SchedulePostPage() {
       const scheduleData = await scheduleResponse.json()
       console.log('Schedule response:', scheduleData)
       
-      toast.success("Post scheduled successfully! It will be posted at the optimal time.")
+      const scheduledDate = new Date(llmData.scheduled_time);
+      const formattedTime = scheduledDate.toLocaleString('en-US', {
+        weekday: 'long',
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+        timeZoneName: 'short'
+      });
+      
+      toast.success(`Post scheduled successfully! It will be posted at ${formattedTime}`)
       // const scheduleData = await scheduleResponse.json()
       // console.log('Schedule response:', scheduleData)
 
