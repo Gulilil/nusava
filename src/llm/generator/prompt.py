@@ -60,16 +60,17 @@ class PromptGenerator():
       if (len(previous_iteration_notes) == 0):
          previous_iteration_notes_subprompt += "I have no provided notes from the previous iteration. This is your first iteration"
       else:
-        previous_iteration_notes_subprompt += "Here are some notes from your previous iterations. This notes are important to be considered in your answer. "
-        previous_iteration_notes_subprompt += "Your answer are expected to pass the evaluator. But, here I provide some notes on your previous answers and the reason it does not pass the evaluator.\n"
-        previous_iteration_notes_subprompt += "You should and are expected to learn from this notes so you do not repeat the same mistake. "
-        previous_iteration_notes_subprompt += "The field `your_answer` is the answer that you provided in the previous iteration. \n"
-        previous_iteration_notes_subprompt += "You should not repeate the same answer as the ones in `your_answer` fields. At least, you should parafrase and choose different words from your previous answer. Make it as natural as you can. \n"
+        previous_iteration_notes_subprompt += "Here are some notes from your previous iterations. This notes are important to be considered in your answer. " \
+                                              "Your answer are expected to pass the evaluator. But, here I provide some notes on your previous answers and the reason it does not pass the evaluator.\n" \
+                                              "You should and are expected to learn from this notes so you do not repeat the same mistake. " \
+                                              "The field `your_answer` is the answer that you provided in the previous iteration. \n" \
+                                              "You should not repeate the same answer as the ones in `your_answer` fields. At least, you should parafrase and choose different words from your previous answer.\n"     
         for notes in previous_iteration_notes:
           previous_iteration_notes_subprompt += "{\n"
           for key, value in notes.items():
             previous_iteration_notes_subprompt += f"{key}: {value}\n"
           previous_iteration_notes_subprompt += "}\n"
+        previous_iteration_notes_subprompt += "If the only \"_passing\" field with False value is \"naturalness_passing\", you *should focus* on paraphrasing your previous answer to sound more natural, fluent, and human-like. \n" 
     else:
       previous_iteration_notes_subprompt = ""
       
@@ -254,7 +255,7 @@ class PromptGenerator():
       context += "You should and have to use the tools in answering the question using RAG method. The usage of the tools is critical on this aspect. "
       context += "The tools can be used to inquire information related to tourism. Furthermore, you might also be provided with tools to see the summarization of your previous messages. "
       context += "You need and have to utilize all the tools that are provided. In doing action, please do iteration to all the tools you think is related to the query. "
-      context += "Do not use only one tools. You should check bot tools for Nusa Tenggara Timur and Nusa Tenggara Barat to answer the questions. "
+      context += "Do not use only one tools. Whenever you are unsure whether it is Nusa Tenggara Timur or Nusa Tenggara Barat, you should check both tools for Nusa Tenggara Timur and Nusa Tenggara Barat to answer the questions. "
       context += "You should also try to use the tools to check previous memory to get better context. "
 
     # Setup subprompts
@@ -263,7 +264,7 @@ class PromptGenerator():
     # Chat does not need to have examples. It can be vary depending on the topic/ message
     additional_subprompt =  "In answering the context, please add a little of your explaination. " \
                             "Use your persona data to add a little characteristics to your answer. \n" \
-                            "The correctness and relevancy to the query is critical. " \
+                            "The faithfulness and relevancy to the query is critical. " \
                             "However, the style and characteristics of your answer is equally important. \n" \
                             "Please stay true and faithful to your persona. \n"
     additional_subprompt += "You should answer the chat message in 1 to 3 short paragraphs. You may answer up to 5 paragraphs but ONLY if it is critical and necessary. "\
@@ -273,6 +274,7 @@ class PromptGenerator():
                             "Do not explain other things that are not related the message from user. You would like to answer straight to the point. " \
                             "Do not answer in bullet points. On the other hand, try to explain it narratively. " \
                             "Do not forget to give your opinion according to the message as if you are a user in Instagram chatting with other people. \n" 
+    
     # Identify language
     lang, confidence = langid.classify(new_message)
     print(f"[LANGUAGE IDENTIFICATION] Detected language: \"{lang}\" with confidence: {confidence}")

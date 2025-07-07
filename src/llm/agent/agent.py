@@ -324,7 +324,7 @@ class Agent():
               print(f"[ACTION REPLY CHAT CONTEXT #{i+1}]: {context_to_display}")
 
             # Do Evaluation
-            evaluation_result = await self.evaluator_component.evaluate_response(chat_message, answer, rag_contexts, ["correctness", "faithfulness", "relevancy", "naturalness"])
+            evaluation_result = await self.evaluator_component.evaluate_response(chat_message, answer, rag_contexts, ["faithfulness", "relevancy", "naturalness"])
             evaluation_result['your_answer'] = answer
             evaluation_passing = evaluation_result['evaluation_passing']
             print(f"[EVALUATION RESULT] {evaluation_result}")
@@ -390,7 +390,7 @@ class Agent():
         attempt += 1
         if (not evaluation_passing):
           if (attempt >= max_attempts):
-            raise Exception(f"Model cannot answer this query after {max_attempts} attempts. The evaluations thresholds are not satisfied.")
+              raise Exception(f"Model cannot answer this query after {max_attempts} attempts. The evaluations thresholds are not satisfied.")
     
     except Exception as e:
       print(f"[ERROR ACTION REPLY CHAT] Error occured while processing action reply chat: {e}")

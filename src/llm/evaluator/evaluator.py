@@ -1,4 +1,4 @@
-from llama_index.core.evaluation import FaithfulnessEvaluator, RelevancyEvaluator, CorrectnessEvaluator
+from llama_index.core.evaluation import FaithfulnessEvaluator, RelevancyEvaluator
 import json
 
 
@@ -10,22 +10,12 @@ class Evaluator():
 
   def __init__(self, model_component: object, persona_component: object):
     """
-    Initialize the evaluators for correctness, faithfulness, and relevancy.
+    Initialize the evaluators for faithfulness and relevancy.
     """
     self._model_component = model_component
     self._persona_compnent = persona_component
-    self.correctness_evaluator = CorrectnessEvaluator(llm=self._model_component.llm_model)
     self.faithfulness_evaluator = FaithfulnessEvaluator(llm=self._model_component.llm_model)
     self.relevancy_evaluator = RelevancyEvaluator(llm=self._model_component.llm_model)
-
-
-  async def _evaluate_correctness(self, query: str, response:str, contexts: list) -> dict:
-    """
-    Evaluate the correctness of a response based on the query and contexts.
-    """
-    reference = "\n".join(contexts)
-    correctness = await self.correctness_evaluator.aevaluate(query=query, response=response, reference=reference)
-    return {"passing" : correctness.passing, "reason": correctness.feedback, "score" : correctness.score}
 
 
   async def _evaluate_faithfulness(self, query: str, response: str, contexts: list) -> dict:
@@ -85,11 +75,6 @@ class Evaluator():
     evaluation_result = {"evaluation_passing": True}
 
     # Evaluate each aspect in evaluation aspect
-    if ("correctness" in evaluation_aspect):
-      current_evaluation = await self._evaluate_correctness(query, response, contexts)
-      for key, val in current_evaluation.items():
-        evaluation_result[f"correctness_{key}"] = val
-      evaluation_result["evaluation_passing"] = evaluation_result["evaluation_passing"] and current_evaluation["passing"]
 
     if ("faithfulness" in evaluation_aspect):
       current_evaluation = await self._evaluate_faithfulness(query, response, contexts)
