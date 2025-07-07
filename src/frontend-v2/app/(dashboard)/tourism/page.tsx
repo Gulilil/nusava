@@ -14,7 +14,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
-import { Search, MapPin, Star, TrendingUp, TrendingDown, Heart, MessageCircle, BarChart3, RefreshCw, Calendar } from "lucide-react";
+import { Search, MapPin, Star, TrendingUp, TrendingDown, Heart, MessageCircle, BarChart3, RefreshCw, Calendar, Plus } from "lucide-react";
 import { getTourismObjects, getAllTourismStatistics } from "@/app/api/bot";
 import { TourismObject, TourismObjectsResponse, AllTourismStatistics } from "@/types/types";
 import { useRouter } from 'next/navigation';
@@ -260,6 +260,14 @@ export default function TourismPage() {
                 </CardDescription>
               </div>
               <div className="flex items-center space-x-2">
+                <Button
+                  variant="default"
+                  size="sm"
+                  onClick={() => router.push('/tourism/add')}
+                >
+                  <Plus className="h-4 w-4 mr-1" />
+                  Add Post
+                </Button>
                 <Button
                   variant="outline"
                   size="sm"
