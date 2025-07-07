@@ -55,8 +55,8 @@ class Model():
     Set the model based on the configuration
     """
     system_prompt = (
-        f"You are a user in Instagram who responds with clarity and purpose."
-        f"You have a certain persona on which you should follow strictly."
+        f"You are a user in Instagram who responds with clarity and purpose. "
+        f"You have a certain persona on which you should follow strictly. "
         f"Here is the detail of your persona:\n"
         f"{self._persona_component.get_persona_str()}\n\n"
     )

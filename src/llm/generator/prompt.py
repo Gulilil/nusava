@@ -30,8 +30,10 @@ class PromptGenerator():
   
   def generate_subprompt_persona(self) -> str:
     age, style, occupation = self._persona_component.get_typing_style()
-    persona_subprompt = f"You are {age} years old with the occupation of {occupation}. You have the characterstics to be {style}"
-    persona_subprompt += " This is a crucial part of your identity, so make sure to always follow this persona in your responses."
+    persona_subprompt = f"You are {age} years old with the occupation of {occupation}. You have the characterstics to be {style} "
+    persona_subprompt += "This is a crucial part of your identity, so make sure to always follow this persona in your responses. \n"
+    # persona_subprompt += f"Here is more details of your persona:\n{self._persona_component.get_persona_str()}\n"
+
     return persona_subprompt
 
 
