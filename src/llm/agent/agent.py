@@ -96,6 +96,7 @@ class Agent():
         self.set_persona()
     except Exception as e:
       print(f"[ERROR SETTING UP USER] Error in setting up user: {e}")
+      raise Exception(e)
 
 
   def set_persona(self) -> None:
@@ -104,6 +105,7 @@ class Agent():
     """
     persona_data = self.postgres_connector_component.get_persona_data(self.user_id)
     self.persona_component.load_persona(persona_data)
+    self.model_component.set_model()
 
   
   def set_config(self) -> None:
@@ -277,11 +279,14 @@ class Agent():
       evaluation_passing = False
       previous_iteration_notes = []
       while (not evaluation_passing):
+        print(f"[ACTION REPLY CHAT] Attempt {attempt+1} of {max_attempts}. ")
+
         # Filter the based on category
         if (category == "tourism"):
           # Load the data from pinecone
-          # First hotel data
-          await self._load_tools_rag("hotels", "rag_tools_for_hotels_data", "Used to answer hotels-related query based on retrieved documents", sender_id)
+          # First hotel data ntb and ntt
+          await self._load_tools_rag("hotels_ntt", "rag_tools_for_ntt_hotels_data", "Used to answer hotels-related query in Nusa Tenggara Timur (NTT) based on retrieved documents", sender_id)
+          await self._load_tools_rag("hotels_ntb", "rag_tools_for_ntb_hotels_data", "Used to answer hotels-related query in Nusa Tenggara Barat (NTB) based on retrieved documents", sender_id)
           # Then asso-rules
           await self._load_tools_rag("association_rules", "rag_tools_for_association_rules_data", "Used to recommend system for hotel based on its antecedent-consequent relation based on retrieved documents", sender_id)
           # Then tourist attractions ntt and ntb
@@ -290,7 +295,7 @@ class Agent():
           # Load the long-term memory from pinecone
           chat_memory_namespace_name = f"chat_bot[{self.user_id}]_sender[{sender_id}]"
           if (self.pinecone_connector_component.is_namespace_exist(chat_memory_namespace_name)):
-            await self._load_tools_rag(chat_memory_namespace_name, f"rag_tools_for_memory_chat_with_{sender_id}", f"Used to help answering question from {sender_id} based on previous occurences", sender_id)
+            await self._load_tools_rag(chat_memory_namespace_name, f"rag_tools_for_memory_chat_with_{sender_id}", f"Used to help answering question from {sender_id} based on previous memory of occurences", sender_id)
 
           # Generate prompt
           prompt = self.prompt_generator_component.generate_prompt_reply_chat(
@@ -300,7 +305,7 @@ class Agent():
           # Answer the query
           # Skip if the answer is None
           answer, rag_contexts = await self.model_component.answer(prompt, tool_user_id=sender_id)
-          print(f"[ACTION REPLY CHAT] Attempt {attempt+1} of {max_attempts}. ")
+          print(f"[ACTION REPLY CHAT] Temporary answer: {answer}. ")
 
           if (answer is None):
             previous_iteration_notes.append({
@@ -317,30 +322,64 @@ class Agent():
             if (len(context) <= 80):  context_to_display = context
             else:   context_to_display = f"{context[:40]}...{context[-40:]}"
             print(f"[ACTION REPLY CHAT CONTEXT #{i+1}]: {context_to_display}")
+
           # Do Evaluation
           evaluation_result = await self.evaluator_component.evaluate_response(chat_message, answer, rag_contexts, ["correctness", "faithfulness", "relevancy", "naturalness"])
+          evaluation_result['your_answer'] = answer
           evaluation_passing = evaluation_result['evaluation_passing']
           print(f"[EVALUATION RESULT] {evaluation_result}")
 
         elif (category == "general"):
+           # Load the long-term memory from pinecone
+          chat_memory_namespace_name = f"chat_bot[{self.user_id}]_sender[{sender_id}]"
+          if (self.pinecone_connector_component.is_namespace_exist(chat_memory_namespace_name)):
+            await self._load_tools_rag(chat_memory_namespace_name, f"rag_tools_for_memory_chat_with_{sender_id}", f"Used to help answering question from {sender_id} based on previous occurences", sender_id)
+          
           # Generate prompt
           prompt = self.prompt_generator_component.generate_prompt_reply_chat(
             new_message=chat_message,
             previous_messages=self.memory_component.retrieve(sender_id),
             previous_iteration_notes=previous_iteration_notes)  
           # Answer the query
-          answer, _ = await self.model_component.answer(prompt, is_direct=True)
+          answer, rag_contexts = await self.model_component.answer(prompt, tool_user_id=sender_id)
+          print(f"[ACTION REPLY CHAT] Temporary answer: {answer}. ")
+
+          if (answer is None):
+            previous_iteration_notes.append({
+              "iteration": attempt,
+              "your_answer" : None,
+              "evaluator": "model",
+              "evaluation_score": None,
+              "reason_of_rejection": "Model cannot answer this query."
+            })
+
+          # Display contexts
+          for i, context  in enumerate(rag_contexts):
+            context = context.replace("\n", " ")
+            if (len(context) <= 80):  context_to_display = context
+            else:   context_to_display = f"{context[:40]}...{context[-40:]}"
+            print(f"[ACTION REPLY CHAT CONTEXT #{i+1}]: {context_to_display}")
+
           # Do Evaluation
           evaluation_result = await self.evaluator_component.evaluate_response(chat_message, answer, [], ["relevancy", "naturalness"])
+          evaluation_result['your_answer'] = answer
           evaluation_passing = evaluation_result['evaluation_passing']
           print(f"[EVALUATION RESULT] {evaluation_result}")
 
         else: # cateogry == "other"
           # Generate prompt
-          prompt = self.prompt_generator_component.generate_prompt_out_of_domain(user_query=chat_message)  
+          prompt = self.prompt_generator_component.generate_prompt_out_of_domain(
+            user_query=chat_message,
+            previous_iteration_notes=previous_iteration_notes)  
           # Answer the query
           answer, _ = await self.model_component.answer(prompt, is_direct=True)
-          evaluation_passing = True
+          print(f"[ACTION REPLY CHAT] Temporary answer: {answer}. ")
+
+          # Do Evaluation
+          evaluation_result = await self.evaluator_component.evaluate_response(chat_message, answer, [], ["naturalness"])
+          evaluation_result['your_answer'] = answer
+          evaluation_passing = evaluation_result['evaluation_passing']
+          print(f"[EVALUATION RESULT] {evaluation_result}")
 
 
         # Add notes if it does not pass
@@ -391,6 +430,7 @@ class Agent():
           additional_context=additional_context,
           previous_iteration_notes=previous_iteration_notes
           )
+        print(prompt)
 
         # Generate caption message
         # Skip is the caption message is None
@@ -401,7 +441,7 @@ class Agent():
           previous_iteration_notes.append({
             "iteration": attempt,
             "your_answer" : None,
-            "evaluator": "model",
+            "evaluator": "system",
             "reason_of_rejection": "Model cannot generate caption."
           })
 
@@ -413,7 +453,8 @@ class Agent():
                       f"Here are the keywords: {keywords_str}"]  
           
           # Evaluate the answer
-          evaluation_result = await self.evaluator_component.evaluate_response("Create a caption for an Instagram post", caption_message, contexts, ["relevancy", "naturalness"])  
+          evaluation_result = await self.evaluator_component.evaluate_response("Create a caption for an Instagram post", caption_message, contexts, ["relevancy", "naturalness"]) 
+          evaluation_result['your_answer'] = caption_message 
           evaluation_passing = evaluation_result['evaluation_passing']
           print(f"[EVALUATION RESULT] {evaluation_result}")
           
@@ -567,7 +608,6 @@ class Agent():
         action, state = self.action_generator_component.decide_action(observations, itr)
         print(f"[ACTION DECISION] {itr+1}. action \"{action}\" in state \"{state}\"")
 
-        action = "comment"
         if (action == "like"):
           await self.action_like(communities)
         elif (action == "follow"):
@@ -754,6 +794,7 @@ class Agent():
         # Do Evaluation
         contexts = [f"Caption of the post that you need to comment on: {post_caption}"]
         evaluation_result = await self.evaluator_component.evaluate_response("Create a comment on this caption", comment_message, contexts, ["relevancy", "naturalness"])  
+        evaluation_result['your_answer'] = comment_message
         evaluation_passing = evaluation_result['evaluation_passing']
         print(f"[EVALUATION RESULT] {evaluation_result}")
         
@@ -798,8 +839,9 @@ class Agent():
     """
     Process data hotel, "migrate" it from mongodb document to pinecone vector
     """
-    mongo_collection_name = "hotel"
-    pinecone_namespace_name = "hotels"
+    mongo_collection_name = "hotel-v2"
+    pinecone_namespace_name_ntb = "hotels_ntb"
+    pinecone_namespace_name_ntt = "hotels_ntt"
 
     # Get hotel data from mongo
     hotels = self.mongo_connector_component.get_data(mongo_collection_name, {})
@@ -810,20 +852,34 @@ class Agent():
     length_per_batch = (len(hotels)//n_batch)+1
     while (idx < len(hotels)):
       # Set batch indices
-      hotel_docs = []
+      hotel_docs_ntt = []
+      hotel_docs_ntb = []
       upper_idx = min(idx+length_per_batch, len(hotels))
       curr_batch_hotels = hotels[idx : upper_idx]
 
       # Iterate data in the current batch list
-      for hotel in curr_batch_hotels:
-        hotel_string_data = hotel_data_to_string_list(hotel)
-        documents_list = text_to_document(hotel_string_data)
-        hotel_docs.extend(documents_list)
+      for i, hotel in enumerate(curr_batch_hotels):
+        print(f"[PROCESS DATA] Processing data {i+1} in batch")
+        hotel_string_data, province = hotel_data_to_string_list(hotel)
 
-      # Parse hotel data
-      hotel_data_parsed = parse_documents(hotel_docs)
-      # Insert to pinecone
-      self.pinecone_connector_component.store_data(hotel_data_parsed, pinecone_namespace_name)        
+        if (hotel_string_data and province):
+          documents_list = text_to_document(hotel_string_data)
+          if (province == "ntt"):
+            hotel_docs_ntt.extend(documents_list)
+          else:
+            hotel_docs_ntb.extend(documents_list)
+
+      # Parse hotel data and insert to Pinecone
+      if (len(hotel_docs_ntt) > 0):
+        hotel_data_ntt_parsed = parse_documents(hotel_docs_ntt)
+        self.pinecone_connector_component.store_data(hotel_data_ntt_parsed, pinecone_namespace_name_ntt) 
+        print(f"[BATCH PROGRESS] Processed {len(hotel_docs_ntt)} NTT nodes data")
+      
+      if (len(hotel_docs_ntb) > 0):
+        hotel_data_ntb_parsed = parse_documents(hotel_docs_ntb)
+        self.pinecone_connector_component.store_data(hotel_data_ntb_parsed, pinecone_namespace_name_ntb)         
+        print(f"[BATCH PROGRESS] Processed {len(hotel_docs_ntb)} NTB nodes data")
+      
       print(f'[BATCH PROGRESS] Successfully inserted data idx {idx} to {upper_idx}')
       
       # Increment idx
@@ -932,7 +988,7 @@ class Agent():
     print(f"[FETCHED] Fetched {len(attractions)} attractions")
 
     idx = 0
-    n_batch = 20
+    n_batch = 50
     length_per_batch = (len(attractions)//n_batch)+1
     while (idx < len(attractions)):
       # Set batch indices

@@ -17,14 +17,20 @@ async def test(nusava: Agent) -> None:
   # print(await nusava.action_reply_chat("What do you do for a living?", "gulilii"))
   # # Tourism
   # print(await nusava.action_reply_chat("Give me general informations of Tanto hotel.", "gulilii"))
-  # print(await nusava.action_reply_chat("Give me your 5 recommended Hotels in Nusa Tenggara. Please list it down along the name of the hotels", "gulilii"))
+  # print(await nusava.action_reply_chat("Give me your 5 recommended Hotels in NTB. Please list it down along the name of the hotels", "gulilii"))
+  # print(await nusava.action_reply_chat("Now give me ones in NTT", "gulilii"))
+  # print(await nusava.action_reply_chat("I mean give me some recommended ones in NTT", "gulilii"))
+  # print(await nusava.action_reply_chat("I am taking a trip to Gili Trawangan. Give me some of your recommendation hotels.", "gulilii"))
+
   # print(await nusava.action_reply_chat("Tell me the exact location of Tanto Hotel", "gulilii"))
+  # print(await nusava.action_reply_chat("Can you tell me more about the pricing of Serene Beach Villa.", "gulilii"))
+  
   # print(await nusava.action_reply_chat("Summarize me some reviews of Tanto Hotel. State the ratings and the description of some of the reviews too.", "gulilii"))
   # print(await nusava.action_reply_chat("Tell me the check-in and check-out time of Siola Hotel", "gulilii"))
   # print(await nusava.action_reply_chat("Based on Harbour Shuttle by Bajo Taxi tourist attractions. Give me some of your recommended hotels.", "gulilii"))
   # # Other
-  # print(await nusava.action_reply_chat("Can you explain me more about the differences between JavaScript and Python?", "gulilii"))
-  # print(await nusava.action_reply_chat("Provide me a recipe details to make Nasi Goreng", "gulilii"))
+  print(await nusava.action_reply_chat("Can you explain me more about the differences between JavaScript and Python?", "gulilii"))
+  print(await nusava.action_reply_chat("Provide me a recipe details to make Nasi Goreng", "gulilii"))
 
 
   # # Tourist attraction  

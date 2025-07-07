@@ -76,6 +76,6 @@ class Persona():
     Call persona data as string
     """
     persona_str_list = []
-    json_to_string_list(self._persona, "persona", persona_str_list)
+    json_to_string_list(self._persona, "", persona_str_list)
     persona_str = "\n".join(persona_str_list)
     return persona_str
