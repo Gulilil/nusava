@@ -1,5 +1,6 @@
 from llama_index.core.prompts import PromptTemplate
 from datetime import datetime, timezone, timedelta
+import langid
 
 PROMPT_TEMPLATE = """Definition:
 {persona_subprompt}.
@@ -272,10 +273,13 @@ class PromptGenerator():
                             "Do not explain other things that are not related the message from user. You would like to answer straight to the point. " \
                             "Do not answer in bullet points. On the other hand, try to explain it narratively. " \
                             "Do not forget to give your opinion according to the message as if you are a user in Instagram chatting with other people. \n" 
+    # Identify language
+    lang, confidence = langid.classify(new_message)
+    print(f"[LANGUAGE IDENTIFICATION] Detected language: \"{lang}\" with confidence: {confidence}")
     additional_subprompt += "You are also a language expert. You should identify the language in the query message. "\
-                            "After you identify the language, you should and have to answer it on the same language. \n"\
-    
-    
+                            f"You are helped with language identification library. Based on its detection, the language is \"{lang}\". "\
+                            "However, this is not absolutely true. You may have different answer if you think the answer from identification library is not right. "\
+                            "After you identify the language, you should and have to answer it on the same language. \n"
 
     previous_iteration_notes_subprompt = self.generate_subprompt_previous_iteration_notes(previous_iteration_notes)
     return self._prompt_template.format(persona_subprompt=persona_subprompt,

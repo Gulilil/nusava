@@ -290,8 +290,8 @@ class Agent():
           # Then asso-rules
           await self._load_tools_rag("association_rules", "rag_tools_for_association_rules_data", "Used to recommend system for hotel based on its antecedent-consequent relation based on retrieved documents", sender_id)
           # Then tourist attractions ntt and ntb
-          await self._load_tools_rag("tourist_attractions_ntt", "rag_tools_for_ntt_tourist_attractions_data", "Used to answer tourist-attractions-related query in Nusa Tenggara Timur (NTT) based on retrieved documents", sender_id)
-          await self._load_tools_rag("tourist_attractions_ntb", "rag_tools_for_ntb_tourist_attractions_data", "Used to answer tourist-attractions-related query in Nusa Tenggara Barat (NTB) based on retrieved documents", sender_id)
+          await self._load_tools_rag("tourist_attractions_ntt", "rag_tools_for_ntt_tourist_attractions_data", "Used to answer destination or tourist-attractions-related query in Nusa Tenggara Timur (NTT) based on retrieved documents", sender_id)
+          await self._load_tools_rag("tourist_attractions_ntb", "rag_tools_for_ntb_tourist_attractions_data", "Used to answer destination or tourist-attractions-related query in Nusa Tenggara Barat (NTB) based on retrieved documents", sender_id)
           # Load the long-term memory from pinecone
           chat_memory_namespace_name = f"chat_bot[{self.user_id}]_sender[{sender_id}]"
           if (self.pinecone_connector_component.is_namespace_exist(chat_memory_namespace_name)):
@@ -315,19 +315,19 @@ class Agent():
               "evaluation_score": None,
               "reason_of_rejection": "Model cannot answer this query."
             })
+          else:
+            # Display contexts
+            for i, context  in enumerate(rag_contexts):
+              context = context.replace("\n", " ")
+              if (len(context) <= 80):  context_to_display = context
+              else:   context_to_display = f"{context[:40]}...{context[-40:]}"
+              print(f"[ACTION REPLY CHAT CONTEXT #{i+1}]: {context_to_display}")
 
-          # Display contexts
-          for i, context  in enumerate(rag_contexts):
-            context = context.replace("\n", " ")
-            if (len(context) <= 80):  context_to_display = context
-            else:   context_to_display = f"{context[:40]}...{context[-40:]}"
-            print(f"[ACTION REPLY CHAT CONTEXT #{i+1}]: {context_to_display}")
-
-          # Do Evaluation
-          evaluation_result = await self.evaluator_component.evaluate_response(chat_message, answer, rag_contexts, ["correctness", "faithfulness", "relevancy", "naturalness"])
-          evaluation_result['your_answer'] = answer
-          evaluation_passing = evaluation_result['evaluation_passing']
-          print(f"[EVALUATION RESULT] {evaluation_result}")
+            # Do Evaluation
+            evaluation_result = await self.evaluator_component.evaluate_response(chat_message, answer, rag_contexts, ["correctness", "faithfulness", "relevancy", "naturalness"])
+            evaluation_result['your_answer'] = answer
+            evaluation_passing = evaluation_result['evaluation_passing']
+            print(f"[EVALUATION RESULT] {evaluation_result}")
 
         elif (category == "general"):
            # Load the long-term memory from pinecone
@@ -352,19 +352,19 @@ class Agent():
               "evaluation_score": None,
               "reason_of_rejection": "Model cannot answer this query."
             })
+          else:
+            # Display contexts
+            for i, context  in enumerate(rag_contexts):
+              context = context.replace("\n", " ")
+              if (len(context) <= 80):  context_to_display = context
+              else:   context_to_display = f"{context[:40]}...{context[-40:]}"
+              print(f"[ACTION REPLY CHAT CONTEXT #{i+1}]: {context_to_display}")
 
-          # Display contexts
-          for i, context  in enumerate(rag_contexts):
-            context = context.replace("\n", " ")
-            if (len(context) <= 80):  context_to_display = context
-            else:   context_to_display = f"{context[:40]}...{context[-40:]}"
-            print(f"[ACTION REPLY CHAT CONTEXT #{i+1}]: {context_to_display}")
-
-          # Do Evaluation
-          evaluation_result = await self.evaluator_component.evaluate_response(chat_message, answer, [], ["relevancy", "naturalness"])
-          evaluation_result['your_answer'] = answer
-          evaluation_passing = evaluation_result['evaluation_passing']
-          print(f"[EVALUATION RESULT] {evaluation_result}")
+            # Do Evaluation
+            evaluation_result = await self.evaluator_component.evaluate_response(chat_message, answer, [], ["relevancy", "naturalness"])
+            evaluation_result['your_answer'] = answer
+            evaluation_passing = evaluation_result['evaluation_passing']
+            print(f"[EVALUATION RESULT] {evaluation_result}")
 
         else: # cateogry == "other"
           # Generate prompt

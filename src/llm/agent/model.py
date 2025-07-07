@@ -211,7 +211,8 @@ class Model():
           tools, 
           llm = self.llm_model, 
           verbose= verbose, 
-          max_iterations=self._max_iteration
+          max_iterations=self._max_iteration,
+          allow_direct_answer=True
         )
         response = await agent.aquery(prompt)
         result = response.response

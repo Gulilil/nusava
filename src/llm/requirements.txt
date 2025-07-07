@@ -16,13 +16,13 @@ flask[async]==3.1.1
 flask-cors==6.0.1
 gunicorn==23.0.0
 
-Quart==0.20.0
-quart-cors==0.8.0
-Hypercorn==0.17.3
 
 # Mongodb
 pymongo==4.13.0
 
 # Numpy 
 numpy==1.23.5
+
+# Language function
+langid==1.1.6
 

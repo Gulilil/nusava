@@ -29,8 +29,8 @@ async def test(nusava: Agent) -> None:
   # print(await nusava.action_reply_chat("Tell me the check-in and check-out time of Siola Hotel", "gulilii"))
   # print(await nusava.action_reply_chat("Based on Harbour Shuttle by Bajo Taxi tourist attractions. Give me some of your recommended hotels.", "gulilii"))
   # # Other
-  print(await nusava.action_reply_chat("Can you explain me more about the differences between JavaScript and Python?", "gulilii"))
-  print(await nusava.action_reply_chat("Provide me a recipe details to make Nasi Goreng", "gulilii"))
+  # print(await nusava.action_reply_chat("Can you explain me more about the differences between JavaScript and Python?", "gulilii"))
+  # print(await nusava.action_reply_chat("Provide me a recipe details to make Nasi Goreng", "gulilii"))
 
 
   # # Tourist attraction  
