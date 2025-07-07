@@ -59,17 +59,19 @@ class InstagramBot:
         model = random.choice(models[manufacturer])
         
         # Setup client configuration
-        self.client.set_locale('en_SG')
-        self.client.set_country('SG')
-        self.client.set_country_code(65)
-        self.client.set_timezone_offset(28800)
-        self.client.set_device({
-            'manufacturer': manufacturer,
-            'model': model,
-            'android_version': random.choice([28, 29, 30, 31]),
-            'android_release': random.choice(['9.0', '10.0', '11.0', '12.0'])
-        })
-        
+        cl = Client()
+        cl.set_locale('en_ID')  # Changed to Indonesian
+        cl.set_country('ID')    # Changed to Indonesia
+        cl.set_country_code(62) # Indonesia country code
+        cl.set_timezone_offset(25200)  # UTC+7 (Indonesia WIB)
+
+        cl.set_device({
+                'manufacturer': 'vivo',
+                'model': 'V2201', 
+                'android_version': 34,
+                'android_release': '14.0'
+            })
+                
         proxy_url = env('PROXY_URL', default=None)
         self.client.set_proxy(proxy_url)
         self.client.delay_range = [2, 5]
@@ -89,16 +91,18 @@ class InstagramBot:
                 # Clear invalid session data
                 self.client = Client()  # Reset client
                 # Reapply configuration
-                self.client.set_locale('en_SG')
-                self.client.set_country('SG')
-                self.client.set_country_code(65)
-                self.client.set_timezone_offset(28800)
-                self.client.set_device({
-                    'manufacturer': manufacturer,
-                    'model': model,
-                    'android_version': random.choice([28, 29, 30, 31]),
-                    'android_release': random.choice(['9.0', '10.0', '11.0', '12.0'])
-                })
+                cl = Client()
+                cl.set_locale('en_ID')  # Changed to Indonesian
+                cl.set_country('ID')    # Changed to Indonesia
+                cl.set_country_code(62) # Indonesia country code
+                cl.set_timezone_offset(25200)  # UTC+7 (Indonesia WIB)
+
+                cl.set_device({
+                        'manufacturer': 'vivo',
+                        'model': 'V2201', 
+                        'android_version': 34,
+                        'android_release': '14.0'
+                    })
                 if proxy_url:
                     self.client.set_proxy(proxy_url)
                 self.client.delay_range = [2, 5]
