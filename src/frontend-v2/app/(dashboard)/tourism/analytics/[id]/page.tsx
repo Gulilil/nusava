@@ -214,6 +214,7 @@ export default function TourismAnalyticsPage() {
                 <SelectItem value="48">2 Days</SelectItem>
                 <SelectItem value="72">3 Days</SelectItem>
                 <SelectItem value="168">1 week</SelectItem>
+                <SelectItem value="336">2 week</SelectItem>
               </SelectContent>
             </Select>
           </div>
