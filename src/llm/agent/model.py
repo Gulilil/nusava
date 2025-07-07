@@ -194,6 +194,7 @@ class Model():
                    prompt: str, 
                    is_direct: bool = False, 
                    verbose: bool = True,
+                   allow_direct_answer: bool = True,
                    tool_user_id: str = "",
                   ) -> Tuple[Optional[str], Optional[list]]:
     """
@@ -212,7 +213,7 @@ class Model():
           llm = self.llm_model, 
           verbose= verbose, 
           max_iterations=self._max_iteration,
-          allow_direct_answer=True
+          allow_direct_answer=allow_direct_answer
         )
         response = await agent.aquery(prompt)
         result = response.response

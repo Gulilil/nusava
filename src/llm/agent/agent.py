@@ -430,7 +430,6 @@ class Agent():
           additional_context=additional_context,
           previous_iteration_notes=previous_iteration_notes
           )
-        print(prompt)
 
         # Generate caption message
         # Skip is the caption message is None
@@ -466,13 +465,12 @@ class Agent():
         attempt += 1
         if (not evaluation_passing):
           if (attempt >= max_attempts):
-            raise Exception(f"Model cannot answer this query after {max_attempts} attempts. The evaluations thresholds are not satisfied.")
-        
+            print(f"[ERROR ACTION POST CAPTION] Model cannot answer this query after {max_attempts} attempts. The evaluations thresholds are not satisfied. Returning last answer as final answer.")
+            break
+
     except Exception as e:
       print(f"[ERROR ACTION POST] Error occured while processing action post caption: {e}")
-      user_query = f"Make a post caption with image description: {img_description}, keywords: {caption_keywords}, additional context: {additional_context}"
-      error_prompt = self.prompt_generator_component.generate_prompt_error(user_query=user_query)
-      answer, _ = await self.model_component.answer(error_prompt, is_direct=True)
+      raise Exception(e)
     
     finally:
       # Return answer regardless the condition

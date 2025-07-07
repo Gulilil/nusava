@@ -23,12 +23,7 @@ class Evaluator():
     """
     Evaluate the correctness of a response based on the query and contexts.
     """
-    reference = ""
-    for i, context in enumerate(contexts):
-      reference += f"Reference {i+1}"
-      reference += "\n"
-      reference += context
-      reference += "\n"
+    reference = "\n".join(contexts)
     correctness = await self.correctness_evaluator.aevaluate(query=query, response=response, reference=reference)
     return {"passing" : correctness.passing, "reason": correctness.feedback, "score" : correctness.score}
 
