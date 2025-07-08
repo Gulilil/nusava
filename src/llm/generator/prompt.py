@@ -96,6 +96,15 @@ class PromptGenerator():
     context_subprompt = self.generate_subprompt_context(context_str)
     additional_subprompt =  "You are expected to explain to user concisely yet informative." \
                             "Make sure to not answer more than 1 paragraph."
+    
+    # Identify language
+    lang, confidence = langid.classify(user_query)
+    print(f"[LANGUAGE IDENTIFICATION] Detected language: \"{lang}\" with confidence: {confidence}")
+    additional_subprompt += "You are also a language expert. You should identify the language in the query message. "\
+                            f"You are helped with language identification library. Based on its detection, the language is \"{lang}\". "\
+                            "However, this is not absolutely true. You may have different answer if you think the answer from identification library is not right. "\
+                            "After you identify the language, you should and have to answer it on the same language. \n"
+
     previous_iteration_notes_subprompt = ""
     query_str = "Explain to user that you cannot answer this query."
 
