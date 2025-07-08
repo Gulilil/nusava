@@ -288,14 +288,14 @@ class Agent():
           await self._load_tools_rag("hotels_ntt", "rag_tools_for_ntt_hotels_data", "Used to answer hotels-related query in Nusa Tenggara Timur (NTT) based on retrieved documents", sender_id)
           await self._load_tools_rag("hotels_ntb", "rag_tools_for_ntb_hotels_data", "Used to answer hotels-related query in Nusa Tenggara Barat (NTB) based on retrieved documents", sender_id)
           # Then asso-rules
-          await self._load_tools_rag("association_rules", "rag_tools_for_association_rules_data", "Used to recommend system for hotel based on its antecedent-consequent relation based on retrieved documents", sender_id)
+          await self._load_tools_rag("association_rules", "rag_tools_for_association_rules_data", "Used to give hotel recommendations based on its antecedent-consequent relation based on retrieved documents", sender_id)
           # Then tourist attractions ntt and ntb
           await self._load_tools_rag("tourist_attractions_ntt", "rag_tools_for_ntt_tourist_attractions_data", "Used to answer destination or tourist-attractions-related query in Nusa Tenggara Timur (NTT) based on retrieved documents", sender_id)
           await self._load_tools_rag("tourist_attractions_ntb", "rag_tools_for_ntb_tourist_attractions_data", "Used to answer destination or tourist-attractions-related query in Nusa Tenggara Barat (NTB) based on retrieved documents", sender_id)
           # Load the long-term memory from pinecone
           chat_memory_namespace_name = f"chat_bot[{self.user_id}]_sender[{sender_id}]"
           if (self.pinecone_connector_component.is_namespace_exist(chat_memory_namespace_name)):
-            await self._load_tools_rag(chat_memory_namespace_name, f"rag_tools_for_memory_chat_with_{sender_id}", f"Used to help answering question from {sender_id} based on previous memory of occurences", sender_id)
+            await self._load_tools_rag(chat_memory_namespace_name, f"rag_tools_for_memory_chat_with_{sender_id}", f"Used to help answering question from {sender_id} based on previous messages", sender_id)
 
           # Generate prompt
           prompt = self.prompt_generator_component.generate_prompt_reply_chat(
@@ -333,7 +333,7 @@ class Agent():
            # Load the long-term memory from pinecone
           chat_memory_namespace_name = f"chat_bot[{self.user_id}]_sender[{sender_id}]"
           if (self.pinecone_connector_component.is_namespace_exist(chat_memory_namespace_name)):
-            await self._load_tools_rag(chat_memory_namespace_name, f"rag_tools_for_memory_chat_with_{sender_id}", f"Used to help answering question from {sender_id} based on previous occurences", sender_id)
+            await self._load_tools_rag(chat_memory_namespace_name, f"rag_tools_for_memory_chat_with_{sender_id}", f"Used to help answering question from {sender_id} based on previous messages", sender_id)
           
           # Generate prompt
           prompt = self.prompt_generator_component.generate_prompt_reply_chat(
