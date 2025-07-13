@@ -260,9 +260,6 @@ class Agent():
     Operate the action reply chat
     """
 
-    # Store in user query reply memory
-    await self.memory_component.store(sender_id, {"role": "user", "content" : chat_message})
-
     try:
       # Detect the category first
       prompt = self.prompt_generator_component.generate_prompt_identify_chat_category(new_message=chat_message)  
@@ -308,13 +305,13 @@ class Agent():
           print(f"[ACTION REPLY CHAT] Temporary answer: {answer}. ")
 
           if (answer is None):
-            previous_iteration_notes.append({
+            evaluation_result = {
               "iteration": attempt,
               "your_answer" : None,
               "evaluator": "model",
               "evaluation_score": None,
               "reason_of_rejection": "Model cannot answer this query."
-            })
+            }
           else:
             # Display contexts
             for i, context  in enumerate(rag_contexts):
@@ -345,13 +342,13 @@ class Agent():
           print(f"[ACTION REPLY CHAT] Temporary answer: {answer}. ")
 
           if (answer is None):
-            previous_iteration_notes.append({
+            evaluation_result = {
               "iteration": attempt,
               "your_answer" : None,
               "evaluator": "model",
               "evaluation_score": None,
               "reason_of_rejection": "Model cannot answer this query."
-            })
+            }
           else:
             # Display contexts
             for i, context  in enumerate(rag_contexts):
@@ -381,16 +378,16 @@ class Agent():
           evaluation_passing = evaluation_result['evaluation_passing']
           print(f"[EVALUATION RESULT] {evaluation_result}")
 
-
-        # Add notes if it does not pass
-        if (not evaluation_passing):
-          previous_iteration_notes.append(evaluation_result)
-
         # Increment attempt
         attempt += 1
         if (not evaluation_passing):
+          previous_iteration_notes.append(evaluation_result)
           if (attempt >= max_attempts):
-              raise Exception(f"Model cannot answer this query after {max_attempts} attempts. The evaluations thresholds are not satisfied.")
+              if (self.evaluator_component.is_passable(evaluation_result)):
+                print(f"[DETECTING ANSWER IS PASSABLE] Naturalness is not passed but still return last answer as the final answer.")
+                evaluation_passing = True
+              else:
+                raise Exception(f"Model cannot answer this query after {max_attempts} attempts. The evaluations thresholds are not satisfied.")
     
     except Exception as e:
       print(f"[ERROR ACTION REPLY CHAT] Error occured while processing action reply chat: {e}")
@@ -403,7 +400,8 @@ class Agent():
       answer = clean_quotation_string(answer)
       answer_messages = sanitize_text_to_list(answer)
       print(f"[ACTION REPLY CHAT ANSWER] Answer: {answer_messages}")
-      # Store in bot's reply memory
+      # Store user query memory and bot's reply memory
+      await self.memory_component.store(sender_id, {"role": "user", "content" : chat_message})
       await self.memory_component.store(sender_id, {"role": "bot", "content" : answer})
       # Refresh tools after use
       self.model_component.refresh_tools(sender_id)
@@ -435,35 +433,22 @@ class Agent():
         # Skip is the caption message is None
         caption_message, _ = await self.model_component.answer(prompt, is_direct=True)
         print(f"[ACTION POST CAPTION] Attempt {attempt+1} of {max_attempts}. \nCaption: {caption_message}")          
+      
+        # Prepare contexts for evaluation
+        keywords_str = ", ".join(caption_keywords)
+        contexts = [f"Here is the image description: {img_description}", 
+                    f"Here are the keywords: {keywords_str}"]  
         
-        if (caption_message is None):
-          previous_iteration_notes.append({
-            "iteration": attempt,
-            "your_answer" : None,
-            "evaluator": "system",
-            "reason_of_rejection": "Model cannot generate caption."
-          })
-
-        # Condition caption_message is not None
-        else:
-          # Prepare contexts for evaluation
-          keywords_str = ", ".join(caption_keywords)
-          contexts = [f"Here is the image description: {img_description}", 
-                      f"Here are the keywords: {keywords_str}"]  
-          
-          # Evaluate the answer
-          evaluation_result = await self.evaluator_component.evaluate_response("Create a caption for an Instagram post", caption_message, contexts, ["relevancy", "naturalness"]) 
-          evaluation_result['your_answer'] = caption_message 
-          evaluation_passing = evaluation_result['evaluation_passing']
-          print(f"[EVALUATION RESULT] {evaluation_result}")
-          
-          # Add note if does not pass
-          if (not evaluation_passing):
-            previous_iteration_notes.append(evaluation_result)
+        # Evaluate the answer
+        evaluation_result = await self.evaluator_component.evaluate_response("Create a caption for an Instagram post", caption_message, contexts, ["relevancy", "naturalness"]) 
+        evaluation_result['your_answer'] = caption_message 
+        evaluation_passing = evaluation_result['evaluation_passing']
+        print(f"[EVALUATION RESULT] {evaluation_result}")
 
         # Increment attempt
         attempt += 1
         if (not evaluation_passing):
+          previous_iteration_notes.append(evaluation_result)
           if (attempt >= max_attempts):
             print(f"[ERROR ACTION POST CAPTION] Model cannot answer this query after {max_attempts} attempts. The evaluations thresholds are not satisfied. Returning last answer as final answer.")
             break
@@ -807,13 +792,11 @@ class Agent():
         evaluation_passing = evaluation_result['evaluation_passing']
         print(f"[EVALUATION RESULT] {evaluation_result}")
         
-        # Add note if does not pass
-        if (not evaluation_passing):
-          previous_iteration_notes.append(evaluation_result)
 
         # Increment attempt
         attempt += 1
         if (not evaluation_passing):
+          previous_iteration_notes.append(evaluation_result)
           if (attempt >= max_attempts):
             raise Exception(f"Model cannot answer this query after {max_attempts} attempts. The evaluations thresholds are not satisfied.")
 

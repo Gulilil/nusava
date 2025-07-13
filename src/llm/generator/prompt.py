@@ -209,11 +209,11 @@ class PromptGenerator():
   
   ######## CHAT ########
 
-  def generate_prompt_identify_chat_category(self, new_message: str): 
+  def generate_prompt_identify_chat_category(self, new_message: str, previous_messages: list[dict] = []) -> str: 
     """
     Generate a prompt for categorize the caht
     """
-    context = f"You are required to categorize this message : \"{new_message}\".\n" \
+    context = f"You are required to categorize this new message : \"{new_message}\".\n" \
               "The category is divided into three categories: [general, tourism, other]. \n" \
               "- general: casual conversation, greetings, small talk, and your personal information. \n" \
               "If the message falls into \"general\" category, you have to answer it based on your persona. \n" \
@@ -222,6 +222,13 @@ class PromptGenerator():
               "- other: anything that does not fall into the above two categories. \n" \
               "If the message falls into \"other\" category, explain that it is outside of your expertise to answer the question. " \
               "Therefore, you need to explain to the user that you cannot provide the answer that message. \n" \
+
+    context += "You are also provided with some previous messages. You should try to understand the whole context of the conversation then decide what type or category is the new message is. \n"
+    context += "Here is the previous messages:\n\n"
+    for i, message in enumerate(previous_messages):
+      context += f"Message {i+1}. {message['role']}: \"{message['content']}\"\n"
+    context += "\n"
+
 
     # Setup subprompts
     persona_subprompt = self.generate_subprompt_persona()

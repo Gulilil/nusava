@@ -95,3 +95,14 @@ class Evaluator():
       evaluation_result["evaluation_passing"] = evaluation_result["evaluation_passing"] and current_evaluation["passing"]
     
     return evaluation_result
+
+
+  def is_passable(self, evaluation_result: dict) -> bool:
+    """
+    Check if the evaluation result is passable (only naturalness is allowed to fail)
+    """
+    for key, val in evaluation_result.items():
+      if ("_passing" in key and key != "naturalness_passing"):
+        if (not val):
+          return False
+    return True
