@@ -1,6 +1,7 @@
 from llama_index.core.prompts import PromptTemplate
 from datetime import datetime, timezone, timedelta
 import langid
+from zoneinfo import ZoneInfo
 
 PROMPT_TEMPLATE = """Definition:
 {persona_subprompt}.
@@ -223,11 +224,12 @@ class PromptGenerator():
               "If the message falls into \"other\" category, explain that it is outside of your expertise to answer the question. " \
               "Therefore, you need to explain to the user that you cannot provide the answer that message. \n" \
 
-    context += "You are also provided with some previous messages. You should try to understand the whole context of the conversation then decide what type or category is the new message is. \n"
-    context += "Here is the previous messages:\n\n"
-    for i, message in enumerate(previous_messages):
-      context += f"Message {i+1}. {message['role']}: \"{message['content']}\"\n"
-    context += "\n"
+    if (len(previous_messages) > 0):
+      context += "You are also provided with some previous messages. You should try to understand the whole context of the conversation then decide what type or category is the new message is. \n"
+      context += "Here is the previous messages:\n\n"
+      for i, message in enumerate(previous_messages):
+        context += f"Message {i+1}. {message['role']}: \"{message['content']}\"\n"
+      context += "\n"
 
 
     # Setup subprompts
@@ -267,12 +269,12 @@ class PromptGenerator():
         context += f"Message {i+1}. {message['role']}: \"{message['content']}\"\n"
       context += "\n"
 
-      context += "Aside for the previous recent messages that you are provided. You will also be provided with some tools. "
-      context += "You should and have to use the tools in answering the question using RAG method. The usage of the tools is critical on this aspect. "
-      context += "The tools can be used to inquire information related to tourism. Furthermore, you might also be provided with tools to see the summarization of your previous messages. "
-      context += "You need and have to utilize all the tools that are provided. In doing action, please do iteration to all the tools you think is related to the query. "
-      context += "Do not use only one tools. Whenever you are unsure whether it is Nusa Tenggara Timur or Nusa Tenggara Barat, you should check both tools for Nusa Tenggara Timur and Nusa Tenggara Barat to answer the questions. "
-      context += "You should also try to use the tools to check previous memory to get better context. "
+    context += "You will be provided with some tools. "
+    context += "You should and have to use the tools in answering the question using RAG method. The usage of the tools is critical on this aspect. "
+    context += "The tools can be used to inquire information related to tourism. Furthermore, you might also be provided with tools to see the summarization of your previous messages. "
+    context += "You need and have to utilize all the tools that are provided. In doing action, please do iteration to all the tools you think is related to the query. "
+    context += "Do not use only one tools. Whenever you are unsure whether it is Nusa Tenggara Timur or Nusa Tenggara Barat, you should check both tools for Nusa Tenggara Timur and Nusa Tenggara Barat to answer the questions. "
+    context += "You should also try to use the tools to check previous memory to get better context. "
 
     # Setup subprompts
     persona_subprompt = self.generate_subprompt_persona()
@@ -393,7 +395,7 @@ class PromptGenerator():
       context_str += "\n\n"  
 
     # Setup subprompts
-    current_time = datetime.now(timezone.utc) + timedelta(hours=7)
+    current_time = datetime.now(ZoneInfo("Asia/Jakarta"))
     current_time = current_time.strftime("%Y-%m-%d %H:%M:%S")
     persona_subprompt = self.generate_subprompt_persona()
     context_subprompt = self.generate_subprompt_context(context_str)

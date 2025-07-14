@@ -1,6 +1,7 @@
 import os
 import psycopg2
 from datetime import datetime, timezone, timedelta
+from zoneinfo import ZoneInfo
 
 from dotenv import load_dotenv
 load_dotenv()
@@ -92,7 +93,7 @@ class PostgresConnector():
           column_names = "id, image_url, caption, user_id, tourism_object_id"
           
           # Get current time in GMT+7
-          current_time_gmt7 = datetime.now(timezone.utc) + timedelta(hours=7)
+          current_time_gmt7 = datetime.now(ZoneInfo("Asia/Jakarta"))
           print(f"[CURRENT TIME] {current_time_gmt7}")
 
           # Use parameterized query to prevent SQL injection
@@ -117,14 +118,22 @@ class PostgresConnector():
       """
       try:
           table_name = "bot_scheduledpost"
-          # Get current time in GMT+7
-
+          # Update mark
           query = f"""
               UPDATE {table_name}
               SET is_posted = TRUE
               WHERE id = %s;
           """
           self.cursor.execute(query, (id,))
+
+          # Update updated_on
+          current_time = datetime.now(ZoneInfo("Asia/Jakarta"))
+          query = f"""
+              UPDATE {table_name}
+              SET updated_at = %s
+              WHERE id = %s;
+          """
+          self.cursor.execute(query, (current_time, id))
           self.connection.commit()
           print(f"[MARK IS POSTED] Marked posts as posted for id={id}")
       except Exception as e:

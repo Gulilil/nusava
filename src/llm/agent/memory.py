@@ -1,4 +1,5 @@
 from datetime import datetime, timezone, timedelta
+from zoneinfo import ZoneInfo
 
 class Memory():
   """
@@ -70,7 +71,7 @@ class Memory():
 
       """
       # Store as short term memory
-      current_time = datetime.now(timezone.utc) + timedelta(hours=7)
+      current_time = datetime.now(ZoneInfo("Asia/Jakarta"))
       memory_data["timestamp"] = current_time
       # Create a list if it is a new sender_id
       if (sender_id not in self._memory):

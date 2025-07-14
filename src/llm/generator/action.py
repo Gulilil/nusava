@@ -4,6 +4,7 @@ from hmmlearn.hmm import CategoricalHMM
 from utils.constant import HMM_HIDDEN_STATES, HMM_OBSERVATION_LIST
 from datetime import datetime, timezone, timedelta
 from typing import Tuple
+from zoneinfo import ZoneInfo
 
 class ActionGenerator:
     """
@@ -39,7 +40,7 @@ class ActionGenerator:
         random.shuffle(observations)
 
         # Time based
-        current_time = datetime.now(timezone.utc) + timedelta(hours=7)
+        current_time = datetime.now(ZoneInfo("Asia/Jakarta"))
         current_hour = current_time.hour
         if 5 <= current_hour < 12:
             observations.insert(0, "morning_time")

@@ -262,7 +262,10 @@ class Agent():
 
     try:
       # Detect the category first
-      prompt = self.prompt_generator_component.generate_prompt_identify_chat_category(new_message=chat_message)  
+      prompt = self.prompt_generator_component.generate_prompt_identify_chat_category(
+        new_message=chat_message, 
+        previous_messages= self.memory_component.retrieve(sender_id))  
+      print(prompt)
       categorization, _ = await self.model_component.answer(prompt, is_direct=True)
       json_categorization = json.loads(categorization)
       category = json_categorization['category']
